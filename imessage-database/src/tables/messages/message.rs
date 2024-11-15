@@ -936,12 +936,15 @@ impl Message {
 
     /// Determine the service the message was sent from, i.e. iMessage, SMS, IRC, etc.
     pub fn service(&self) -> Service {
-        match self.service.as_deref() {
-            Some("iMessage") => Service::iMessage,
-            Some("SMS") => Service::SMS,
-            Some(service_name) => Service::Other(service_name),
-            None => Service::Unknown,
+        if let Some(service_name) = self.service.as_deref() {
+            return match service_name.trim() {
+                "iMessage" => Service::iMessage,
+                "SMS" => Service::SMS,
+                "rcs" => Service::SMS,
+                service_name => Service::Other(service_name),
+            };
         }
+        Service::Unknown
     }
 
     /// Extract a blob of data that belongs to a single message from a given column
