@@ -940,7 +940,7 @@ impl Message {
             return match service_name.trim() {
                 "iMessage" => Service::iMessage,
                 "SMS" => Service::SMS,
-                "rcs" => Service::SMS,
+                "rcs" => Service::RCS,
                 service_name => Service::Other(service_name),
             };
         }
