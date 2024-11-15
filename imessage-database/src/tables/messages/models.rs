@@ -31,6 +31,8 @@ pub enum Service<'a> {
     iMessage,
     /// A message sent as SMS
     SMS,
+    /// A message sent as RCS
+    RCS,
     /// Any other type of message
     Other(&'a str),
     /// Used when service field is not set
