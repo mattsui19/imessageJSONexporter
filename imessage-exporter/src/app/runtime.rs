@@ -128,7 +128,7 @@ impl Config {
     ///
     /// If it does not, first try and make a flat list of its members. Failing that, use the unique `chat_identifier` field.
     pub fn filename(&self, chatroom: &Chat) -> String {
-        let filename = match &chatroom.display_name() {
+        let mut filename = match &chatroom.display_name() {
             // If there is a display name, use that
             Some(name) => {
                 format!(
@@ -150,6 +150,12 @@ impl Config {
                 }
             }
         };
+
+        // Add the extension to the filename
+        if let Some(export_type) = &self.options.export_type {
+            filename.push_str(export_type.extension());
+        }
+
         sanitize_filename(&filename)
     }
 
@@ -382,7 +388,10 @@ impl Config {
 
 #[cfg(test)]
 mod filename_tests {
-    use crate::{app::attachment_manager::AttachmentManager, Config, Options};
+    use crate::{
+        app::{attachment_manager::AttachmentManager, export_type::ExportType},
+        Config, Options,
+    };
     use imessage_database::{
         tables::{
             chat::Chat,
@@ -401,7 +410,7 @@ mod filename_tests {
             attachment_root: None,
             attachment_manager: AttachmentManager::Disabled,
             diagnostic: false,
-            export_type: None,
+            export_type: Some(ExportType::Html),
             export_path: PathBuf::new(),
             query_context: QueryContext::default(),
             no_lazy: false,
@@ -439,7 +448,9 @@ mod filename_tests {
 
     #[test]
     fn can_create() {
-        let options = fake_options();
+        let mut options = fake_options();
+        // Disable the export
+        options.export_type = None;
         let app = fake_app(options);
         app.start().unwrap();
     }
@@ -534,7 +545,7 @@ mod filename_tests {
 
         // Get filename
         let filename = app.filename_from_participants(&people);
-        assert_eq!(filename, "He slipped his key into the lock, and we all very quietly entered the cell. The sleeper half turned, and then settled down once more into a deep slumber. Holmes stooped to the water-jug, moistened his sponge, and then rubbed it twice vigoro".to_string());
+        assert_eq!(filename, "He slipped his key into the lock, and we all very quietly entered the cell. The sleeper half turned, and then settled down once more into a deep slumber. Holmes stooped to the water-jug, moistened his sponge, and then rubbed it twice v".to_string());
         assert!(filename.len() <= MAX_LENGTH);
     }
 
@@ -549,7 +560,7 @@ mod filename_tests {
 
         // Get filename
         let filename = app.filename(&chat);
-        assert_eq!(filename, "Life is infinitely stranger than anything which the mind of man could invent. We would not dare to conceive the things which are really mere commonplaces of existence. If we could fly out of that window hand in hand, hover over this great c - 0");
+        assert_eq!(filename, "Life is infinitely stranger than anything which the mind of man could invent. We would not dare to conceive the things which are really mere commonplaces of existence. If we could fly out of that window hand in hand, hover over this gr - 0.html");
     }
 
     #[test]
@@ -563,7 +574,7 @@ mod filename_tests {
 
         // Get filename
         let filename = app.filename(&chat);
-        assert_eq!(filename, "Test Chat Name - 0");
+        assert_eq!(filename, "Test Chat Name - 0.html");
     }
 
     #[test]
@@ -577,7 +588,7 @@ mod filename_tests {
 
         // Get filename
         let filename = app.filename(&chat);
-        assert_eq!(filename, "🤠 - 0");
+        assert_eq!(filename, "🤠 - 0.html");
     }
 
     #[test]
@@ -600,7 +611,7 @@ mod filename_tests {
 
         // Get filename
         let filename = app.filename(&chat);
-        assert_eq!(filename, "Person 10, Person 11");
+        assert_eq!(filename, "Person 10, Person 11.html");
     }
 
     #[test]
@@ -613,7 +624,7 @@ mod filename_tests {
 
         // Get filename
         let filename = app.filename(&chat);
-        assert_eq!(filename, "Default");
+        assert_eq!(filename, "Default.html");
     }
 }
 
