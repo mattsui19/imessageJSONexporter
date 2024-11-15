@@ -212,7 +212,7 @@ fn fit_strokes(
 
 /// Resize converts `v` from a coordinate where `max_v` is the current height/width and `box_size` is the wanted height/width.
 fn resize(v: u16, box_size: u16, max_v: u16) -> u16 {
-    (v as i64 * box_size as i64 / max_v as i64) as u16
+    (v as i64 * box_size as i64).checked_div(max_v as i64).unwrap_or(0) as u16
 }
 
 /// Iterates through each point in each stroke and extracts the maximum `x`, `y`, and `width` values.
