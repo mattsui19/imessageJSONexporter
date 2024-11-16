@@ -96,6 +96,9 @@ This tool targets the current latest public release for macOS and iMessage. It m
     - TXT export behavior depends on attachment settings:
       - `disabled`: embedded inline as an `ascii` graphic
       - `compatible, efficient`: saved as an `svg` file
+- Digital Touch
+  - Parses the protobuf payload to extract [Digital Touch](https://support.apple.com/guide/ipod-touch/send-a-digital-touch-effect-iph3fadba219/ios) message data
+    - Displayed as text that describes the type of message sent in HTML and TXT exports
 - Duplicated group chats
   - Handles (participants) and chats (threads) can become duplicated
   - On startup:
