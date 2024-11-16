@@ -340,6 +340,7 @@ fn parse_coordinates(b1: u8, b2: u8) -> u16 {
 #[cfg(test)]
 mod tests {
     use crate::message_types::handwriting::models::{HandwrittenMessage, Point};
+
     use std::env::current_dir;
     use std::fs::File;
     use std::io::Read;

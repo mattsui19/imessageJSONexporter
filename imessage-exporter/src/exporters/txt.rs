@@ -23,6 +23,7 @@ use imessage_database::{
         app::AppMessage,
         app_store::AppStoreMessage,
         collaboration::CollaborationMessage,
+        digital_touch::{self, DigitalTouch},
         edited::{EditStatus, EditedMessage},
         expressives::{BubbleEffect, Expressive, ScreenEffect},
         handwriting::HandwrittenMessage,
@@ -429,6 +430,15 @@ impl<'a> Writer<'a> for TXT<'a> {
                 }
             }
 
+            if message.is_digital_touch() {
+                if let Some(payload) = message.raw_payload_data(&self.config.db) {
+                    return match digital_touch::from_payload(&payload) {
+                        Some(bubble) => Ok(self.format_digital_touch(message, &bubble, indent)),
+                        None => Err(PlistParseError::DigitalTouchError),
+                    };
+                }
+            }
+
             if let Some(payload) = message.payload_data(&self.config.db) {
                 // Handle URL messages separately since they are a special case
                 let res = if message.is_url() {
@@ -460,6 +470,7 @@ impl<'a> Writer<'a> for TXT<'a> {
                             CustomBalloon::CheckIn => self.format_check_in(&bubble, indent),
                             CustomBalloon::FindMy => self.format_find_my(&bubble, indent),
                             CustomBalloon::Handwriting => unreachable!(),
+                            CustomBalloon::DigitalTouch => unreachable!(),
                             CustomBalloon::URL => unreachable!(),
                         },
                         Err(why) => return Err(why),
@@ -840,6 +851,10 @@ impl<'a> BalloonFormatter<&'a str> for TXT<'a> {
                         .replace("\n", &format!("{indent}\n"))
                 }),
         }
+    }
+
+    fn format_digital_touch(&self, _: &Message, balloon: &DigitalTouch, indent: &str) -> String {
+        format!("{indent}Digital Touch Message: {:?}", balloon)
     }
 
     fn format_apple_pay(&self, balloon: &AppMessage, indent: &str) -> String {
