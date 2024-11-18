@@ -537,6 +537,11 @@ impl Message {
         matches!(self.variant(), Variant::App(CustomBalloon::Handwriting))
     }
 
+    /// `true` if the message is a [`Digital Touch`](crate::message_types::digital_touch::models), else `false`
+    pub fn is_digital_touch(&self) -> bool {
+        matches!(self.variant(), Variant::App(CustomBalloon::DigitalTouch))
+    }
+
     /// `true` if the message was [`Edited`](crate::message_types::edited), else `false`
     pub fn is_edited(&self) -> bool {
         self.date_edited != 0
@@ -856,6 +861,9 @@ impl Message {
                         "com.apple.Handwriting.HandwritingProvider" => {
                             Variant::App(CustomBalloon::Handwriting)
                         }
+                        "com.apple.DigitalTouchBalloonProvider" => {
+                            Variant::App(CustomBalloon::DigitalTouch)
+                        }
                         "com.apple.PassbookUIService.PeerPaymentMessagesExtension" => {
                             Variant::App(CustomBalloon::ApplePay)
                         }
@@ -940,7 +948,7 @@ impl Message {
             return match service_name.trim() {
                 "iMessage" => Service::iMessage,
                 "SMS" => Service::SMS,
-                "rcs" => Service::SMS,
+                "rcs" => Service::RCS,
                 service_name => Service::Other(service_name),
             };
         }

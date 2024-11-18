@@ -22,6 +22,7 @@ use imessage_database::{
         app::AppMessage,
         app_store::AppStoreMessage,
         collaboration::CollaborationMessage,
+        digital_touch::{self, DigitalTouch},
         edited::{EditStatus, EditedMessage},
         expressives::{BubbleEffect, Expressive, ScreenEffect},
         handwriting::HandwrittenMessage,
@@ -621,6 +622,15 @@ impl<'a> Writer<'a> for HTML<'a> {
                 }
             }
 
+            if message.is_digital_touch() {
+                if let Some(payload) = message.raw_payload_data(&self.config.db) {
+                    return match digital_touch::from_payload(&payload) {
+                        Some(bubble) => Ok(self.format_digital_touch(message, &bubble, message)),
+                        None => Err(PlistParseError::DigitalTouchError),
+                    };
+                }
+            }
+
             if let Some(payload) = message.payload_data(&self.config.db) {
                 let res = if message.is_url() {
                     let parsed = parse_plist(&payload)?;
@@ -649,6 +659,7 @@ impl<'a> Writer<'a> for HTML<'a> {
                             CustomBalloon::CheckIn => self.format_check_in(&bubble, message),
                             CustomBalloon::FindMy => self.format_find_my(&bubble, message),
                             CustomBalloon::Handwriting => unreachable!(),
+                            CustomBalloon::DigitalTouch => unreachable!(),
                             CustomBalloon::URL => unreachable!(),
                         },
                         Err(why) => return Err(why),
@@ -1215,6 +1226,13 @@ impl<'a> BalloonFormatter<&'a Message> for HTML<'a> {
     fn format_handwriting(&self, _: &Message, balloon: &HandwrittenMessage, _: &Message) -> String {
         // svg can be embedded directly into the html
         balloon.render_svg()
+    }
+
+    fn format_digital_touch(&self, _: &Message, balloon: &DigitalTouch, _: &'a Message) -> String {
+        format!(
+            "<div class=\"app_header\"><div class=\"name\">Digital Touch Message</div></div>\n<div class=\"app_footer\"><div class=\"caption\">{:?}</div></div>",
+            balloon
+        )
     }
 
     fn format_apple_pay(&self, balloon: &AppMessage, _: &Message) -> String {

@@ -83,7 +83,9 @@ impl HandwrittenMessage {
     pub fn render_ascii(&self, max_height: usize) -> String {
         // Create a blank canvas filled with spaces
         let h = max_height.min(self.height as usize);
-        let w = ((self.width as usize) * h) / (self.height as usize);
+        let w = ((self.width as usize) * h)
+            .checked_div(self.height as usize)
+            .unwrap_or(0);
         let mut canvas = vec![vec![' '; w]; h];
 
         // Plot the lines on the canvas
@@ -340,6 +342,7 @@ fn parse_coordinates(b1: u8, b2: u8) -> u16 {
 #[cfg(test)]
 mod tests {
     use crate::message_types::handwriting::models::{HandwrittenMessage, Point};
+
     use std::env::current_dir;
     use std::fs::File;
     use std::io::Read;
