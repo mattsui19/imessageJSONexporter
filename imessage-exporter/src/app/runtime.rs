@@ -229,7 +229,9 @@ impl Config {
 
         // Update the query context with optionally filtered handle IDs
         // TODO: Convert comma separated list of participant strings into table chat IDs using
-        // TODO:
+        //   1) filter self.participant keys based on the values (by comparing to user values)
+        //   2) get the chat IDs keys from self.chatroom_participants for values that contain the selected handle_ids
+        //   3) send those chat IDs to the query context so they are included in the message table filters
         // let selected_handles: Vec<i64> = todo!();
         options.query_context.set_selected_handle_ids(vec![]);
 
@@ -407,6 +409,57 @@ impl Config {
             offset: get_offset(),
             db: connection,
             converter: Some(crate::app::converter::Converter::Sips),
+        }
+    }
+
+    pub fn fake_message() -> Message {
+        Message {
+            rowid: i32::default(),
+            guid: String::default(),
+            text: None,
+            service: Some("iMessage".to_string()),
+            handle_id: Some(i32::default()),
+            destination_caller_id: None,
+            subject: None,
+            date: i64::default(),
+            date_read: i64::default(),
+            date_delivered: i64::default(),
+            is_from_me: false,
+            is_read: false,
+            item_type: 0,
+            other_handle: 0,
+            share_status: false,
+            share_direction: false,
+            group_title: None,
+            group_action_type: 0,
+            associated_message_guid: None,
+            associated_message_type: Some(i32::default()),
+            balloon_bundle_id: None,
+            expressive_send_style_id: None,
+            thread_originator_guid: None,
+            thread_originator_part: None,
+            date_edited: 0,
+            associated_message_emoji: None,
+            chat_id: None,
+            num_attachments: 0,
+            deleted_from: None,
+            num_replies: 0,
+            components: None,
+            edited_parts: None,
+        }
+    }
+
+    pub(crate) fn fake_attachment() -> Attachment {
+        Attachment {
+            rowid: 0,
+            filename: Some("a/b/c/d.jpg".to_string()),
+            uti: Some("public.png".to_string()),
+            mime_type: Some("image/png".to_string()),
+            transfer_name: Some("d.jpg".to_string()),
+            total_bytes: 100,
+            is_sticker: false,
+            hide_attachment: 0,
+            copied_path: None,
         }
     }
 }
@@ -611,7 +664,7 @@ mod filename_tests {
 #[cfg(test)]
 mod who_tests {
     use crate::{Config, Options};
-    use imessage_database::tables::{chat::Chat, messages::Message};
+    use imessage_database::tables::chat::Chat;
 
     fn fake_chat() -> Chat {
         Chat {
@@ -619,43 +672,6 @@ mod who_tests {
             chat_identifier: "Default".to_string(),
             service_name: Some(String::new()),
             display_name: None,
-        }
-    }
-
-    fn blank() -> Message {
-        Message {
-            rowid: i32::default(),
-            guid: String::default(),
-            text: None,
-            service: Some("iMessage".to_string()),
-            handle_id: Some(i32::default()),
-            destination_caller_id: None,
-            subject: None,
-            date: i64::default(),
-            date_read: i64::default(),
-            date_delivered: i64::default(),
-            is_from_me: false,
-            is_read: false,
-            item_type: 0,
-            other_handle: 0,
-            share_status: false,
-            share_direction: false,
-            group_title: None,
-            group_action_type: 0,
-            associated_message_guid: None,
-            associated_message_type: Some(i32::default()),
-            balloon_bundle_id: None,
-            expressive_send_style_id: None,
-            thread_originator_guid: None,
-            thread_originator_part: None,
-            date_edited: 0,
-            associated_message_emoji: None,
-            chat_id: None,
-            num_attachments: 0,
-            deleted_from: None,
-            num_replies: 0,
-            components: None,
-            edited_parts: None,
         }
     }
 
@@ -758,7 +774,7 @@ mod who_tests {
         app.real_chatrooms.insert(0, 0);
 
         // Create message
-        let mut message = blank();
+        let mut message = Config::fake_message();
         message.chat_id = Some(0);
 
         // Get filename
@@ -777,7 +793,7 @@ mod who_tests {
         app.real_chatrooms.insert(0, 0);
 
         // Create message
-        let mut message = blank();
+        let mut message = Config::fake_message();
         message.chat_id = None;
         message.deleted_from = Some(0);
 
@@ -797,7 +813,7 @@ mod who_tests {
         app.real_chatrooms.insert(0, 0);
 
         // Create message
-        let mut message = blank();
+        let mut message = Config::fake_message();
         message.chat_id = Some(1);
 
         // Get filename
@@ -816,7 +832,7 @@ mod who_tests {
         app.real_chatrooms.insert(0, 0);
 
         // Create message
-        let mut message = blank();
+        let mut message = Config::fake_message();
         message.chat_id = None;
         message.deleted_from = None;
 

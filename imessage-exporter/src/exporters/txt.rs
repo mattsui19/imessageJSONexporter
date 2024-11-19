@@ -1042,61 +1042,7 @@ mod tests {
     use crate::{
         app::export_type::ExportType, exporters::exporter::Writer, Config, Exporter, Options, TXT,
     };
-    use imessage_database::{
-        tables::{attachment::Attachment, messages::Message, table::ME},
-        util::platform::Platform,
-    };
-
-    pub(super) fn blank() -> Message {
-        Message {
-            rowid: i32::default(),
-            guid: String::default(),
-            text: None,
-            service: Some("iMessage".to_string()),
-            handle_id: Some(i32::default()),
-            destination_caller_id: None,
-            subject: None,
-            date: i64::default(),
-            date_read: i64::default(),
-            date_delivered: i64::default(),
-            is_from_me: false,
-            is_read: false,
-            item_type: 0,
-            other_handle: 0,
-            share_status: false,
-            share_direction: false,
-            group_title: None,
-            group_action_type: 0,
-            associated_message_guid: None,
-            associated_message_type: Some(i32::default()),
-            balloon_bundle_id: None,
-            expressive_send_style_id: None,
-            thread_originator_guid: None,
-            thread_originator_part: None,
-            date_edited: 0,
-            chat_id: None,
-            associated_message_emoji: None,
-            num_attachments: 0,
-            deleted_from: None,
-            num_replies: 0,
-            components: None,
-            edited_parts: None,
-        }
-    }
-
-    pub(super) fn fake_attachment() -> Attachment {
-        Attachment {
-            rowid: 0,
-            filename: Some("a/b/c/d.jpg".to_string()),
-            uti: Some("public.png".to_string()),
-            mime_type: Some("image/png".to_string()),
-            transfer_name: Some("d.jpg".to_string()),
-            total_bytes: 100,
-            is_sticker: false,
-            hide_attachment: 0,
-            copied_path: None,
-        }
-    }
+    use imessage_database::{tables::table::ME, util::platform::Platform};
 
     #[test]
     fn can_create() {
@@ -1117,7 +1063,7 @@ mod tests {
         let exporter = TXT::new(&config).unwrap();
 
         // Create fake message
-        let mut message = blank();
+        let mut message = Config::fake_message();
         // May 17, 2022  8:29:42 PM
         message.date = 674526582885055488;
         // May 17, 2022  8:29:42 PM
@@ -1142,7 +1088,7 @@ mod tests {
         let exporter = TXT::new(&config).unwrap();
 
         // Create fake message
-        let mut message = blank();
+        let mut message = Config::fake_message();
         // May 17, 2022  9:30:31 PM
         message.date = 674530231992568192;
         // May 17, 2022  9:30:31 PM
@@ -1190,7 +1136,7 @@ mod tests {
         let config = Config::fake_app(options);
         let exporter = TXT::new(&config).unwrap();
 
-        let mut message = blank();
+        let mut message = Config::fake_message();
         // May 17, 2022  8:29:42 PM
         message.date = 674526582885055488;
         message.text = Some("Hello world".to_string());
@@ -1213,7 +1159,7 @@ mod tests {
         let config = Config::fake_app(options);
         let exporter = TXT::new(&config).unwrap();
 
-        let mut message = blank();
+        let mut message = Config::fake_message();
         // May 17, 2022  8:29:42 PM
         message.text = Some("Hello world".to_string());
         message.date = 674526582885055488;
@@ -1237,7 +1183,7 @@ mod tests {
         let config = Config::fake_app(options);
         let exporter = TXT::new(&config).unwrap();
 
-        let mut message = blank();
+        let mut message = Config::fake_message();
         message.text = Some("Hello world".to_string());
         // May 17, 2022  8:29:42 PM
         message.date = 674526582885055488;
@@ -1265,7 +1211,7 @@ mod tests {
             .insert(999999, "Sample Contact".to_string());
         let exporter = TXT::new(&config).unwrap();
 
-        let mut message = blank();
+        let mut message = Config::fake_message();
         // May 17, 2022  8:29:42 PM
         message.date = 674526582885055488;
         message.text = Some("Hello world".to_string());
@@ -1290,7 +1236,7 @@ mod tests {
             .insert(999999, "Sample Contact".to_string());
         let exporter = TXT::new(&config).unwrap();
 
-        let mut message = blank();
+        let mut message = Config::fake_message();
         message.handle_id = Some(999999);
         // May 17, 2022  8:29:42 PM
         message.date = 674526582885055488;
@@ -1321,7 +1267,7 @@ mod tests {
             .insert(999999, "Sample Contact".to_string());
         let exporter = TXT::new(&config).unwrap();
 
-        let mut message = blank();
+        let mut message = Config::fake_message();
         message.handle_id = Some(999999);
         // May 17, 2022  8:29:42 PM
         message.date = 674526582885055488;
@@ -1350,7 +1296,7 @@ mod tests {
 
         let exporter = TXT::new(&config).unwrap();
 
-        let mut message = blank();
+        let mut message = Config::fake_message();
         // May 17, 2022  8:29:42 PM
         message.date = 674526582885055488;
         message.item_type = 6;
@@ -1373,7 +1319,7 @@ mod tests {
 
         let exporter = TXT::new(&config).unwrap();
 
-        let mut message = blank();
+        let mut message = Config::fake_message();
         // May 17, 2022  8:29:42 PM
         message.date = 674526582885055488;
         message.group_title = Some("Hello world".to_string());
@@ -1398,7 +1344,7 @@ mod tests {
 
         let exporter = TXT::new(&config).unwrap();
 
-        let mut message = blank();
+        let mut message = Config::fake_message();
         // May 17, 2022  8:29:42 PM
         message.date = 674526582885055488;
         message.group_title = Some("Hello world".to_string());
@@ -1421,7 +1367,7 @@ mod tests {
 
         let exporter = TXT::new(&config).unwrap();
 
-        let mut message = blank();
+        let mut message = Config::fake_message();
         // May 17, 2022  8:29:42 PM
         message.date = 674526582885055488;
         message.associated_message_type = Some(2000);
@@ -1446,7 +1392,7 @@ mod tests {
             .insert(999999, "Sample Contact".to_string());
         let exporter = TXT::new(&config).unwrap();
 
-        let mut message = blank();
+        let mut message = Config::fake_message();
         // May 17, 2022  8:29:42 PM
         message.date = 674526582885055488;
         message.associated_message_type = Some(2000);
@@ -1472,7 +1418,7 @@ mod tests {
             .insert(999999, "Sample Contact".to_string());
         let exporter = TXT::new(&config).unwrap();
 
-        let mut message = blank();
+        let mut message = Config::fake_message();
         // May 17, 2022  8:29:42 PM
         message.date = 674526582885055488;
         message.associated_message_type = Some(2006);
@@ -1499,7 +1445,7 @@ mod tests {
             .insert(999999, "Sample Contact".to_string());
         let exporter = TXT::new(&config).unwrap();
 
-        let mut message = blank();
+        let mut message = Config::fake_message();
         // May 17, 2022  8:29:42 PM
         message.date = 674526582885055488;
         message.associated_message_type = Some(2007);
@@ -1523,7 +1469,7 @@ mod tests {
         let config = Config::fake_app(options);
         let exporter = TXT::new(&config).unwrap();
 
-        let mut message = blank();
+        let mut message = Config::fake_message();
         message.is_from_me = false;
         message.other_handle = 2;
         message.share_status = false;
@@ -1546,7 +1492,7 @@ mod tests {
         let config = Config::fake_app(options);
         let exporter = TXT::new(&config).unwrap();
 
-        let mut message = blank();
+        let mut message = Config::fake_message();
         message.is_from_me = false;
         message.other_handle = 2;
         message.share_status = true;
@@ -1569,7 +1515,7 @@ mod tests {
         let config = Config::fake_app(options);
         let exporter = TXT::new(&config).unwrap();
 
-        let mut message = blank();
+        let mut message = Config::fake_message();
         message.handle_id = None;
         message.is_from_me = false;
         message.other_handle = 0;
@@ -1593,7 +1539,7 @@ mod tests {
         let config = Config::fake_app(options);
         let exporter = TXT::new(&config).unwrap();
 
-        let mut message = blank();
+        let mut message = Config::fake_message();
         message.handle_id = None;
         message.is_from_me = false;
         message.other_handle = 0;
@@ -1614,9 +1560,9 @@ mod tests {
         let config = Config::fake_app(options);
         let exporter = TXT::new(&config).unwrap();
 
-        let message = blank();
+        let message = Config::fake_message();
 
-        let mut attachment = fake_attachment();
+        let mut attachment = Config::fake_attachment();
 
         let actual = exporter
             .format_attachment(&mut attachment, &message)
@@ -1632,9 +1578,9 @@ mod tests {
         let config = Config::fake_app(options);
         let exporter = TXT::new(&config).unwrap();
 
-        let message = blank();
+        let message = Config::fake_message();
 
-        let mut attachment = fake_attachment();
+        let mut attachment = Config::fake_attachment();
         attachment.filename = None;
 
         let actual = exporter.format_attachment(&mut attachment, &message);
@@ -1650,9 +1596,9 @@ mod tests {
         config.options.platform = Platform::iOS;
         let exporter = TXT::new(&config).unwrap();
 
-        let message = blank();
+        let message = Config::fake_message();
 
-        let mut attachment = fake_attachment();
+        let mut attachment = Config::fake_attachment();
 
         let actual = exporter
             .format_attachment(&mut attachment, &message)
@@ -1670,9 +1616,9 @@ mod tests {
         config.options.platform = Platform::iOS;
         let exporter = TXT::new(&config).unwrap();
 
-        let message = blank();
+        let message = Config::fake_message();
 
-        let mut attachment = fake_attachment();
+        let mut attachment = Config::fake_attachment();
         attachment.filename = None;
 
         let actual = exporter.format_attachment(&mut attachment, &message);
@@ -1691,11 +1637,11 @@ mod tests {
 
         let exporter = TXT::new(&config).unwrap();
 
-        let mut message = blank();
+        let mut message = Config::fake_message();
         // Set message to sticker variant
         message.associated_message_type = Some(1000);
 
-        let mut attachment = fake_attachment();
+        let mut attachment = Config::fake_attachment();
         attachment.is_sticker = true;
         let sticker_path = current_dir()
             .unwrap()
@@ -1726,7 +1672,6 @@ mod tests {
 mod balloon_format_tests {
     use std::env::set_var;
 
-    use super::tests::blank;
     use crate::{exporters::exporter::BalloonFormatter, Config, Exporter, Options, TXT};
     use imessage_database::message_types::{
         app::AppMessage,
@@ -1756,7 +1701,7 @@ mod balloon_format_tests {
             placeholder: false,
         };
 
-        let expected = exporter.format_url(&blank(), &balloon, "");
+        let expected = exporter.format_url(&Config::fake_message(), &balloon, "");
         let actual = "url\ntitle\nsummary";
 
         assert_eq!(expected, actual);
@@ -2084,8 +2029,6 @@ mod edited_tests {
         io::Read,
     };
 
-    use super::tests::blank;
-
     use crate::{exporters::exporter::Writer, Config, Exporter, Options, TXT};
     use imessage_database::{
         message_types::edited::{EditStatus, EditedMessage, EditedMessagePart},
@@ -2102,7 +2045,7 @@ mod edited_tests {
         let config = Config::fake_app(options);
         let exporter = TXT::new(&config).unwrap();
 
-        let mut message = blank();
+        let mut message = Config::fake_message();
         // May 17, 2022  8:29:42 PM
         message.date = 674526582885055488;
         message.date_edited = 674530231992568192;
@@ -2160,7 +2103,7 @@ mod edited_tests {
         let config = Config::fake_app(options);
         let exporter = TXT::new(&config).unwrap();
 
-        let mut message = blank();
+        let mut message = Config::fake_message();
         // May 17, 2022  8:29:42 PM
         message.date = 674526582885055488;
         message.text = Some(
@@ -2197,7 +2140,7 @@ mod edited_tests {
         let config = Config::fake_app(options);
         let exporter = TXT::new(&config).unwrap();
 
-        let mut message = blank();
+        let mut message = Config::fake_message();
         // May 17, 2022  8:29:42 PM
         message.date = 674526582885055488;
         message.date_edited = 674530231992568192;
