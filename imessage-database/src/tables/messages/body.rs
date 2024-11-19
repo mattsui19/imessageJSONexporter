@@ -307,46 +307,9 @@ mod typedstream_tests {
         util::typedstream::parser::TypedStreamReader,
     };
 
-    pub(super) fn blank() -> Message {
-        Message {
-            rowid: i32::default(),
-            guid: String::default(),
-            text: None,
-            service: Some("iMessage".to_string()),
-            handle_id: Some(i32::default()),
-            destination_caller_id: None,
-            subject: None,
-            date: i64::default(),
-            date_read: i64::default(),
-            date_delivered: i64::default(),
-            is_from_me: false,
-            is_read: false,
-            item_type: 0,
-            other_handle: 0,
-            share_status: false,
-            share_direction: false,
-            group_title: None,
-            group_action_type: 0,
-            associated_message_guid: None,
-            associated_message_type: Some(i32::default()),
-            balloon_bundle_id: None,
-            expressive_send_style_id: None,
-            thread_originator_guid: None,
-            thread_originator_part: None,
-            date_edited: 0,
-            associated_message_emoji: None,
-            chat_id: None,
-            num_attachments: 0,
-            deleted_from: None,
-            num_replies: 0,
-            components: None,
-            edited_parts: None,
-        }
-    }
-
     #[test]
     fn can_get_message_body_simple() {
-        let mut m = blank();
+        let mut m = Message::blank();
         m.text = Some("Noter test".to_string());
 
         let typedstream_path = current_dir()
@@ -372,7 +335,7 @@ mod typedstream_tests {
 
     #[test]
     fn can_get_message_body_app() {
-        let mut m = blank();
+        let mut m = Message::blank();
         m.text = Some("\u{FFFC}".to_string());
 
         let typedstream_path = current_dir()
@@ -396,7 +359,7 @@ mod typedstream_tests {
 
     #[test]
     fn can_get_message_body_simple_two() {
-        let mut m = blank();
+        let mut m = Message::blank();
         m.text = Some("Test 3".to_string());
 
         let typedstream_path = current_dir()
@@ -422,7 +385,7 @@ mod typedstream_tests {
 
     #[test]
     fn can_get_message_body_multi_part() {
-        let mut m = blank();
+        let mut m = Message::blank();
         m.text = Some("\u{FFFC}test 1\u{FFFC}test 2 \u{FFFC}test 3".to_string());
 
         let typedstream_path = current_dir()
@@ -451,7 +414,7 @@ mod typedstream_tests {
 
     #[test]
     fn can_get_message_body_multi_part_deleted() {
-        let mut m = blank();
+        let mut m = Message::blank();
         m.text = Some(
             "From arbitrary byte stream:\r\u{FFFC}To native Rust data structures:\r".to_string(),
         );
@@ -479,7 +442,7 @@ mod typedstream_tests {
 
     #[test]
     fn can_get_message_body_multi_part_deleted_edited() {
-        let mut m = blank();
+        let mut m = Message::blank();
         m.text = Some(
             "From arbitrary byte stream:\r\u{FFFC}To native Rust data structures:\r".to_string(),
         );
@@ -536,7 +499,7 @@ mod typedstream_tests {
 
     #[test]
     fn can_get_message_body_attachment() {
-        let mut m = blank();
+        let mut m = Message::blank();
         m.text = Some(
             "\u{FFFC}This is how the notes look to me fyi, in case it helps make sense of anything"
                 .to_string(),
@@ -564,7 +527,7 @@ mod typedstream_tests {
 
     #[test]
     fn can_get_message_body_attachment_i16() {
-        let mut m = blank();
+        let mut m = Message::blank();
         m.text = Some("\u{FFFC}".to_string());
 
         let typedstream_path = current_dir()
@@ -588,7 +551,7 @@ mod typedstream_tests {
 
     #[test]
     fn can_get_message_body_url() {
-        let mut m = blank();
+        let mut m = Message::blank();
         m.text = Some("https://twitter.com/xxxxxxxxx/status/0000223300009216128".to_string());
 
         let typedstream_path = current_dir()
@@ -621,7 +584,7 @@ mod typedstream_tests {
 
     #[test]
     fn can_get_message_body_mention() {
-        let mut m = blank();
+        let mut m = Message::blank();
         m.text = Some("Test Dad ".to_string());
 
         let typedstream_path = current_dir()
@@ -654,7 +617,7 @@ mod typedstream_tests {
 
     #[test]
     fn can_get_message_body_code() {
-        let mut m = blank();
+        let mut m = Message::blank();
         m.text = Some("000123 is your security code. Don't share your code.".to_string());
 
         let typedstream_path = current_dir()
@@ -686,7 +649,7 @@ mod typedstream_tests {
 
     #[test]
     fn can_get_message_body_phone() {
-        let mut m = blank();
+        let mut m = Message::blank();
         m.text = Some("What about 0000000000".to_string());
 
         let typedstream_path = current_dir()
@@ -718,7 +681,7 @@ mod typedstream_tests {
 
     #[test]
     fn can_get_message_body_email() {
-        let mut m = blank();
+        let mut m = Message::blank();
         m.text = Some("asdfghjklq@gmail.com might work".to_string());
 
         let typedstream_path = current_dir()
@@ -750,7 +713,7 @@ mod typedstream_tests {
 
     #[test]
     fn can_get_message_body_date() {
-        let mut m = blank();
+        let mut m = Message::blank();
         m.text = Some("Hi. Right now or tomorrow?".to_string());
 
         let typedstream_path = current_dir()
@@ -783,7 +746,7 @@ mod typedstream_tests {
 
     #[test]
     fn can_get_message_body_custom_tapback() {
-        let mut m = blank();
+        let mut m = Message::blank();
         m.text = Some("".to_string());
 
         let typedstream_path = current_dir()
@@ -815,7 +778,7 @@ mod typedstream_tests {
 
     #[test]
     fn can_get_message_body_deleted_only() {
-        let mut m = blank();
+        let mut m = Message::blank();
         m.edited_parts = Some(EditedMessage {
             parts: vec![EditedMessagePart {
                 status: EditStatus::Unsent,
@@ -831,7 +794,7 @@ mod typedstream_tests {
 
     #[test]
     fn can_get_message_body_text_styles() {
-        let mut m = blank();
+        let mut m = Message::blank();
         m.text = Some("Bold underline italic strikethrough all four".to_string());
 
         let typedstream_path = current_dir()
@@ -879,7 +842,7 @@ mod typedstream_tests {
 
     #[test]
     fn can_get_message_body_text_effects() {
-        let mut m = blank();
+        let mut m = Message::blank();
         m.text = Some("Big small shake nod explode ripple bloom jitter".to_string());
 
         let typedstream_path = current_dir()
@@ -922,7 +885,7 @@ mod typedstream_tests {
 
     #[test]
     fn can_get_message_body_text_effects_styles_mixed() {
-        let mut m = blank();
+        let mut m = Message::blank();
         m.text = Some("Underline normal jitter normal".to_string());
 
         let typedstream_path = current_dir()
@@ -957,19 +920,18 @@ mod typedstream_tests {
 
 #[cfg(test)]
 mod legacy_tests {
-    use super::typedstream_tests::blank;
-
     use crate::{
         message_types::text_effects::TextEffect,
         tables::messages::{
             body::parse_body_legacy,
             models::{BubbleComponent, TextAttributes},
+            Message,
         },
     };
 
     #[test]
     fn can_get_message_body_single_emoji() {
-        let mut m = blank();
+        let mut m = Message::blank();
         m.text = Some("🙈".to_string());
         assert_eq!(
             parse_body_legacy(&m),
@@ -983,7 +945,7 @@ mod legacy_tests {
 
     #[test]
     fn can_get_message_body_multiple_emoji() {
-        let mut m = blank();
+        let mut m = Message::blank();
         m.text = Some("🙈🙈🙈".to_string());
         assert_eq!(
             parse_body_legacy(&m),
@@ -997,7 +959,7 @@ mod legacy_tests {
 
     #[test]
     fn can_get_message_body_text_only() {
-        let mut m = blank();
+        let mut m = Message::blank();
         m.text = Some("Hello world".to_string());
         assert_eq!(
             parse_body_legacy(&m),
@@ -1011,7 +973,7 @@ mod legacy_tests {
 
     #[test]
     fn can_get_message_body_attachment_text() {
-        let mut m = blank();
+        let mut m = Message::blank();
         m.text = Some("\u{FFFC}Hello world".to_string());
         assert_eq!(
             parse_body_legacy(&m),
@@ -1024,7 +986,7 @@ mod legacy_tests {
 
     #[test]
     fn can_get_message_body_app_text() {
-        let mut m = blank();
+        let mut m = Message::blank();
         m.text = Some("\u{FFFD}Hello world".to_string());
         assert_eq!(
             parse_body_legacy(&m),
@@ -1037,7 +999,7 @@ mod legacy_tests {
 
     #[test]
     fn can_get_message_body_app_attachment_text_mixed_start_text() {
-        let mut m = blank();
+        let mut m = Message::blank();
         m.text = Some("One\u{FFFD}\u{FFFC}Two\u{FFFC}Three\u{FFFC}four".to_string());
         assert_eq!(
             parse_body_legacy(&m),
@@ -1056,7 +1018,7 @@ mod legacy_tests {
 
     #[test]
     fn can_get_message_body_app_attachment_text_mixed_start_app() {
-        let mut m = blank();
+        let mut m = Message::blank();
         m.text = Some("\u{FFFD}\u{FFFC}Two\u{FFFC}Three\u{FFFC}".to_string());
         assert_eq!(
             parse_body_legacy(&m),

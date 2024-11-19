@@ -206,7 +206,7 @@ impl Config {
     /// let options = Options::from_args(&args);
     /// let app = Config::new(options).unwrap();
     /// ```
-    pub fn new(options: Options) -> Result<Config, RuntimeError> {
+    pub fn new(mut options: Options) -> Result<Config, RuntimeError> {
         let conn = get_connection(&options.get_db_path()).map_err(RuntimeError::DatabaseError)?;
         eprintln!("Building cache...");
         eprintln!("[1/4] Caching chats...");
@@ -226,6 +226,12 @@ impl Config {
             AttachmentManager::Compatible => Converter::determine(),
             AttachmentManager::Efficient => None,
         };
+
+        // Update the query context with optionally filtered handle IDs
+        // TODO: Convert comma separated list of participant strings into table chat IDs using
+        // TODO:
+        // let selected_handles: Vec<i64> = todo!();
+        options.query_context.set_selected_handle_ids(vec![]);
 
         Ok(Config {
             chatrooms,
@@ -387,39 +393,29 @@ impl Config {
 }
 
 #[cfg(test)]
-mod filename_tests {
-    use crate::{
-        app::{attachment_manager::AttachmentManager, export_type::ExportType},
-        Config, Options,
-    };
-    use imessage_database::{
-        tables::{
-            chat::Chat,
-            table::{get_connection, MAX_LENGTH},
-        },
-        util::{dirs::default_db_path, platform::Platform, query_context::QueryContext},
-    };
-    use std::{
-        collections::{BTreeSet, HashMap},
-        path::PathBuf,
-    };
-
-    fn fake_options() -> Options {
-        Options {
-            db_path: default_db_path(),
-            attachment_root: None,
-            attachment_manager: AttachmentManager::Disabled,
-            diagnostic: false,
-            export_type: Some(ExportType::Html),
-            export_path: PathBuf::new(),
-            query_context: QueryContext::default(),
-            no_lazy: false,
-            custom_name: None,
-            use_caller_id: false,
-            platform: Platform::macOS,
-            ignore_disk_space: false,
+impl Config {
+    pub fn fake_app(options: Options) -> Config {
+        let connection = get_connection(&options.db_path).unwrap();
+        Config {
+            chatrooms: HashMap::new(),
+            real_chatrooms: HashMap::new(),
+            chatroom_participants: HashMap::new(),
+            participants: HashMap::new(),
+            real_participants: HashMap::new(),
+            tapbacks: HashMap::new(),
+            options,
+            offset: get_offset(),
+            db: connection,
+            converter: Some(crate::app::converter::Converter::Sips),
         }
     }
+}
+
+#[cfg(test)]
+mod filename_tests {
+    use crate::{Config, Options};
+    use imessage_database::tables::{chat::Chat, table::MAX_LENGTH};
+    use std::collections::BTreeSet;
 
     fn fake_chat() -> Chat {
         Chat {
@@ -430,35 +426,19 @@ mod filename_tests {
         }
     }
 
-    fn fake_app(options: Options) -> Config {
-        let connection = get_connection(&options.db_path).unwrap();
-        Config {
-            chatrooms: HashMap::new(),
-            real_chatrooms: HashMap::new(),
-            chatroom_participants: HashMap::new(),
-            participants: HashMap::new(),
-            real_participants: HashMap::new(),
-            tapbacks: HashMap::new(),
-            options,
-            offset: 0,
-            db: connection,
-            converter: Some(crate::app::converter::Converter::Sips),
-        }
-    }
-
     #[test]
     fn can_create() {
-        let mut options = fake_options();
+        let mut options = Options::fake_options(crate::app::export_type::ExportType::Html);
         // Disable the export
         options.export_type = None;
-        let app = fake_app(options);
+        let app = Config::fake_app(options);
         app.start().unwrap();
     }
 
     #[test]
     fn can_get_filename_good() {
-        let options = fake_options();
-        let mut app = fake_app(options);
+        let options = Options::fake_options(crate::app::export_type::ExportType::Html);
+        let mut app = Config::fake_app(options);
 
         // Create participant data
         app.participants.insert(10, "Person 10".to_string());
@@ -477,8 +457,8 @@ mod filename_tests {
 
     #[test]
     fn can_get_filename_long_multiple() {
-        let options = fake_options();
-        let mut app = fake_app(options);
+        let options = Options::fake_options(crate::app::export_type::ExportType::Html);
+        let mut app = Config::fake_app(options);
 
         // Create participant data
         app.participants.insert(
@@ -533,8 +513,8 @@ mod filename_tests {
 
     #[test]
     fn can_get_filename_single_long() {
-        let options = fake_options();
-        let mut app = fake_app(options);
+        let options = Options::fake_options(crate::app::export_type::ExportType::Html);
+        let mut app = Config::fake_app(options);
 
         // Create participant data
         app.participants.insert(10, "He slipped his key into the lock, and we all very quietly entered the cell. The sleeper half turned, and then settled down once more into a deep slumber. Holmes stooped to the water-jug, moistened his sponge, and then rubbed it twice vigorously across and down the prisoner's face.".to_string());
@@ -551,8 +531,8 @@ mod filename_tests {
 
     #[test]
     fn can_get_filename_chat_display_name_long() {
-        let options = fake_options();
-        let app = fake_app(options);
+        let options = Options::fake_options(crate::app::export_type::ExportType::Html);
+        let app = Config::fake_app(options);
 
         // Create chat
         let mut chat = fake_chat();
@@ -565,8 +545,8 @@ mod filename_tests {
 
     #[test]
     fn can_get_filename_chat_display_name_normal() {
-        let options = fake_options();
-        let app = fake_app(options);
+        let options = Options::fake_options(crate::app::export_type::ExportType::Html);
+        let app = Config::fake_app(options);
 
         // Create chat
         let mut chat = fake_chat();
@@ -579,8 +559,8 @@ mod filename_tests {
 
     #[test]
     fn can_get_filename_chat_display_name_short() {
-        let options = fake_options();
-        let app = fake_app(options);
+        let options = Options::fake_options(crate::app::export_type::ExportType::Html);
+        let app = Config::fake_app(options);
 
         // Create chat
         let mut chat = fake_chat();
@@ -593,8 +573,8 @@ mod filename_tests {
 
     #[test]
     fn can_get_filename_chat_participants() {
-        let options = fake_options();
-        let mut app = fake_app(options);
+        let options = Options::fake_options(crate::app::export_type::ExportType::Html);
+        let mut app = Config::fake_app(options);
 
         // Create chat
         let chat = fake_chat();
@@ -616,8 +596,8 @@ mod filename_tests {
 
     #[test]
     fn can_get_filename_chat_no_participants() {
-        let options = fake_options();
-        let app = fake_app(options);
+        let options = Options::fake_options(crate::app::export_type::ExportType::Html);
+        let app = Config::fake_app(options);
 
         // Create chat
         let chat = fake_chat();
@@ -630,29 +610,8 @@ mod filename_tests {
 
 #[cfg(test)]
 mod who_tests {
-    use crate::{app::attachment_manager::AttachmentManager, Config, Options};
-    use imessage_database::{
-        tables::{chat::Chat, messages::Message, table::get_connection},
-        util::{dirs::default_db_path, platform::Platform, query_context::QueryContext},
-    };
-    use std::{collections::HashMap, path::PathBuf};
-
-    fn fake_options() -> Options {
-        Options {
-            db_path: default_db_path(),
-            attachment_root: None,
-            attachment_manager: AttachmentManager::Disabled,
-            diagnostic: false,
-            export_type: None,
-            export_path: PathBuf::new(),
-            query_context: QueryContext::default(),
-            no_lazy: false,
-            custom_name: None,
-            use_caller_id: false,
-            platform: Platform::macOS,
-            ignore_disk_space: false,
-        }
-    }
+    use crate::{Config, Options};
+    use imessage_database::tables::{chat::Chat, messages::Message};
 
     fn fake_chat() -> Chat {
         Chat {
@@ -660,22 +619,6 @@ mod who_tests {
             chat_identifier: "Default".to_string(),
             service_name: Some(String::new()),
             display_name: None,
-        }
-    }
-
-    fn fake_app(options: Options) -> Config {
-        let connection = get_connection(&options.db_path).unwrap();
-        Config {
-            chatrooms: HashMap::new(),
-            real_chatrooms: HashMap::new(),
-            chatroom_participants: HashMap::new(),
-            participants: HashMap::new(),
-            real_participants: HashMap::new(),
-            tapbacks: HashMap::new(),
-            options,
-            offset: 0,
-            db: connection,
-            converter: Some(crate::app::converter::Converter::Sips),
         }
     }
 
@@ -718,8 +661,8 @@ mod who_tests {
 
     #[test]
     fn can_get_who_them() {
-        let options = fake_options();
-        let mut app = fake_app(options);
+        let options = Options::fake_options(crate::app::export_type::ExportType::Html);
+        let mut app = Config::fake_app(options);
 
         // Create participant data
         app.participants.insert(10, "Person 10".to_string());
@@ -731,8 +674,8 @@ mod who_tests {
 
     #[test]
     fn can_get_who_them_missing() {
-        let options = fake_options();
-        let app = fake_app(options);
+        let options = Options::fake_options(crate::app::export_type::ExportType::Html);
+        let app = Config::fake_app(options);
 
         // Get participant name
         let who = app.who(Some(10), false, &None);
@@ -741,8 +684,8 @@ mod who_tests {
 
     #[test]
     fn can_get_who_me() {
-        let options = fake_options();
-        let app = fake_app(options);
+        let options = Options::fake_options(crate::app::export_type::ExportType::Html);
+        let app = Config::fake_app(options);
 
         // Get participant name
         let who = app.who(Some(0), true, &None);
@@ -751,9 +694,9 @@ mod who_tests {
 
     #[test]
     fn can_get_who_me_caller_id() {
-        let mut options = fake_options();
+        let mut options = Options::fake_options(crate::app::export_type::ExportType::Html);
         options.use_caller_id = true;
-        let app = fake_app(options);
+        let app = Config::fake_app(options);
 
         // Get participant name
         let caller_id = Some("test".to_string());
@@ -763,9 +706,9 @@ mod who_tests {
 
     #[test]
     fn can_get_who_me_custom() {
-        let mut options = fake_options();
+        let mut options = Options::fake_options(crate::app::export_type::ExportType::Html);
         options.custom_name = Some("Name".to_string());
-        let app = fake_app(options);
+        let app = Config::fake_app(options);
 
         // Get participant name
         let who = app.who(Some(0), true, &None);
@@ -774,8 +717,8 @@ mod who_tests {
 
     #[test]
     fn can_get_who_none_me() {
-        let options = fake_options();
-        let app = fake_app(options);
+        let options = Options::fake_options(crate::app::export_type::ExportType::Html);
+        let app = Config::fake_app(options);
 
         // Get participant name
         let who = app.who(None, true, &None);
@@ -784,9 +727,9 @@ mod who_tests {
 
     #[test]
     fn can_get_who_me_none_caller_id() {
-        let mut options = fake_options();
+        let mut options = Options::fake_options(crate::app::export_type::ExportType::Html);
         options.use_caller_id = true;
-        let app = fake_app(options);
+        let app = Config::fake_app(options);
 
         // Get participant name
         let caller_id = Some("test".to_string());
@@ -796,8 +739,8 @@ mod who_tests {
 
     #[test]
     fn can_get_who_none_them() {
-        let options = fake_options();
-        let app = fake_app(options);
+        let options = Options::fake_options(crate::app::export_type::ExportType::Html);
+        let app = Config::fake_app(options);
 
         // Get participant name
         let who = app.who(None, false, &None);
@@ -806,8 +749,8 @@ mod who_tests {
 
     #[test]
     fn can_get_chat_valid() {
-        let options = fake_options();
-        let mut app = fake_app(options);
+        let options = Options::fake_options(crate::app::export_type::ExportType::Html);
+        let mut app = Config::fake_app(options);
 
         // Create chat
         let chat = fake_chat();
@@ -825,8 +768,8 @@ mod who_tests {
 
     #[test]
     fn can_get_chat_valid_deleted() {
-        let options = fake_options();
-        let mut app = fake_app(options);
+        let options = Options::fake_options(crate::app::export_type::ExportType::Html);
+        let mut app = Config::fake_app(options);
 
         // Create chat
         let chat = fake_chat();
@@ -845,8 +788,8 @@ mod who_tests {
 
     #[test]
     fn can_get_chat_invalid() {
-        let options = fake_options();
-        let mut app = fake_app(options);
+        let options = Options::fake_options(crate::app::export_type::ExportType::Html);
+        let mut app = Config::fake_app(options);
 
         // Create chat
         let chat = fake_chat();
@@ -864,8 +807,8 @@ mod who_tests {
 
     #[test]
     fn can_get_chat_none() {
-        let options = fake_options();
-        let mut app = fake_app(options);
+        let options = Options::fake_options(crate::app::export_type::ExportType::Html);
+        let mut app = Config::fake_app(options);
 
         // Create chat
         let chat = fake_chat();
@@ -885,45 +828,9 @@ mod who_tests {
 
 #[cfg(test)]
 mod directory_tests {
-    use crate::{app::attachment_manager::AttachmentManager, Config, Options};
-    use imessage_database::{
-        tables::{attachment::Attachment, table::get_connection},
-        util::{dirs::default_db_path, platform::Platform, query_context::QueryContext},
-    };
-    use std::{collections::HashMap, path::PathBuf};
-
-    fn fake_options() -> Options {
-        Options {
-            db_path: default_db_path(),
-            attachment_root: None,
-            attachment_manager: AttachmentManager::Disabled,
-            diagnostic: false,
-            export_type: None,
-            export_path: PathBuf::new(),
-            query_context: QueryContext::default(),
-            no_lazy: false,
-            custom_name: None,
-            use_caller_id: false,
-            platform: Platform::macOS,
-            ignore_disk_space: false,
-        }
-    }
-
-    fn fake_app(options: Options) -> Config {
-        let connection = get_connection(&options.db_path).unwrap();
-        Config {
-            chatrooms: HashMap::new(),
-            real_chatrooms: HashMap::new(),
-            chatroom_participants: HashMap::new(),
-            participants: HashMap::new(),
-            real_participants: HashMap::new(),
-            tapbacks: HashMap::new(),
-            options,
-            offset: 0,
-            db: connection,
-            converter: Some(crate::app::converter::Converter::Sips),
-        }
-    }
+    use crate::{Config, Options};
+    use imessage_database::tables::attachment::Attachment;
+    use std::path::PathBuf;
 
     pub fn fake_attachment() -> Attachment {
         Attachment {
@@ -941,8 +848,8 @@ mod directory_tests {
 
     #[test]
     fn can_get_valid_attachment_sub_dir() {
-        let options = fake_options();
-        let mut app = fake_app(options);
+        let options = Options::fake_options(crate::app::export_type::ExportType::Html);
+        let mut app = Config::fake_app(options);
 
         // Create chatroom ID
         app.real_chatrooms.insert(0, 0);
@@ -954,8 +861,8 @@ mod directory_tests {
 
     #[test]
     fn can_get_invalid_attachment_sub_dir() {
-        let options = fake_options();
-        let mut app = fake_app(options);
+        let options = Options::fake_options(crate::app::export_type::ExportType::Html);
+        let mut app = Config::fake_app(options);
 
         // Create chatroom ID
         app.real_chatrooms.insert(0, 0);
@@ -967,8 +874,8 @@ mod directory_tests {
 
     #[test]
     fn can_get_missing_attachment_sub_dir() {
-        let options = fake_options();
-        let mut app = fake_app(options);
+        let options = Options::fake_options(crate::app::export_type::ExportType::Html);
+        let mut app = Config::fake_app(options);
 
         // Create chatroom ID
         app.real_chatrooms.insert(0, 0);
@@ -980,8 +887,8 @@ mod directory_tests {
 
     #[test]
     fn can_get_path_not_copied() {
-        let options = fake_options();
-        let app = fake_app(options);
+        let options = Options::fake_options(crate::app::export_type::ExportType::Html);
+        let app = Config::fake_app(options);
 
         // Create attachment
         let attachment = fake_attachment();
@@ -993,11 +900,11 @@ mod directory_tests {
 
     #[test]
     fn can_get_path_copied() {
-        let mut options = fake_options();
+        let mut options = Options::fake_options(crate::app::export_type::ExportType::Html);
         // Set an export path
         options.export_path = PathBuf::from("/Users/ReagentX/exports");
 
-        let app = fake_app(options);
+        let app = Config::fake_app(options);
 
         // Create attachment
         let mut attachment = fake_attachment();
@@ -1012,11 +919,11 @@ mod directory_tests {
 
     #[test]
     fn can_get_path_copied_bad() {
-        let mut options = fake_options();
+        let mut options = Options::fake_options(crate::app::export_type::ExportType::Html);
         // Set an export path
         options.export_path = PathBuf::from("/Users/ReagentX/exports");
 
-        let app = fake_app(options);
+        let app = Config::fake_app(options);
 
         // Create attachment
         let mut attachment = fake_attachment();
