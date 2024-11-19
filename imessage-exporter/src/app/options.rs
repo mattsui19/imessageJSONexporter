@@ -32,6 +32,7 @@ pub const OPTION_CUSTOM_NAME: &str = "custom-name";
 pub const OPTION_PLATFORM: &str = "platform";
 pub const OPTION_BYPASS_FREE_SPACE_CHECK: &str = "ignore-disk-warning";
 pub const OPTION_USE_CALLER_ID: &str = "use-caller-id";
+pub const OPTION_CONVERSATION_FILTER: &str = "conversation-filter";
 
 // Other CLI Text
 pub const SUPPORTED_FILE_TYPES: &str = "txt, html";
@@ -69,6 +70,8 @@ pub struct Options {
     pub platform: Platform,
     /// If true, disable the free disk space check
     pub ignore_disk_space: bool,
+    /// An optional filter for conversation participants
+    pub conversation_filter: Option<String>,
 }
 
 impl Options {
@@ -86,6 +89,7 @@ impl Options {
         let use_caller_id = args.get_flag(OPTION_USE_CALLER_ID);
         let platform_type: Option<&String> = args.get_one(OPTION_PLATFORM);
         let ignore_disk_space = args.get_flag(OPTION_BYPASS_FREE_SPACE_CHECK);
+        let conversation_filter: Option<&String> = args.get_one(OPTION_CONVERSATION_FILTER);
 
         // Build the export type
         let export_type: Option<ExportType> = match export_file_type {
@@ -118,9 +122,19 @@ impl Options {
                 "Option {OPTION_END_DATE} is enabled, which requires `--{OPTION_EXPORT_TYPE}`"
             )));
         }
+        if custom_name.is_some() && export_file_type.is_none() {
+            return Err(RuntimeError::InvalidOptions(format!(
+                "Option {OPTION_CUSTOM_NAME} is enabled, which requires `--{OPTION_EXPORT_TYPE}`"
+            )));
+        }
         if use_caller_id && export_file_type.is_none() {
             return Err(RuntimeError::InvalidOptions(format!(
                 "Option {OPTION_USE_CALLER_ID} is enabled, which requires `--{OPTION_EXPORT_TYPE}`"
+            )));
+        }
+        if conversation_filter.is_some() && export_file_type.is_none() {
+            return Err(RuntimeError::InvalidOptions(format!(
+                "Option {OPTION_CONVERSATION_FILTER} is enabled, which requires `--{OPTION_EXPORT_TYPE}`"
             )));
         }
 
@@ -160,6 +174,16 @@ impl Options {
         if diagnostic && use_caller_id {
             return Err(RuntimeError::InvalidOptions(format!(
                 "Diagnostics are enabled; {OPTION_USE_CALLER_ID} is disallowed"
+            )));
+        }
+        if diagnostic && custom_name.is_some() {
+            return Err(RuntimeError::InvalidOptions(format!(
+                "Diagnostics are enabled; {OPTION_CUSTOM_NAME} is disallowed"
+            )));
+        }
+        if diagnostic && conversation_filter.is_some() {
+            return Err(RuntimeError::InvalidOptions(format!(
+                "Diagnostics are enabled; {OPTION_CONVERSATION_FILTER} is disallowed"
             )));
         }
 
@@ -241,6 +265,7 @@ impl Options {
             use_caller_id,
             platform,
             ignore_disk_space,
+            conversation_filter: conversation_filter.cloned(),
         })
     }
 
@@ -410,6 +435,34 @@ fn get_command() -> Command {
                 .action(ArgAction::SetTrue)
                 .display_order(12)
         )
+        .arg(
+            Arg::new(OPTION_CONVERSATION_FILTER)
+                .short('t')
+                .long(OPTION_CONVERSATION_FILTER)
+                .help("Filter exported conversations by contact numbers or emails\nTo provide multiple filter criteria, use a comma-separated string\nExample: `-t steve@apple.com,5558675309`\n")
+                .display_order(13)
+        )
+}
+
+#[cfg(test)]
+impl Options {
+    pub fn fake_options(export_type: ExportType) -> Options {
+        Options {
+            db_path: default_db_path(),
+            attachment_root: None,
+            attachment_manager: AttachmentManager::Disabled,
+            diagnostic: false,
+            export_type: Some(export_type),
+            export_path: PathBuf::from("/tmp"),
+            query_context: QueryContext::default(),
+            no_lazy: false,
+            custom_name: None,
+            use_caller_id: false,
+            platform: Platform::macOS,
+            ignore_disk_space: false,
+            conversation_filter: None,
+        }
+    }
 }
 
 /// Parse arguments from the command line
@@ -455,6 +508,7 @@ mod arg_tests {
             use_caller_id: false,
             platform: Platform::default(),
             ignore_disk_space: false,
+            conversation_filter: None,
         };
 
         assert_eq!(actual, expected);
@@ -566,6 +620,7 @@ mod arg_tests {
             use_caller_id: false,
             platform: Platform::default(),
             ignore_disk_space: false,
+            conversation_filter: None,
         };
 
         assert_eq!(actual, expected);
@@ -598,6 +653,7 @@ mod arg_tests {
             use_caller_id: false,
             platform: Platform::default(),
             ignore_disk_space: false,
+            conversation_filter: None,
         };
 
         assert_eq!(actual, expected);
@@ -718,6 +774,7 @@ mod arg_tests {
             use_caller_id: false,
             platform: Platform::default(),
             ignore_disk_space: false,
+            conversation_filter: None,
         };
 
         assert_eq!(actual, expected);
@@ -747,6 +804,37 @@ mod arg_tests {
             use_caller_id: true,
             platform: Platform::default(),
             ignore_disk_space: false,
+            conversation_filter: None,
+        };
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn can_build_option_contact_filter() {
+        // Get matches from sample args
+        let cli_args: Vec<&str> = vec!["imessage-exporter", "-t", "steve@apple.com", "-f", "txt"];
+        let command = get_command();
+        let args = command.get_matches_from(cli_args);
+
+        // Build the Options
+        let actual = Options::from_args(&args).unwrap();
+
+        // Expected data
+        let expected = Options {
+            db_path: default_db_path(),
+            attachment_root: None,
+            attachment_manager: AttachmentManager::default(),
+            diagnostic: false,
+            export_type: Some(ExportType::Txt),
+            export_path: validate_path(None, &None).unwrap(),
+            query_context: QueryContext::default(),
+            no_lazy: false,
+            custom_name: None,
+            use_caller_id: false,
+            platform: Platform::default(),
+            ignore_disk_space: false,
+            conversation_filter: Some(String::from("steve@apple.com")),
         };
 
         assert_eq!(actual, expected);
@@ -768,7 +856,33 @@ mod arg_tests {
     #[test]
     fn cant_build_option_caller_id_no_export() {
         // Get matches from sample args
-        let cli_args: Vec<&str> = vec!["imessage-exporter", "-f", "txt", "-m", "Name", "-i"];
+        let cli_args: Vec<&str> = vec!["imessage-exporter", "-i"];
+        let command = get_command();
+        let args = command.get_matches_from(cli_args);
+
+        // Build the Options
+        let actual = Options::from_args(&args);
+
+        assert!(actual.is_err());
+    }
+
+    #[test]
+    fn cant_build_option_custom_name_no_export() {
+        // Get matches from sample args
+        let cli_args: Vec<&str> = vec!["imessage-exporter", "-m", "Name"];
+        let command = get_command();
+        let args = command.get_matches_from(cli_args);
+
+        // Build the Options
+        let actual = Options::from_args(&args);
+
+        assert!(actual.is_err());
+    }
+
+    #[test]
+    fn cant_build_option_contact_filter_no_export() {
+        // Get matches from sample args
+        let cli_args: Vec<&str> = vec!["imessage-exporter", "-t", "steve@apple.com"];
         let command = get_command();
         let args = command.get_matches_from(cli_args);
 

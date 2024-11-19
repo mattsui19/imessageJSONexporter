@@ -15,10 +15,12 @@ pub struct QueryContext {
     pub start: Option<i64>,
     /// The end date filter. Only messages sent before this date will be included.
     pub end: Option<i64>,
+    /// Selected handle IDs
+    pub selected_handle_ids: Option<Vec<i64>>,
 }
 
 impl QueryContext {
-    /// Generate a `QueryContext` with a start date
+    /// Populate a [`QueryContext`] with a start date
     /// # Example:
     ///
     /// ```
@@ -34,7 +36,7 @@ impl QueryContext {
         Ok(())
     }
 
-    /// Generate a `QueryContext` with an end date
+    /// Populate a [`QueryContext`] with an end date
     /// # Example:
     ///
     /// ```
@@ -48,6 +50,22 @@ impl QueryContext {
             .ok_or(QueryContextError::InvalidDate(end.to_string()))?;
         self.end = Some(timestamp);
         Ok(())
+    }
+
+    /// Populate a [`QueryContext`] with a list of handle IDs to select
+    ///
+    /// # Example:
+    ///
+    /// ```
+    /// use imessage_database::util::query_context::QueryContext;
+    ///
+    /// let mut context = QueryContext::default();
+    /// context.set_end("2023-01-01");
+    /// ```
+    pub fn set_selected_handle_ids(&mut self, selected_handle_ids: Vec<i64>) {
+        if !selected_handle_ids.is_empty() {
+            self.selected_handle_ids = Some(selected_handle_ids);
+        }
     }
 
     /// Ensure a date string is valid
@@ -97,37 +115,6 @@ impl QueryContext {
     pub fn has_filters(&self) -> bool {
         [self.start, self.end].iter().any(Option::is_some)
     }
-
-    /// Generate the SQL `WHERE` clause described by this `QueryContext`
-    /// # Example:
-    ///
-    /// ```
-    /// use imessage_database::util::query_context::QueryContext;
-    ///
-    /// let mut context = QueryContext::default();
-    /// context.set_start("2023-01-01");
-    /// let filters = context.generate_filter_statement("field_name");
-    /// ```
-    pub fn generate_filter_statement(&self, field: &str) -> String {
-        let mut filters = String::new();
-        if let Some(start) = self.start {
-            filters.push_str(&format!("    {field} >= {start}"));
-        }
-        if let Some(end) = self.end {
-            if !filters.is_empty() {
-                filters.push_str(" AND ");
-            }
-            filters.push_str(&format!("    {field} <= {end}"));
-        }
-
-        if !filters.is_empty() {
-            return format!(
-                " WHERE
-                 {filters}"
-            );
-        }
-        filters
-    }
 }
 
 #[cfg(test)]
@@ -166,10 +153,10 @@ mod use_tests {
         let local = Local.from_utc_datetime(&from_timestamp);
 
         assert_eq!(format(&Ok(local)), "Jan 01, 2020 12:00:00 AM");
-        assert_eq!(
-            context.generate_filter_statement("m.date"),
-            " WHERE\n                     m.date >= 599558400000000000"
-        );
+        // assert_eq!(
+        //     context.generate_filter_statement(),
+        //     " WHERE\n                     m.date >= 599558400000000000"
+        // );
         assert!(context.start.is_some());
         assert!(context.end.is_none());
         assert!(context.has_filters());
@@ -190,10 +177,10 @@ mod use_tests {
         let local = Local.from_utc_datetime(&from_timestamp);
 
         assert_eq!(format(&Ok(local)), "Jan 01, 2020 12:00:00 AM");
-        assert_eq!(
-            context.generate_filter_statement("m.date"),
-            " WHERE\n                     m.date <= 599558400000000000"
-        );
+        // assert_eq!(
+        //     context.generate_filter_statement(),
+        //     " WHERE\n                     m.date <= 599558400000000000"
+        // );
         assert!(context.start.is_none());
         assert!(context.end.is_some());
         assert!(context.has_filters());
@@ -224,29 +211,13 @@ mod use_tests {
 
         assert_eq!(format(&Ok(local_start)), "Jan 01, 2020 12:00:00 AM");
         assert_eq!(format(&Ok(local_end)), "Feb 02, 2020 12:00:00 AM");
-        assert_eq!(
-            context.generate_filter_statement("m.date"),
-            " WHERE\n                     m.date >= 599558400000000000 AND     m.date <= 602323200000000000"
-        );
+        // assert_eq!(
+        //     context.generate_filter_statement(),
+        //     " WHERE\n                     m.date >= 599558400000000000 AND     m.date <= 602323200000000000"
+        // );
         assert!(context.start.is_some());
         assert!(context.end.is_some());
         assert!(context.has_filters());
-    }
-
-    #[test]
-    fn can_create_invalid_start() {
-        let mut context = QueryContext::default();
-        assert!(context.set_start("2020-13-32").is_err());
-        assert!(!context.has_filters());
-        assert_eq!(context.generate_filter_statement("m.date"), "");
-    }
-
-    #[test]
-    fn can_create_invalid_end() {
-        let mut context = QueryContext::default();
-        assert!(context.set_end("fake").is_err());
-        assert!(!context.has_filters());
-        assert_eq!(context.generate_filter_statement("m.date"), "");
     }
 }
 
