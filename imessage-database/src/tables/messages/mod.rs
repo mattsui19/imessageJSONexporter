@@ -4,6 +4,7 @@
 
 pub use message::Message;
 
+pub mod attachment_metadata;
 pub(crate) mod body;
 pub mod message;
 pub mod models;
