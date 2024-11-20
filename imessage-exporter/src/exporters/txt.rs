@@ -1035,115 +1035,19 @@ impl<'a> TXT<'a> {
 #[cfg(test)]
 mod tests {
     use std::{
-        collections::HashMap,
         env::{current_dir, set_var},
         path::PathBuf,
     };
 
     use crate::{
-        app::attachment_manager::AttachmentManager, exporters::exporter::Writer, Config, Exporter,
-        Options, TXT,
+        app::export_type::ExportType, exporters::exporter::Writer, Config, Exporter, Options, TXT,
     };
-    use imessage_database::{
-        tables::{
-            attachment::Attachment,
-            messages::Message,
-            table::{get_connection, ME},
-        },
-        util::{
-            dates::get_offset, dirs::default_db_path, platform::Platform,
-            query_context::QueryContext,
-        },
-    };
-
-    pub(super) fn blank() -> Message {
-        Message {
-            rowid: i32::default(),
-            guid: String::default(),
-            text: None,
-            service: Some("iMessage".to_string()),
-            handle_id: Some(i32::default()),
-            destination_caller_id: None,
-            subject: None,
-            date: i64::default(),
-            date_read: i64::default(),
-            date_delivered: i64::default(),
-            is_from_me: false,
-            is_read: false,
-            item_type: 0,
-            other_handle: 0,
-            share_status: false,
-            share_direction: false,
-            group_title: None,
-            group_action_type: 0,
-            associated_message_guid: None,
-            associated_message_type: Some(i32::default()),
-            balloon_bundle_id: None,
-            expressive_send_style_id: None,
-            thread_originator_guid: None,
-            thread_originator_part: None,
-            date_edited: 0,
-            chat_id: None,
-            associated_message_emoji: None,
-            num_attachments: 0,
-            deleted_from: None,
-            num_replies: 0,
-            components: None,
-            edited_parts: None,
-        }
-    }
-
-    pub(super) fn fake_options() -> Options {
-        Options {
-            db_path: default_db_path(),
-            attachment_root: None,
-            attachment_manager: AttachmentManager::Disabled,
-            diagnostic: false,
-            export_type: None,
-            export_path: PathBuf::from("/tmp"),
-            query_context: QueryContext::default(),
-            no_lazy: false,
-            custom_name: None,
-            use_caller_id: false,
-            platform: Platform::macOS,
-            ignore_disk_space: false,
-        }
-    }
-
-    pub(super) fn fake_config(options: Options) -> Config {
-        let db = get_connection(&options.get_db_path()).unwrap();
-        Config {
-            chatrooms: HashMap::new(),
-            real_chatrooms: HashMap::new(),
-            chatroom_participants: HashMap::new(),
-            participants: HashMap::new(),
-            real_participants: HashMap::new(),
-            tapbacks: HashMap::new(),
-            options,
-            offset: get_offset(),
-            db,
-            converter: None,
-        }
-    }
-
-    pub(super) fn fake_attachment() -> Attachment {
-        Attachment {
-            rowid: 0,
-            filename: Some("a/b/c/d.jpg".to_string()),
-            uti: Some("public.png".to_string()),
-            mime_type: Some("image/png".to_string()),
-            transfer_name: Some("d.jpg".to_string()),
-            total_bytes: 100,
-            is_sticker: false,
-            hide_attachment: 0,
-            copied_path: None,
-        }
-    }
+    use imessage_database::{tables::table::ME, util::platform::Platform};
 
     #[test]
     fn can_create() {
-        let options = fake_options();
-        let config = fake_config(options);
+        let options = Options::fake_options(ExportType::Txt);
+        let config = Config::fake_app(options);
         let exporter = TXT::new(&config).unwrap();
         assert_eq!(exporter.files.len(), 0);
     }
@@ -1154,12 +1058,12 @@ mod tests {
         set_var("TZ", "PST");
 
         // Create exporter
-        let options = fake_options();
-        let config = fake_config(options);
+        let options = Options::fake_options(ExportType::Txt);
+        let config = Config::fake_app(options);
         let exporter = TXT::new(&config).unwrap();
 
         // Create fake message
-        let mut message = blank();
+        let mut message = Config::fake_message();
         // May 17, 2022  8:29:42 PM
         message.date = 674526582885055488;
         // May 17, 2022  8:29:42 PM
@@ -1179,12 +1083,12 @@ mod tests {
         set_var("TZ", "PST");
 
         // Create exporter
-        let options = fake_options();
-        let config = fake_config(options);
+        let options = Options::fake_options(ExportType::Txt);
+        let config = Config::fake_app(options);
         let exporter = TXT::new(&config).unwrap();
 
         // Create fake message
-        let mut message = blank();
+        let mut message = Config::fake_message();
         // May 17, 2022  9:30:31 PM
         message.date = 674530231992568192;
         // May 17, 2022  9:30:31 PM
@@ -1197,8 +1101,8 @@ mod tests {
     #[test]
     fn can_add_line_no_indent() {
         // Create exporter
-        let options = fake_options();
-        let config = fake_config(options);
+        let options = Options::fake_options(ExportType::Txt);
+        let config = Config::fake_app(options);
         let exporter = TXT::new(&config).unwrap();
 
         // Create sample data
@@ -1211,8 +1115,8 @@ mod tests {
     #[test]
     fn can_add_line_indent() {
         // Create exporter
-        let options = fake_options();
-        let config = fake_config(options);
+        let options = Options::fake_options(ExportType::Txt);
+        let config = Config::fake_app(options);
         let exporter = TXT::new(&config).unwrap();
 
         // Create sample data
@@ -1228,11 +1132,11 @@ mod tests {
         set_var("TZ", "PST");
 
         // Create exporter
-        let options = fake_options();
-        let config = fake_config(options);
+        let options = Options::fake_options(ExportType::Txt);
+        let config = Config::fake_app(options);
         let exporter = TXT::new(&config).unwrap();
 
-        let mut message = blank();
+        let mut message = Config::fake_message();
         // May 17, 2022  8:29:42 PM
         message.date = 674526582885055488;
         message.text = Some("Hello world".to_string());
@@ -1251,11 +1155,11 @@ mod tests {
         set_var("TZ", "PST");
 
         // Create exporter
-        let options = fake_options();
-        let config = fake_config(options);
+        let options = Options::fake_options(ExportType::Txt);
+        let config = Config::fake_app(options);
         let exporter = TXT::new(&config).unwrap();
 
-        let mut message = blank();
+        let mut message = Config::fake_message();
         // May 17, 2022  8:29:42 PM
         message.text = Some("Hello world".to_string());
         message.date = 674526582885055488;
@@ -1275,11 +1179,11 @@ mod tests {
         set_var("TZ", "PST");
 
         // Create exporter
-        let options = fake_options();
-        let config = fake_config(options);
+        let options = Options::fake_options(ExportType::Txt);
+        let config = Config::fake_app(options);
         let exporter = TXT::new(&config).unwrap();
 
-        let mut message = blank();
+        let mut message = Config::fake_message();
         message.text = Some("Hello world".to_string());
         // May 17, 2022  8:29:42 PM
         message.date = 674526582885055488;
@@ -1300,14 +1204,14 @@ mod tests {
         set_var("TZ", "PST");
 
         // Create exporter
-        let options = fake_options();
-        let mut config = fake_config(options);
+        let options = Options::fake_options(ExportType::Txt);
+        let mut config = Config::fake_app(options);
         config
             .participants
             .insert(999999, "Sample Contact".to_string());
         let exporter = TXT::new(&config).unwrap();
 
-        let mut message = blank();
+        let mut message = Config::fake_message();
         // May 17, 2022  8:29:42 PM
         message.date = 674526582885055488;
         message.text = Some("Hello world".to_string());
@@ -1325,14 +1229,14 @@ mod tests {
         set_var("TZ", "PST");
 
         // Create exporter
-        let options = fake_options();
-        let mut config = fake_config(options);
+        let options = Options::fake_options(ExportType::Txt);
+        let mut config = Config::fake_app(options);
         config
             .participants
             .insert(999999, "Sample Contact".to_string());
         let exporter = TXT::new(&config).unwrap();
 
-        let mut message = blank();
+        let mut message = Config::fake_message();
         message.handle_id = Some(999999);
         // May 17, 2022  8:29:42 PM
         message.date = 674526582885055488;
@@ -1355,15 +1259,15 @@ mod tests {
         set_var("TZ", "PST");
 
         // Create exporter
-        let mut options = fake_options();
+        let mut options = Options::fake_options(ExportType::Txt);
         options.custom_name = Some("Name".to_string());
-        let mut config = fake_config(options);
+        let mut config = Config::fake_app(options);
         config
             .participants
             .insert(999999, "Sample Contact".to_string());
         let exporter = TXT::new(&config).unwrap();
 
-        let mut message = blank();
+        let mut message = Config::fake_message();
         message.handle_id = Some(999999);
         // May 17, 2022  8:29:42 PM
         message.date = 674526582885055488;
@@ -1386,13 +1290,13 @@ mod tests {
         set_var("TZ", "PST");
 
         // Create exporter
-        let options = fake_options();
-        let mut config = fake_config(options);
+        let options = Options::fake_options(ExportType::Txt);
+        let mut config = Config::fake_app(options);
         config.participants.insert(0, ME.to_string());
 
         let exporter = TXT::new(&config).unwrap();
 
-        let mut message = blank();
+        let mut message = Config::fake_message();
         // May 17, 2022  8:29:42 PM
         message.date = 674526582885055488;
         message.item_type = 6;
@@ -1409,13 +1313,13 @@ mod tests {
         set_var("TZ", "PST");
 
         // Create exporter
-        let options = fake_options();
-        let mut config = fake_config(options);
+        let options = Options::fake_options(ExportType::Txt);
+        let mut config = Config::fake_app(options);
         config.participants.insert(0, ME.to_string());
 
         let exporter = TXT::new(&config).unwrap();
 
-        let mut message = blank();
+        let mut message = Config::fake_message();
         // May 17, 2022  8:29:42 PM
         message.date = 674526582885055488;
         message.group_title = Some("Hello world".to_string());
@@ -1433,14 +1337,14 @@ mod tests {
         set_var("TZ", "PST");
 
         // Create exporter
-        let mut options = fake_options();
+        let mut options = Options::fake_options(ExportType::Txt);
         options.custom_name = Some("Name".to_string());
-        let mut config = fake_config(options);
+        let mut config = Config::fake_app(options);
         config.participants.insert(0, ME.to_string());
 
         let exporter = TXT::new(&config).unwrap();
 
-        let mut message = blank();
+        let mut message = Config::fake_message();
         // May 17, 2022  8:29:42 PM
         message.date = 674526582885055488;
         message.group_title = Some("Hello world".to_string());
@@ -1457,13 +1361,13 @@ mod tests {
         set_var("TZ", "PST");
 
         // Create exporter
-        let options = fake_options();
-        let mut config = fake_config(options);
+        let options = Options::fake_options(ExportType::Txt);
+        let mut config = Config::fake_app(options);
         config.participants.insert(0, ME.to_string());
 
         let exporter = TXT::new(&config).unwrap();
 
-        let mut message = blank();
+        let mut message = Config::fake_message();
         // May 17, 2022  8:29:42 PM
         message.date = 674526582885055488;
         message.associated_message_type = Some(2000);
@@ -1481,14 +1385,14 @@ mod tests {
         set_var("TZ", "PST");
 
         // Create exporter
-        let options = fake_options();
-        let mut config = fake_config(options);
+        let options = Options::fake_options(ExportType::Txt);
+        let mut config = Config::fake_app(options);
         config
             .participants
             .insert(999999, "Sample Contact".to_string());
         let exporter = TXT::new(&config).unwrap();
 
-        let mut message = blank();
+        let mut message = Config::fake_message();
         // May 17, 2022  8:29:42 PM
         message.date = 674526582885055488;
         message.associated_message_type = Some(2000);
@@ -1507,14 +1411,14 @@ mod tests {
         set_var("TZ", "PST");
 
         // Create exporter
-        let options = fake_options();
-        let mut config = fake_config(options);
+        let options = Options::fake_options(ExportType::Txt);
+        let mut config = Config::fake_app(options);
         config
             .participants
             .insert(999999, "Sample Contact".to_string());
         let exporter = TXT::new(&config).unwrap();
 
-        let mut message = blank();
+        let mut message = Config::fake_message();
         // May 17, 2022  8:29:42 PM
         message.date = 674526582885055488;
         message.associated_message_type = Some(2006);
@@ -1534,14 +1438,14 @@ mod tests {
         set_var("TZ", "PST");
 
         // Create exporter
-        let options = fake_options();
-        let mut config = fake_config(options);
+        let options = Options::fake_options(ExportType::Txt);
+        let mut config = Config::fake_app(options);
         config
             .participants
             .insert(999999, "Sample Contact".to_string());
         let exporter = TXT::new(&config).unwrap();
 
-        let mut message = blank();
+        let mut message = Config::fake_message();
         // May 17, 2022  8:29:42 PM
         message.date = 674526582885055488;
         message.associated_message_type = Some(2007);
@@ -1561,11 +1465,11 @@ mod tests {
         set_var("TZ", "PST");
 
         // Create exporter
-        let options = fake_options();
-        let config = fake_config(options);
+        let options = Options::fake_options(ExportType::Txt);
+        let config = Config::fake_app(options);
         let exporter = TXT::new(&config).unwrap();
 
-        let mut message = blank();
+        let mut message = Config::fake_message();
         message.is_from_me = false;
         message.other_handle = 2;
         message.share_status = false;
@@ -1584,11 +1488,11 @@ mod tests {
         set_var("TZ", "PST");
 
         // Create exporter
-        let options = fake_options();
-        let config = fake_config(options);
+        let options = Options::fake_options(ExportType::Txt);
+        let config = Config::fake_app(options);
         let exporter = TXT::new(&config).unwrap();
 
-        let mut message = blank();
+        let mut message = Config::fake_message();
         message.is_from_me = false;
         message.other_handle = 2;
         message.share_status = true;
@@ -1607,11 +1511,11 @@ mod tests {
         set_var("TZ", "PST");
 
         // Create exporter
-        let options = fake_options();
-        let config = fake_config(options);
+        let options = Options::fake_options(ExportType::Txt);
+        let config = Config::fake_app(options);
         let exporter = TXT::new(&config).unwrap();
 
-        let mut message = blank();
+        let mut message = Config::fake_message();
         message.handle_id = None;
         message.is_from_me = false;
         message.other_handle = 0;
@@ -1631,11 +1535,11 @@ mod tests {
         set_var("TZ", "PST");
 
         // Create exporter
-        let options = fake_options();
-        let config = fake_config(options);
+        let options = Options::fake_options(ExportType::Txt);
+        let config = Config::fake_app(options);
         let exporter = TXT::new(&config).unwrap();
 
-        let mut message = blank();
+        let mut message = Config::fake_message();
         message.handle_id = None;
         message.is_from_me = false;
         message.other_handle = 0;
@@ -1652,13 +1556,13 @@ mod tests {
     #[test]
     fn can_format_txt_attachment_macos() {
         // Create exporter
-        let options = fake_options();
-        let config = fake_config(options);
+        let options = Options::fake_options(ExportType::Txt);
+        let config = Config::fake_app(options);
         let exporter = TXT::new(&config).unwrap();
 
-        let message = blank();
+        let message = Config::fake_message();
 
-        let mut attachment = fake_attachment();
+        let mut attachment = Config::fake_attachment();
 
         let actual = exporter
             .format_attachment(&mut attachment, &message)
@@ -1670,13 +1574,13 @@ mod tests {
     #[test]
     fn can_format_txt_attachment_macos_invalid() {
         // Create exporter
-        let options = fake_options();
-        let config = fake_config(options);
+        let options = Options::fake_options(ExportType::Txt);
+        let config = Config::fake_app(options);
         let exporter = TXT::new(&config).unwrap();
 
-        let message = blank();
+        let message = Config::fake_message();
 
-        let mut attachment = fake_attachment();
+        let mut attachment = Config::fake_attachment();
         attachment.filename = None;
 
         let actual = exporter.format_attachment(&mut attachment, &message);
@@ -1687,14 +1591,14 @@ mod tests {
     #[test]
     fn can_format_txt_attachment_ios() {
         // Create exporter
-        let options = fake_options();
-        let mut config = fake_config(options);
+        let options = Options::fake_options(ExportType::Txt);
+        let mut config = Config::fake_app(options);
         config.options.platform = Platform::iOS;
         let exporter = TXT::new(&config).unwrap();
 
-        let message = blank();
+        let message = Config::fake_message();
 
-        let mut attachment = fake_attachment();
+        let mut attachment = Config::fake_attachment();
 
         let actual = exporter
             .format_attachment(&mut attachment, &message)
@@ -1706,15 +1610,15 @@ mod tests {
     #[test]
     fn can_format_txt_attachment_ios_invalid() {
         // Create exporter
-        let options = fake_options();
-        let mut config = fake_config(options);
+        let options = Options::fake_options(ExportType::Txt);
+        let mut config = Config::fake_app(options);
         // Modify this
         config.options.platform = Platform::iOS;
         let exporter = TXT::new(&config).unwrap();
 
-        let message = blank();
+        let message = Config::fake_message();
 
-        let mut attachment = fake_attachment();
+        let mut attachment = Config::fake_attachment();
         attachment.filename = None;
 
         let actual = exporter.format_attachment(&mut attachment, &message);
@@ -1725,19 +1629,19 @@ mod tests {
     #[test]
     fn can_format_txt_attachment_sticker() {
         // Create exporter
-        let mut options = fake_options();
+        let mut options = Options::fake_options(ExportType::Txt);
         options.export_path = current_dir().unwrap().parent().unwrap().to_path_buf();
 
-        let mut config = fake_config(options);
+        let mut config = Config::fake_app(options);
         config.participants.insert(0, ME.to_string());
 
         let exporter = TXT::new(&config).unwrap();
 
-        let mut message = blank();
+        let mut message = Config::fake_message();
         // Set message to sticker variant
         message.associated_message_type = Some(1000);
 
-        let mut attachment = fake_attachment();
+        let mut attachment = Config::fake_attachment();
         attachment.is_sticker = true;
         let sticker_path = current_dir()
             .unwrap()
@@ -1768,8 +1672,7 @@ mod tests {
 mod balloon_format_tests {
     use std::env::set_var;
 
-    use super::tests::{blank, fake_config, fake_options};
-    use crate::{exporters::exporter::BalloonFormatter, Exporter, TXT};
+    use crate::{exporters::exporter::BalloonFormatter, Config, Exporter, Options, TXT};
     use imessage_database::message_types::{
         app::AppMessage,
         app_store::AppStoreMessage,
@@ -1782,8 +1685,8 @@ mod balloon_format_tests {
     #[test]
     fn can_format_txt_url() {
         // Create exporter
-        let options = fake_options();
-        let config = fake_config(options);
+        let options = Options::fake_options(crate::app::export_type::ExportType::Txt);
+        let config = Config::fake_app(options);
         let exporter = TXT::new(&config).unwrap();
 
         let balloon = URLMessage {
@@ -1798,7 +1701,7 @@ mod balloon_format_tests {
             placeholder: false,
         };
 
-        let expected = exporter.format_url(&blank(), &balloon, "");
+        let expected = exporter.format_url(&Config::fake_message(), &balloon, "");
         let actual = "url\ntitle\nsummary";
 
         assert_eq!(expected, actual);
@@ -1807,8 +1710,8 @@ mod balloon_format_tests {
     #[test]
     fn can_format_txt_music() {
         // Create exporter
-        let options = fake_options();
-        let config = fake_config(options);
+        let options = Options::fake_options(crate::app::export_type::ExportType::Txt);
+        let config = Config::fake_app(options);
         let exporter = TXT::new(&config).unwrap();
 
         let balloon = MusicMessage {
@@ -1828,8 +1731,8 @@ mod balloon_format_tests {
     #[test]
     fn can_format_txt_collaboration() {
         // Create exporter
-        let options = fake_options();
-        let config = fake_config(options);
+        let options = Options::fake_options(crate::app::export_type::ExportType::Txt);
+        let config = Config::fake_app(options);
         let exporter = TXT::new(&config).unwrap();
 
         let balloon = CollaborationMessage {
@@ -1850,8 +1753,8 @@ mod balloon_format_tests {
     #[test]
     fn can_format_txt_apple_pay() {
         // Create exporter
-        let options = fake_options();
-        let config = fake_config(options);
+        let options = Options::fake_options(crate::app::export_type::ExportType::Txt);
+        let config = Config::fake_app(options);
         let exporter = TXT::new(&config).unwrap();
 
         let balloon = AppMessage {
@@ -1876,8 +1779,8 @@ mod balloon_format_tests {
     #[test]
     fn can_format_txt_fitness() {
         // Create exporter
-        let options = fake_options();
-        let config = fake_config(options);
+        let options = Options::fake_options(crate::app::export_type::ExportType::Txt);
+        let config = Config::fake_app(options);
         let exporter = TXT::new(&config).unwrap();
 
         let balloon = AppMessage {
@@ -1902,8 +1805,8 @@ mod balloon_format_tests {
     #[test]
     fn can_format_txt_slideshow() {
         // Create exporter
-        let options = fake_options();
-        let config = fake_config(options);
+        let options = Options::fake_options(crate::app::export_type::ExportType::Txt);
+        let config = Config::fake_app(options);
         let exporter = TXT::new(&config).unwrap();
 
         let balloon = AppMessage {
@@ -1928,8 +1831,8 @@ mod balloon_format_tests {
     #[test]
     fn can_format_txt_find_my() {
         // Create exporter
-        let options = fake_options();
-        let config = fake_config(options);
+        let options = Options::fake_options(crate::app::export_type::ExportType::Txt);
+        let config = Config::fake_app(options);
         let exporter = TXT::new(&config).unwrap();
 
         let balloon = AppMessage {
@@ -1957,8 +1860,8 @@ mod balloon_format_tests {
         set_var("TZ", "PST");
 
         // Create exporter
-        let options = fake_options();
-        let config = fake_config(options);
+        let options = Options::fake_options(crate::app::export_type::ExportType::Txt);
+        let config = Config::fake_app(options);
         let exporter = TXT::new(&config).unwrap();
 
         let balloon = AppMessage {
@@ -1986,8 +1889,8 @@ mod balloon_format_tests {
         set_var("TZ", "PST");
 
         // Create exporter
-        let options = fake_options();
-        let config = fake_config(options);
+        let options = Options::fake_options(crate::app::export_type::ExportType::Txt);
+        let config = Config::fake_app(options);
         let exporter = TXT::new(&config).unwrap();
 
         let balloon = AppMessage {
@@ -2015,8 +1918,8 @@ mod balloon_format_tests {
         set_var("TZ", "PST");
 
         // Create exporter
-        let options = fake_options();
-        let config = fake_config(options);
+        let options = Options::fake_options(crate::app::export_type::ExportType::Txt);
+        let config = Config::fake_app(options);
         let exporter = TXT::new(&config).unwrap();
 
         let balloon = AppMessage {
@@ -2041,8 +1944,8 @@ mod balloon_format_tests {
     #[test]
     fn can_format_txt_app_store() {
         // Create exporter
-        let options = fake_options();
-        let config = fake_config(options);
+        let options = Options::fake_options(crate::app::export_type::ExportType::Txt);
+        let config = Config::fake_app(options);
         let exporter = TXT::new(&config).unwrap();
 
         let balloon = AppStoreMessage {
@@ -2063,8 +1966,8 @@ mod balloon_format_tests {
     #[test]
     fn can_format_txt_placemark() {
         // Create exporter
-        let options = fake_options();
-        let config = fake_config(options);
+        let options = Options::fake_options(crate::app::export_type::ExportType::Txt);
+        let config = Config::fake_app(options);
         let exporter = TXT::new(&config).unwrap();
 
         let balloon = PlacemarkMessage {
@@ -2094,8 +1997,8 @@ mod balloon_format_tests {
     #[test]
     fn can_format_txt_generic_app() {
         // Create exporter
-        let options = fake_options();
-        let config = fake_config(options);
+        let options = Options::fake_options(crate::app::export_type::ExportType::Txt);
+        let config = Config::fake_app(options);
         let exporter = TXT::new(&config).unwrap();
 
         let balloon = AppMessage {
@@ -2126,9 +2029,7 @@ mod edited_tests {
         io::Read,
     };
 
-    use super::tests::{blank, fake_config, fake_options};
-
-    use crate::{exporters::exporter::Writer, Exporter, TXT};
+    use crate::{exporters::exporter::Writer, Config, Exporter, Options, TXT};
     use imessage_database::{
         message_types::edited::{EditStatus, EditedMessage, EditedMessagePart},
         util::typedstream::parser::TypedStreamReader,
@@ -2140,11 +2041,11 @@ mod edited_tests {
         set_var("TZ", "PST");
 
         // Create exporter
-        let options = fake_options();
-        let config = fake_config(options);
+        let options = Options::fake_options(crate::app::export_type::ExportType::Txt);
+        let config = Config::fake_app(options);
         let exporter = TXT::new(&config).unwrap();
 
-        let mut message = blank();
+        let mut message = Config::fake_message();
         // May 17, 2022  8:29:42 PM
         message.date = 674526582885055488;
         message.date_edited = 674530231992568192;
@@ -2198,11 +2099,11 @@ mod edited_tests {
         set_var("TZ", "PST");
 
         // Create exporter
-        let options = fake_options();
-        let config = fake_config(options);
+        let options = Options::fake_options(crate::app::export_type::ExportType::Txt);
+        let config = Config::fake_app(options);
         let exporter = TXT::new(&config).unwrap();
 
-        let mut message = blank();
+        let mut message = Config::fake_message();
         // May 17, 2022  8:29:42 PM
         message.date = 674526582885055488;
         message.text = Some(
@@ -2235,11 +2136,11 @@ mod edited_tests {
         set_var("TZ", "PST");
 
         // Create exporter
-        let options = fake_options();
-        let config = fake_config(options);
+        let options = Options::fake_options(crate::app::export_type::ExportType::Txt);
+        let config = Config::fake_app(options);
         let exporter = TXT::new(&config).unwrap();
 
-        let mut message = blank();
+        let mut message = Config::fake_message();
         // May 17, 2022  8:29:42 PM
         message.date = 674526582885055488;
         message.date_edited = 674530231992568192;
