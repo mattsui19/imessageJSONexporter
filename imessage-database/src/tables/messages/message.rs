@@ -157,7 +157,7 @@ impl Table for Message {
                  (SELECT COUNT(*) FROM {MESSAGE} m2 WHERE m2.thread_originator_guid = m.guid) as num_replies
              FROM
                  message as m
-                 LEFT JOIN {CHAT_MESSAGE_JOIN} as c ON m.ROWID = c.message_id
+             LEFT JOIN {CHAT_MESSAGE_JOIN} as c ON m.ROWID = c.message_id
              ORDER BY
                  m.date;
             "
@@ -171,7 +171,7 @@ impl Table for Message {
                  (SELECT COUNT(*) FROM {MESSAGE} m2 WHERE m2.thread_originator_guid = m.guid) as num_replies
              FROM
                  message as m
-                 LEFT JOIN {CHAT_MESSAGE_JOIN} as c ON m.ROWID = c.message_id
+             LEFT JOIN {CHAT_MESSAGE_JOIN} as c ON m.ROWID = c.message_id
              ORDER BY
                  m.date;
             "
@@ -186,7 +186,7 @@ impl Table for Message {
                  0 as num_replies
              FROM
                  message as m
-                 LEFT JOIN {CHAT_MESSAGE_JOIN} as c ON m.ROWID = c.message_id
+             LEFT JOIN {CHAT_MESSAGE_JOIN} as c ON m.ROWID = c.message_id
              ORDER BY
                  m.date;
             "
@@ -225,7 +225,7 @@ impl Diagnostic for Message {
                 COUNT(m.rowid)
             FROM
             {MESSAGE} as m
-                LEFT JOIN {CHAT_MESSAGE_JOIN} as c ON m.rowid = c.message_id
+            LEFT JOIN {CHAT_MESSAGE_JOIN} as c ON m.rowid = c.message_id
             WHERE
                 c.chat_id is NULL
             ORDER BY
@@ -318,7 +318,7 @@ impl Cacheable for Message {
                  (SELECT COUNT(*) FROM {MESSAGE} m2 WHERE m2.thread_originator_guid = m.guid) as num_replies
              FROM 
                  message as m 
-                 LEFT JOIN {CHAT_MESSAGE_JOIN} as c ON m.ROWID = c.message_id
+             LEFT JOIN {CHAT_MESSAGE_JOIN} as c ON m.ROWID = c.message_id
              WHERE m.associated_message_guid NOT NULL
             "
         ));
@@ -634,12 +634,12 @@ impl Message {
             }
             filters.push_str(&format!("    m.date <= {end}"));
         }
-        if let Some(chat_ids) = &context.selected_handle_ids {
+        if let Some(chat_ids) = &context.selected_chat_ids {
             if !filters.is_empty() {
                 filters.push_str(" AND ");
             }
             filters.push_str(&format!(
-                "    m.chat_id IN ({})",
+                "    c.chat_id IN ({})",
                 chat_ids
                     .iter()
                     .map(|x| x.to_string())
@@ -675,7 +675,11 @@ impl Message {
     pub fn get_count(db: &Connection, context: &QueryContext) -> Result<u64, TableError> {
         let mut statement = if context.has_filters() {
             db.prepare(&format!(
-                "SELECT COUNT(*) FROM {MESSAGE} as m {}",
+                "SELECT 
+                    COUNT(*) 
+                 FROM {MESSAGE} as m
+                 LEFT JOIN {CHAT_MESSAGE_JOIN} as c ON m.ROWID = c.message_id
+                 {}",
                 Self::generate_filter_statement(context)
             ))
             .map_err(TableError::Messages)?
@@ -723,7 +727,7 @@ impl Message {
                      (SELECT COUNT(*) FROM {MESSAGE} m2 WHERE m2.thread_originator_guid = m.guid) as num_replies
                  FROM
                      message as m
-                     LEFT JOIN {CHAT_MESSAGE_JOIN} as c ON m.ROWID = c.message_id
+                 LEFT JOIN {CHAT_MESSAGE_JOIN} as c ON m.ROWID = c.message_id
                  {filters}
                  ORDER BY
                      m.date;
@@ -738,7 +742,7 @@ impl Message {
                      (SELECT 0) as num_replies
                  FROM
                      message as m
-                     LEFT JOIN {CHAT_MESSAGE_JOIN} as c ON m.ROWID = c.message_id
+                 LEFT JOIN {CHAT_MESSAGE_JOIN} as c ON m.ROWID = c.message_id
                  {filters}
                  ORDER BY
                      m.date;
@@ -790,7 +794,7 @@ impl Message {
                         (SELECT COUNT(*) FROM {MESSAGE} m2 WHERE m2.thread_originator_guid = m.guid) as num_replies
                     FROM 
                         message as m 
-                        LEFT JOIN {CHAT_MESSAGE_JOIN} as c ON m.ROWID = c.message_id
+                    LEFT JOIN {CHAT_MESSAGE_JOIN} as c ON m.ROWID = c.message_id
                     WHERE m.guid IN ({})
                     ORDER BY 
                         m.date;
@@ -832,7 +836,7 @@ impl Message {
                      (SELECT COUNT(*) FROM {MESSAGE} m2 WHERE m2.thread_originator_guid = m.guid) as num_replies
                  FROM 
                      message as m 
-                     LEFT JOIN {CHAT_MESSAGE_JOIN} as c ON m.ROWID = c.message_id 
+                 LEFT JOIN {CHAT_MESSAGE_JOIN} as c ON m.ROWID = c.message_id 
                  WHERE m.thread_originator_guid = \"{}\"
                  ORDER BY 
                      m.date;
