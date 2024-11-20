@@ -1,6 +1,8 @@
 /*!
  Contains logic for handling query filter configurations.
 */
+use std::collections::BTreeSet;
+
 use chrono::prelude::*;
 
 use crate::{
@@ -16,7 +18,9 @@ pub struct QueryContext {
     /// The end date filter. Only messages sent before this date will be included.
     pub end: Option<i64>,
     /// Selected handle IDs
-    pub selected_handle_ids: Option<Vec<i64>>,
+    pub selected_handle_ids: Option<BTreeSet<i32>>,
+    /// Selected chat IDs
+    pub selected_chat_ids: Option<BTreeSet<i32>>,
 }
 
 impl QueryContext {
@@ -57,15 +61,29 @@ impl QueryContext {
     /// # Example:
     ///
     /// ```
+    /// use std::collections::BTreeSet;
     /// use imessage_database::util::query_context::QueryContext;
     ///
     /// let mut context = QueryContext::default();
-    /// context.set_end("2023-01-01");
+    /// context.set_selected_handle_ids(BTreeSet::from([1, 2, 3]));
     /// ```
-    pub fn set_selected_handle_ids(&mut self, selected_handle_ids: Vec<i64>) {
-        if !selected_handle_ids.is_empty() {
-            self.selected_handle_ids = Some(selected_handle_ids);
-        }
+    pub fn set_selected_handle_ids(&mut self, selected_handle_ids: BTreeSet<i32>) {
+        self.selected_handle_ids = (!selected_handle_ids.is_empty()).then_some(selected_handle_ids);
+    }
+
+    /// Populate a [`QueryContext`] with a list of chat IDs to select
+    ///
+    /// # Example:
+    ///
+    /// ```
+    /// use std::collections::BTreeSet;
+    /// use imessage_database::util::query_context::QueryContext;
+    ///
+    /// let mut context = QueryContext::default();
+    /// context.set_selected_chat_ids(BTreeSet::from([1, 2, 3]));
+    /// ```
+    pub fn set_selected_chat_ids(&mut self, selected_chat_ids: BTreeSet<i32>) {
+        self.selected_chat_ids = (!selected_chat_ids.is_empty()).then_some(selected_chat_ids);
     }
 
     /// Ensure a date string is valid
@@ -113,7 +131,10 @@ impl QueryContext {
     /// assert!(context.has_filters());
     /// ```
     pub fn has_filters(&self) -> bool {
-        [self.start, self.end].iter().any(Option::is_some)
+        self.start.is_some()
+            || self.end.is_some()
+            || self.selected_chat_ids.is_some()
+            || self.selected_handle_ids.is_some()
     }
 }
 
@@ -218,6 +239,69 @@ mod use_tests {
         assert!(context.start.is_some());
         assert!(context.end.is_some());
         assert!(context.has_filters());
+    }
+}
+
+#[cfg(test)]
+mod id_tests {
+    use std::collections::BTreeSet;
+
+    use crate::util::query_context::QueryContext;
+
+    #[test]
+    fn test_can_set_selected_chat_ids() {
+        let mut qc = QueryContext::default();
+        qc.set_selected_chat_ids(BTreeSet::from([1, 2, 3]));
+
+        assert_eq!(qc.selected_chat_ids, Some(BTreeSet::from([1, 2, 3])));
+        assert!(qc.has_filters());
+    }
+
+    #[test]
+    fn test_can_set_selected_chat_ids_empty() {
+        let mut qc = QueryContext::default();
+        qc.set_selected_chat_ids(BTreeSet::new());
+
+        assert_eq!(qc.selected_chat_ids, None);
+        assert!(!qc.has_filters());
+    }
+
+    #[test]
+    fn test_can_overwrite_selected_chat_ids_empty() {
+        let mut qc = QueryContext::default();
+        qc.set_selected_chat_ids(BTreeSet::from([1, 2, 3]));
+        qc.set_selected_chat_ids(BTreeSet::new());
+
+        assert_eq!(qc.selected_chat_ids, None);
+        assert!(!qc.has_filters());
+    }
+
+    #[test]
+    fn test_can_set_selected_handle_ids() {
+        let mut qc = QueryContext::default();
+        qc.set_selected_handle_ids(BTreeSet::from([1, 2, 3]));
+
+        assert_eq!(qc.selected_handle_ids, Some(BTreeSet::from([1, 2, 3])));
+        assert!(qc.has_filters());
+    }
+
+    #[test]
+    fn test_can_set_selected_handle_ids_empty() {
+        let mut qc = QueryContext::default();
+        qc.set_selected_handle_ids(BTreeSet::new());
+
+        assert_eq!(qc.selected_handle_ids, None);
+        assert!(!qc.has_filters());
+    }
+
+    #[test]
+    fn test_can_overwrite_selected_handle_ids_empty() {
+        let mut qc = QueryContext::default();
+        qc.set_selected_handle_ids(BTreeSet::from([1, 2, 3]));
+        qc.set_selected_handle_ids(BTreeSet::new());
+
+        assert_eq!(qc.selected_handle_ids, None);
+        assert!(!qc.has_filters());
     }
 }
 
