@@ -35,7 +35,7 @@ use imessage_database::{
     },
     tables::{
         attachment::Attachment,
-        messages::{models::BubbleComponent, Message},
+        messages::{attachment_metadata::AttachmentMeta, models::BubbleComponent, Message},
         table::{Table, FITNESS_RECEIVER, ME, ORPHANED, YOU},
     },
     util::{
@@ -264,26 +264,30 @@ impl<'a> Writer<'a> for TXT<'a> {
                         }
                     }
                 }
-                BubbleComponent::Attachment(_) => match attachments.get_mut(attachment_index) {
-                    Some(attachment) => {
-                        if attachment.is_sticker {
-                            let result = self.format_sticker(attachment, message);
-                            self.add_line(&mut formatted_message, &result, &indent);
-                        } else {
-                            match self.format_attachment(attachment, message) {
-                                Ok(result) => {
-                                    attachment_index += 1;
-                                    self.add_line(&mut formatted_message, &result, &indent);
-                                }
-                                Err(result) => {
-                                    self.add_line(&mut formatted_message, result, &indent);
+                BubbleComponent::Attachment(metadata) => {
+                    match attachments.get_mut(attachment_index) {
+                        Some(attachment) => {
+                            if attachment.is_sticker {
+                                let result = self.format_sticker(attachment, message);
+                                self.add_line(&mut formatted_message, &result, &indent);
+                            } else {
+                                match self.format_attachment(attachment, message, metadata) {
+                                    Ok(result) => {
+                                        attachment_index += 1;
+                                        self.add_line(&mut formatted_message, &result, &indent);
+                                    }
+                                    Err(result) => {
+                                        self.add_line(&mut formatted_message, result, &indent);
+                                    }
                                 }
                             }
                         }
+                        // Attachment does not exist in attachments table
+                        None => {
+                            self.add_line(&mut formatted_message, "Attachment missing!", &indent)
+                        }
                     }
-                    // Attachment does not exist in attachments table
-                    None => self.add_line(&mut formatted_message, "Attachment missing!", &indent),
-                },
+                }
                 BubbleComponent::App => match self.format_app(message, &mut attachments, &indent) {
                     // We use an empty indent here because `format_app` handles building the entire message
                     Ok(ok_bubble) => self.add_line(&mut formatted_message, &ok_bubble, &indent),
@@ -377,6 +381,7 @@ impl<'a> Writer<'a> for TXT<'a> {
         &self,
         attachment: &'a mut Attachment,
         message: &Message,
+        metadata: &AttachmentMeta,
     ) -> Result<String, &'a str> {
         // Copy the file, if requested
         self.config
@@ -386,6 +391,12 @@ impl<'a> Writer<'a> for TXT<'a> {
             .ok_or(attachment.filename())?;
 
         // Build a relative filepath from the fully qualified one on the `Attachment`
+        if let Some(transcription) = metadata.transcription {
+            return Ok(format!(
+                "{}\nTranscription: {transcription}",
+                self.config.message_attachment_path(attachment)
+            ));
+        }
         Ok(self.config.message_attachment_path(attachment))
     }
 
@@ -395,7 +406,7 @@ impl<'a> Writer<'a> for TXT<'a> {
             message.is_from_me(),
             &message.destination_caller_id,
         );
-        match self.format_attachment(sticker, message) {
+        match self.format_attachment(sticker, message, &AttachmentMeta::default()) {
             Ok(path_to_sticker) => {
                 let sticker_effect = sticker.get_sticker_effect(
                     &self.config.options.platform,
@@ -1042,7 +1053,10 @@ mod tests {
     use crate::{
         app::export_type::ExportType, exporters::exporter::Writer, Config, Exporter, Options, TXT,
     };
-    use imessage_database::{tables::table::ME, util::platform::Platform};
+    use imessage_database::{
+        tables::{messages::attachment_metadata::AttachmentMeta, table::ME},
+        util::platform::Platform,
+    };
 
     #[test]
     fn can_create() {
@@ -1565,7 +1579,7 @@ mod tests {
         let mut attachment = Config::fake_attachment();
 
         let actual = exporter
-            .format_attachment(&mut attachment, &message)
+            .format_attachment(&mut attachment, &message, &AttachmentMeta::default())
             .unwrap();
 
         assert_eq!(actual, "a/b/c/d.jpg");
@@ -1583,7 +1597,8 @@ mod tests {
         let mut attachment = Config::fake_attachment();
         attachment.filename = None;
 
-        let actual = exporter.format_attachment(&mut attachment, &message);
+        let actual =
+            exporter.format_attachment(&mut attachment, &message, &AttachmentMeta::default());
 
         assert_eq!(actual, Err("d.jpg"));
     }
@@ -1601,7 +1616,7 @@ mod tests {
         let mut attachment = Config::fake_attachment();
 
         let actual = exporter
-            .format_attachment(&mut attachment, &message)
+            .format_attachment(&mut attachment, &message, &AttachmentMeta::default())
             .unwrap();
 
         assert!(actual.ends_with("33/33c81da8ae3194fc5a0ea993ef6ffe0b048baedb"));
@@ -1621,7 +1636,8 @@ mod tests {
         let mut attachment = Config::fake_attachment();
         attachment.filename = None;
 
-        let actual = exporter.format_attachment(&mut attachment, &message);
+        let actual =
+            exporter.format_attachment(&mut attachment, &message, &AttachmentMeta::default());
 
         assert_eq!(actual, Err("d.jpg"));
     }
@@ -1665,6 +1681,33 @@ mod tests {
             .unwrap()
             .join("orphaned.txt");
         std::fs::remove_file(orphaned_path).unwrap();
+    }
+
+    #[test]
+    fn can_format_txt_attachment_audio_transcript() {
+        // Create exporter
+        let options = Options::fake_options(ExportType::Txt);
+        let config = Config::fake_app(options);
+        let exporter = TXT::new(&config).unwrap();
+
+        let message = Config::fake_message();
+
+        let mut attachment = Config::fake_attachment();
+        attachment.uti = Some("com.apple.coreaudio-format".to_string());
+        attachment.transfer_name = Some("Audio Message.caf".to_string());
+        attachment.filename = Some("Audio Message.caf".to_string());
+        attachment.mime_type = None;
+
+        let meta = AttachmentMeta::<'_> {
+            transcription: Some("Test"),
+            ..Default::default()
+        };
+
+        let actual = exporter
+            .format_attachment(&mut attachment, &message, &meta)
+            .unwrap();
+
+        assert_eq!(actual, "Audio Message.caf\nTranscription: Test");
     }
 }
 
