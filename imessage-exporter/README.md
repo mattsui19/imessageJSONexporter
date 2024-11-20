@@ -93,6 +93,12 @@ The [releases page](https://github.com/ReagentX/imessage-exporter/releases) prov
         Bypass the disk space check when exporting data
         By default, exports will not run if there is not enough free disk space
         
+-t, --conversation-filter <filter>
+        Filter exported conversations by contact numbers or emails
+        To provide multiple filter criteria, use a comma-separated string
+        All conversations with the specified participants are exported, including group conversations
+        Example: `-t steve@apple.com,5558675309`
+        
 -h, --help
         Print help
 -V, --version
@@ -135,6 +141,30 @@ Export messages from `2020-01-01` to `2020-12-31` as `txt` from the default macO
 
 ```zsh
 imessage-exporter -f txt -o ~/export-2020 -s 2020-01-01 -e 2021-01-01 -a macOS
+```
+
+Export messages from a specific participant as `html` and copy attachments in their original formats from the default iMessage Database location to your home directory:
+
+```zsh
+imessage-exporter -f html -c efficient -t "5558675309"
+```
+
+Export messages from multiple specific participants as `html` without attachments from the default iMessage Database location to your home directory:
+
+```zsh
+imessage-exporter -f html -t "5558675309,steve@apple.com"
+```
+
+Export messages from participants matching a specific country and area code as `html` without attachments from the default iMessage Database location to your home directory:
+
+```zsh
+imessage-exporter -f html -t "+1555"
+```
+
+Export messages from participants using email addresses but not phone numbers as `html` without attachments from the default iMessage Database location to your home directory:
+
+```zsh
+imessage-exporter -f html -t "@"
 ```
 
 ## Features
