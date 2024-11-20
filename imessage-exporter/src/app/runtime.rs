@@ -206,17 +206,17 @@ impl Config {
     /// let options = Options::from_args(&args);
     /// let app = Config::new(options).unwrap();
     /// ```
-    pub fn new(mut options: Options) -> Result<Config, RuntimeError> {
+    pub fn new(options: Options) -> Result<Config, RuntimeError> {
         let conn = get_connection(&options.get_db_path()).map_err(RuntimeError::DatabaseError)?;
         eprintln!("Building cache...");
-        eprintln!("[1/4] Caching chats...");
+        eprintln!("  [1/4] Caching chats...");
         let chatrooms = Chat::cache(&conn).map_err(RuntimeError::DatabaseError)?;
-        eprintln!("[2/4] Caching chatrooms...");
+        eprintln!("  [2/4] Caching chatrooms...");
         let chatroom_participants =
             ChatToHandle::cache(&conn).map_err(RuntimeError::DatabaseError)?;
-        eprintln!("[3/4] Caching participants...");
+        eprintln!("  [3/4] Caching participants...");
         let participants = Handle::cache(&conn).map_err(RuntimeError::DatabaseError)?;
-        eprintln!("[4/4] Caching tapbacks...");
+        eprintln!("  [4/4] Caching tapbacks...");
         let tapbacks = Message::cache(&conn).map_err(RuntimeError::DatabaseError)?;
         eprintln!("Cache built!");
 
@@ -226,14 +226,6 @@ impl Config {
             AttachmentManager::Compatible => Converter::determine(),
             AttachmentManager::Efficient => None,
         };
-
-        // Update the query context with optionally filtered handle IDs
-        // TODO: Convert comma separated list of participant strings into table chat IDs using
-        //   1) filter self.participant keys based on the values (by comparing to user values)
-        //   2) get the chat IDs keys from self.chatroom_participants for values that contain the selected handle_ids
-        //   3) send those chat IDs to the query context so they are included in the message table filters
-        // let selected_handles: Vec<i64> = todo!();
-        options.query_context.set_selected_handle_ids(vec![]);
 
         Ok(Config {
             chatrooms,
@@ -247,6 +239,80 @@ impl Config {
             db: conn,
             converter,
         })
+    }
+
+    /// Convert comma separated list of participant strings into table chat IDs using
+    ///   1) filter `self.participant` keys based on the values (by comparing to user values)
+    ///   2) get the chat IDs keys from `self.chatroom_participants` for values that contain the selected handle_ids
+    ///   3) send those chat and handle IDs to the query context so they are included in the message table filters
+    pub(crate) fn resolve_filtered_handles(&mut self) {
+        if let Some(conversation_filter) = &self.options.conversation_filter {
+            let parsed_handle_filter = conversation_filter.split(',').collect::<Vec<&str>>();
+
+            let mut included_chatrooms: BTreeSet<i32> = BTreeSet::new();
+            let mut included_handles: BTreeSet<i32> = BTreeSet::new();
+
+            // First: Scan the list of participants for included handle IDs
+            self.participants
+                .iter()
+                .for_each(|(handle_id, handle_name)| {
+                    parsed_handle_filter.iter().for_each(|included_name| {
+                        if handle_name.contains(included_name) {
+                            included_handles.insert(*handle_id);
+                        }
+                    });
+                });
+
+            // Second, scan the list of chatrooms for IDs that contain the selected participants
+            self.chatroom_participants
+                .iter()
+                .for_each(|(chat_id, participants)| {
+                    if !participants.is_disjoint(&included_handles) {
+                        included_chatrooms.insert(*chat_id);
+                    }
+                });
+
+            self.options
+                .query_context
+                .set_selected_handle_ids(included_handles);
+
+            self.options
+                .query_context
+                .set_selected_chat_ids(included_chatrooms);
+
+            self.log_filtered_handles_and_chats()
+        }
+    }
+
+    /// If we set some filtered chatrooms, emit how many will be included in the export
+    fn log_filtered_handles_and_chats(&self) {
+        if let (Some(selected_handle_ids), Some(selected_chat_ids)) = (
+            &self.options.query_context.selected_handle_ids,
+            &self.options.query_context.selected_chat_ids,
+        ) {
+            let unique_handle_ids: HashSet<Option<&i32>> = selected_handle_ids
+                .iter()
+                .map(|handle_id| self.real_participants.get(handle_id))
+                .collect();
+
+            let mut unique_chat_ids: HashSet<String> = HashSet::new();
+            for selected_chat_id in selected_chat_ids {
+                if let Some(participants) = self.chatroom_participants.get(selected_chat_id) {
+                    unique_chat_ids.insert(self.filename_from_participants(participants));
+                }
+            }
+
+            eprintln!(
+                "Filtering for {} handle{} across {} chatrooms...",
+                unique_handle_ids.len(),
+                if unique_handle_ids.len() != 1 {
+                    "s"
+                } else {
+                    ""
+                },
+                unique_chat_ids.len()
+            );
+        }
     }
 
     /// Ensure there is available disk space for the requested export
@@ -342,6 +408,16 @@ impl Config {
         if self.options.diagnostic {
             self.run_diagnostic().map_err(RuntimeError::DatabaseError)?;
         } else if let Some(export_type) = &self.options.export_type {
+            // Ensure that if we want to filter on things, we have stuff to filter for
+            if let Some(filters) = &self.options.conversation_filter {
+                if !self.options.query_context.has_filters() {
+                    return Err(RuntimeError::InvalidOptions(format!(
+                        "Selected filter `{}` does not match any participants!",
+                        filters
+                    )));
+                }
+            }
+
             // Ensure the path we want to export to exists
             create_dir_all(&self.options.export_path).map_err(RuntimeError::DiskError)?;
 
@@ -948,5 +1024,128 @@ mod directory_tests {
         let result = app.message_attachment_path(&attachment);
         let expected = String::from("a/b/c/d.jpg");
         assert_eq!(result, expected);
+    }
+}
+
+#[cfg(test)]
+mod chat_filter_tests {
+    use std::collections::BTreeSet;
+
+    use crate::{app::export_type::ExportType, Config, Options};
+
+    #[test]
+    fn can_generate_filter_string_multiple() {
+        let mut options = Options::fake_options(ExportType::Html);
+        options.conversation_filter = Some(String::from("Person 10,Person 11,Person 12"));
+
+        let mut app = Config::fake_app(options);
+
+        // Add some test data
+        app.participants.insert(10, "Person 10".to_string()); // Included
+        app.participants.insert(11, "Person 11".to_string()); // Included
+        app.participants.insert(12, "Person 12".to_string()); // Included
+        app.participants.insert(13, "Person 13".to_string()); // Excluded
+
+        // Chatroom 1: Included
+        let mut chatroom_1 = BTreeSet::new();
+        chatroom_1.insert(10);
+        app.chatroom_participants.insert(1, chatroom_1);
+
+        // Chatroom 2: Included
+        let mut chatroom_2 = BTreeSet::new();
+        chatroom_2.insert(11);
+        app.chatroom_participants.insert(2, chatroom_2);
+
+        // Chatroom 3: Included
+        let mut chatroom_3 = BTreeSet::new();
+        chatroom_3.insert(12);
+        app.chatroom_participants.insert(3, chatroom_3);
+
+        // Chatroom 4: Excluded
+        let mut chatroom_4 = BTreeSet::new();
+        chatroom_4.insert(13);
+        app.chatroom_participants.insert(4, chatroom_4);
+
+        // Chatroom 5: Included
+        let mut chatroom_5 = BTreeSet::new();
+        chatroom_5.insert(10);
+        chatroom_5.insert(11);
+        app.chatroom_participants.insert(5, chatroom_5);
+
+        // Chatroom 6: Included
+        let mut chatroom_6 = BTreeSet::new();
+        chatroom_6.insert(12);
+        chatroom_6.insert(13); // Even though this person is excluded, the above person is
+        app.chatroom_participants.insert(6, chatroom_6);
+
+        app.resolve_filtered_handles();
+        // For the test, sort the output so it is always the same
+
+        assert_eq!(
+            app.options.query_context.selected_handle_ids,
+            Some(BTreeSet::from([10, 11, 12]))
+        );
+        assert_eq!(
+            app.options.query_context.selected_chat_ids,
+            Some(BTreeSet::from([1, 2, 3, 5, 6]))
+        );
+    }
+
+    #[test]
+    fn can_generate_filter_string_single() {
+        let mut options = Options::fake_options(ExportType::Html);
+        options.conversation_filter = Some(String::from("Person 13"));
+
+        let mut app = Config::fake_app(options);
+
+        // Add some test data
+        app.participants.insert(10, "Person 10".to_string()); // Excluded
+        app.participants.insert(11, "Person 11".to_string()); // Excluded
+        app.participants.insert(12, "Person 12".to_string()); // Excluded
+        app.participants.insert(13, "Person 13".to_string()); // Included
+
+        // Chatroom 1: Excluded
+        let mut chatroom_1 = BTreeSet::new();
+        chatroom_1.insert(10);
+        app.chatroom_participants.insert(1, chatroom_1);
+
+        // Chatroom 2: Excluded
+        let mut chatroom_2 = BTreeSet::new();
+        chatroom_2.insert(11);
+        app.chatroom_participants.insert(2, chatroom_2);
+
+        // Chatroom 3: Excluded
+        let mut chatroom_3 = BTreeSet::new();
+        chatroom_3.insert(12);
+        app.chatroom_participants.insert(3, chatroom_3);
+
+        // Chatroom 4: Included
+        let mut chatroom_4 = BTreeSet::new();
+        chatroom_4.insert(13);
+        app.chatroom_participants.insert(4, chatroom_4);
+
+        // Chatroom 5: Excluded
+        let mut chatroom_5 = BTreeSet::new();
+        chatroom_5.insert(10);
+        chatroom_5.insert(11);
+        app.chatroom_participants.insert(5, chatroom_5);
+
+        // Chatroom 6: Included
+        let mut chatroom_6 = BTreeSet::new();
+        chatroom_6.insert(12);
+        chatroom_6.insert(13); // Even though this person is excluded, the above person is
+        app.chatroom_participants.insert(6, chatroom_6);
+
+        app.resolve_filtered_handles();
+        // For the test, sort the output so it is always the same
+
+        assert_eq!(
+            app.options.query_context.selected_handle_ids,
+            Some(BTreeSet::from([13]))
+        );
+        assert_eq!(
+            app.options.query_context.selected_chat_ids,
+            Some(BTreeSet::from([4, 6]))
+        );
     }
 }
