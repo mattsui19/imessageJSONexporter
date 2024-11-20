@@ -2,7 +2,9 @@
  This module contains Data structures and models that represent message data.
 */
 
-use crate::message_types::text_effects::TextEffect;
+use crate::{
+    message_types::text_effects::TextEffect, tables::messages::attachment_metadata::AttachmentMeta,
+};
 
 /// Defines the parts of a message bubble, i.e. the content that can exist in a single message.
 ///
@@ -11,16 +13,14 @@ use crate::message_types::text_effects::TextEffect;
 /// A single iMessage contains data that may be represented across multiple bubbles.
 ///
 /// iMessage bubbles can only contain data of one variant of this enum at a time.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq)]
 pub enum BubbleComponent<'a> {
     /// A text message with associated formatting, generally representing ranges present in a `NSAttributedString`
     Text(Vec<TextAttributes<'a>>),
     /// An attachment
-    Attachment(&'a str),
+    Attachment(AttachmentMeta<'a>),
     /// An [app integration](crate::message_types::app)
     App,
-    /// A message transcription
-    Transcription(&'a str),
     /// A component that was retracted, found by parsing the [`EditedMessage`](crate::message_types::edited::EditedMessage)
     Retracted,
 }

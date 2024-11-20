@@ -420,10 +420,10 @@ impl Message {
     ///
     /// ```
     /// use imessage_database::message_types::text_effects::TextEffect;
-    /// use imessage_database::tables::messages::models::{TextAttributes, BubbleComponent};
+    /// use imessage_database::tables::messages::{attachment_metadata::AttachmentMeta, models::{TextAttributes, BubbleComponent}};
     ///  
     /// let result = vec![
-    ///     BubbleComponent::Attachment(""),
+    ///     BubbleComponent::Attachment(AttachmentMeta::default()),
     ///     BubbleComponent::Text(vec![TextAttributes::new(3, 24, TextEffect::Default)]),
     /// ];
     /// ```
