@@ -174,10 +174,6 @@ mod use_tests {
         let local = Local.from_utc_datetime(&from_timestamp);
 
         assert_eq!(format(&Ok(local)), "Jan 01, 2020 12:00:00 AM");
-        // assert_eq!(
-        //     context.generate_filter_statement(),
-        //     " WHERE\n                     m.date >= 599558400000000000"
-        // );
         assert!(context.start.is_some());
         assert!(context.end.is_none());
         assert!(context.has_filters());
@@ -198,10 +194,6 @@ mod use_tests {
         let local = Local.from_utc_datetime(&from_timestamp);
 
         assert_eq!(format(&Ok(local)), "Jan 01, 2020 12:00:00 AM");
-        // assert_eq!(
-        //     context.generate_filter_statement(),
-        //     " WHERE\n                     m.date <= 599558400000000000"
-        // );
         assert!(context.start.is_none());
         assert!(context.end.is_some());
         assert!(context.has_filters());
@@ -232,10 +224,6 @@ mod use_tests {
 
         assert_eq!(format(&Ok(local_start)), "Jan 01, 2020 12:00:00 AM");
         assert_eq!(format(&Ok(local_end)), "Feb 02, 2020 12:00:00 AM");
-        // assert_eq!(
-        //     context.generate_filter_statement(),
-        //     " WHERE\n                     m.date >= 599558400000000000 AND     m.date <= 602323200000000000"
-        // );
         assert!(context.start.is_some());
         assert!(context.end.is_some());
         assert!(context.has_filters());
