@@ -439,7 +439,8 @@ fn get_command() -> Command {
             Arg::new(OPTION_CONVERSATION_FILTER)
                 .short('t')
                 .long(OPTION_CONVERSATION_FILTER)
-                .help("Filter exported conversations by contact numbers or emails\nTo provide multiple filter criteria, use a comma-separated string\nExample: `-t steve@apple.com,5558675309`\n")
+                .help("Filter exported conversations by contact numbers or emails\nTo provide multiple filter criteria, use a comma-separated string\nAll conversations with the specified participants are exported, including group conversations\nExample: `-t steve@apple.com,5558675309`\n")
+                .value_name("filter")
                 .display_order(13)
         )
 }
