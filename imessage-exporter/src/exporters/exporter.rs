@@ -16,7 +16,7 @@ use imessage_database::{
     },
     tables::{
         attachment::Attachment,
-        messages::{attachment_metadata::AttachmentMeta, Message},
+        messages::{Message, models::AttachmentMeta},
     },
 };
 

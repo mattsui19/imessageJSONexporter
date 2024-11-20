@@ -4,8 +4,7 @@ use crate::{
         text_effects::{Animation, Style, TextEffect, Unit},
     },
     tables::messages::{
-        attachment_metadata::AttachmentMeta,
-        models::{BubbleComponent, TextAttributes},
+        models::{AttachmentMeta, BubbleComponent, TextAttributes},
         Message,
     },
     util::typedstream::models::{Archivable, OutputData},
@@ -303,9 +302,8 @@ mod typedstream_tests {
             text_effects::{Animation, Style, TextEffect, Unit},
         },
         tables::messages::{
-            attachment_metadata::AttachmentMeta,
             body::parse_body_typedstream,
-            models::{BubbleComponent, TextAttributes},
+            models::{BubbleComponent, TextAttributes, AttachmentMeta},
             Message,
         },
         util::typedstream::parser::TypedStreamReader,
@@ -1012,9 +1010,8 @@ mod legacy_tests {
     use crate::{
         message_types::text_effects::TextEffect,
         tables::messages::{
-            attachment_metadata::AttachmentMeta,
             body::parse_body_legacy,
-            models::{BubbleComponent, TextAttributes},
+            models::{BubbleComponent, TextAttributes, AttachmentMeta},
             Message,
         },
     };

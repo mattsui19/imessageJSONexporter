@@ -420,7 +420,7 @@ impl Message {
     ///
     /// ```
     /// use imessage_database::message_types::text_effects::TextEffect;
-    /// use imessage_database::tables::messages::{attachment_metadata::AttachmentMeta, models::{TextAttributes, BubbleComponent}};
+    /// use imessage_database::tables::messages::{models::{TextAttributes, BubbleComponent, AttachmentMeta}};
     ///  
     /// let result = vec![
     ///     BubbleComponent::Attachment(AttachmentMeta::default()),

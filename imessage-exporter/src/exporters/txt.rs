@@ -35,7 +35,10 @@ use imessage_database::{
     },
     tables::{
         attachment::Attachment,
-        messages::{attachment_metadata::AttachmentMeta, models::BubbleComponent, Message},
+        messages::{
+            models::{AttachmentMeta, BubbleComponent},
+            Message,
+        },
         table::{Table, FITNESS_RECEIVER, ME, ORPHANED, YOU},
     },
     util::{
@@ -1054,7 +1057,7 @@ mod tests {
         app::export_type::ExportType, exporters::exporter::Writer, Config, Exporter, Options, TXT,
     };
     use imessage_database::{
-        tables::{messages::attachment_metadata::AttachmentMeta, table::ME},
+        tables::{messages::models::AttachmentMeta, table::ME},
         util::platform::Platform,
     };
 
