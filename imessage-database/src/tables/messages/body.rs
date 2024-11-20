@@ -217,6 +217,12 @@ fn get_bubble_type<'a>(
                         )),
                     )));
                 }
+                // TODO: This never hits because we escape as soon as we see a single detected component
+                "IMAudioTranscription" => {
+                    return Some(BubbleResult::New(BubbleComponent::Transcription(
+                        components.get(idx + 1)?.as_nsstring().unwrap_or(""),
+                    )))
+                }
                 _ => {}
             }
         }
@@ -914,6 +920,43 @@ mod typedstream_tests {
                 TextAttributes::new(17, 23, TextEffect::Animated(Animation::Jitter)),
                 TextAttributes::new(23, 30, TextEffect::Default),
             ]),]
+        );
+    }
+
+    #[test]
+    fn can_get_message_body_audio_message() {
+        let mut m = Message::blank();
+        m.text = Some("\u{FFFC}".to_string());
+
+        let typedstream_path = current_dir()
+            .unwrap()
+            .as_path()
+            .join("test_data/typedstream/Transcription");
+        let mut file = File::open(typedstream_path).unwrap();
+        let mut bytes = vec![];
+        file.read_to_end(&mut bytes).unwrap();
+
+        let mut parser = TypedStreamReader::from(&bytes);
+        m.components = parser.parse().ok();
+
+        m.components
+            .as_ref()
+            .unwrap()
+            .iter()
+            .enumerate()
+            .for_each(|(idx, item)| println!("\t{idx}: {item:?}"));
+
+        println!("\nComponents:\n");
+        parse_body_typedstream(&m).unwrap().iter().for_each(|item| {
+            println!("\t{item:?}");
+        });
+
+        assert_eq!(
+            parse_body_typedstream(&m).unwrap(),
+            vec![
+                BubbleComponent::Attachment("4C339597-EBBB-4978-9B87-521C0471A848"),
+                BubbleComponent::Transcription("This is a test")
+            ]
         );
     }
 }

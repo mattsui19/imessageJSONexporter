@@ -19,6 +19,8 @@ pub enum BubbleComponent<'a> {
     Attachment(&'a str),
     /// An [app integration](crate::message_types::app)
     App,
+    /// A message transcription
+    Transcription(&'a str),
     /// A component that was retracted, found by parsing the [`EditedMessage`](crate::message_types::edited::EditedMessage)
     Retracted,
 }
