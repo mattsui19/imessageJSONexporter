@@ -393,13 +393,15 @@ impl<'a> Writer<'a> for TXT<'a> {
             .handle_attachment(message, attachment, self.config)
             .ok_or(attachment.filename())?;
 
-        // Build a relative filepath from the fully qualified one on the `Attachment`
+        // Append the transcription if one is provided
         if let Some(transcription) = metadata.transcription {
             return Ok(format!(
                 "{}\nTranscription: {transcription}",
                 self.config.message_attachment_path(attachment)
             ));
         }
+
+        // Build a relative filepath from the fully qualified one on the `Attachment`
         Ok(self.config.message_attachment_path(attachment))
     }
 

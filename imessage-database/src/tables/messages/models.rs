@@ -78,7 +78,7 @@ impl<'a> TextAttributes<'a> {
 /// Representation of attachment metadata used for rendering message body in a conversation feed.
 #[derive(Debug, PartialEq, Default)]
 pub struct AttachmentMeta<'a> {
-    /// GUID of the attachment in the table
+    /// GUID of the attachment in the `attachment` table
     pub guid: Option<&'a str>,
     /// The transcription, if the attachment was an [audio message](https://support.apple.com/guide/iphone/send-and-receive-audio-messages-iph2e42d3117/ios) sent from or received on a [supported platform](https://www.apple.com/ios/feature-availability/#messages-audio-message-transcription).
     pub transcription: Option<&'a str>,
