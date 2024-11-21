@@ -248,6 +248,10 @@ span.deleted {
 	opacity: 60%;
 }
 
+span.transcription {
+	opacity: 75%;
+}
+
 span.subject {
 	font-weight: 600;
 }

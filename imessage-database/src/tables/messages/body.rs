@@ -4,7 +4,7 @@ use crate::{
         text_effects::{Animation, Style, TextEffect, Unit},
     },
     tables::messages::{
-        models::{BubbleComponent, TextAttributes},
+        models::{AttachmentMeta, BubbleComponent, TextAttributes},
         Message,
     },
     util::typedstream::models::{Archivable, OutputData},
@@ -166,7 +166,7 @@ fn get_bubble_type<'a>(
             match key_name {
                 "__kIMFileTransferGUIDAttributeName" => {
                     return Some(BubbleResult::New(BubbleComponent::Attachment(
-                        components.get(idx + 1)?.as_nsstring().unwrap_or(""),
+                        AttachmentMeta::from_components(components)?,
                     )))
                 }
                 "__kIMMentionConfirmedMention" => {
@@ -213,7 +213,7 @@ fn get_bubble_type<'a>(
                         range_start,
                         range_end,
                         TextEffect::Animated(Animation::from_id(
-                            *components.get(idx + 1)?.as_nsnumber().unwrap_or(&0),
+                            *components.get(idx + 1)?.as_nsnumber_int().unwrap_or(&0),
                         )),
                     )));
                 }
@@ -266,7 +266,9 @@ pub(crate) fn parse_body_legacy(message: &Message) -> Vec<BubbleComponent> {
                     start = idx + 1;
                     end = idx;
                     match char {
-                        ATTACHMENT_CHAR => out_v.push(BubbleComponent::Attachment("")),
+                        ATTACHMENT_CHAR => {
+                            out_v.push(BubbleComponent::Attachment(AttachmentMeta::default()))
+                        }
                         APP_CHAR => out_v.push(BubbleComponent::App),
                         _ => {}
                     };
@@ -301,7 +303,7 @@ mod typedstream_tests {
         },
         tables::messages::{
             body::parse_body_typedstream,
-            models::{BubbleComponent, TextAttributes},
+            models::{BubbleComponent, TextAttributes, AttachmentMeta},
             Message,
         },
         util::typedstream::parser::TypedStreamReader,
@@ -351,9 +353,13 @@ mod typedstream_tests {
 
         assert_eq!(
             parse_body_typedstream(&m).unwrap(),
-            vec![BubbleComponent::Attachment(
-                "F0B18A15-E9A5-4B18-A38F-685B7B3FF037"
-            )]
+            vec![BubbleComponent::Attachment(AttachmentMeta {
+                guid: Some("F0B18A15-E9A5-4B18-A38F-685B7B3FF037"),
+                transcription: None,
+                height: None,
+                width: None,
+                name: None
+            })]
         );
     }
 
@@ -402,11 +408,29 @@ mod typedstream_tests {
         assert_eq!(
             parse_body_typedstream(&m).unwrap(),
             vec![
-                BubbleComponent::Attachment("at_0_F0668F79-20C2-49C9-A87F-1B007ABB0CED"),
+                BubbleComponent::Attachment(AttachmentMeta {
+                    guid: Some("at_0_F0668F79-20C2-49C9-A87F-1B007ABB0CED"),
+                    transcription: None,
+                    height: None,
+                    width: None,
+                    name: None
+                }),
                 BubbleComponent::Text(vec![TextAttributes::new(3, 9, TextEffect::Default)]),
-                BubbleComponent::Attachment("at_2_F0668F79-20C2-49C9-A87F-1B007ABB0CED"),
+                BubbleComponent::Attachment(AttachmentMeta {
+                    guid: Some("at_2_F0668F79-20C2-49C9-A87F-1B007ABB0CED"),
+                    transcription: None,
+                    height: None,
+                    width: None,
+                    name: None
+                }),
                 BubbleComponent::Text(vec![TextAttributes::new(12, 19, TextEffect::Default)]),
-                BubbleComponent::Attachment("at_4_F0668F79-20C2-49C9-A87F-1B007ABB0CED"),
+                BubbleComponent::Attachment(AttachmentMeta {
+                    guid: Some("at_4_F0668F79-20C2-49C9-A87F-1B007ABB0CED"),
+                    transcription: None,
+                    height: None,
+                    width: None,
+                    name: None
+                }),
                 BubbleComponent::Text(vec![TextAttributes::new(22, 28, TextEffect::Default)]),
             ]
         );
@@ -434,7 +458,13 @@ mod typedstream_tests {
             parse_body_typedstream(&m).unwrap(),
             vec![
                 BubbleComponent::Text(vec![TextAttributes::new(0, 28, TextEffect::Default)]),
-                BubbleComponent::Attachment("D0551D89-4E11-43D0-9A0E-06F19704E97B"),
+                BubbleComponent::Attachment(AttachmentMeta {
+                    guid: Some("D0551D89-4E11-43D0-9A0E-06F19704E97B"),
+                    transcription: None,
+                    height: None,
+                    width: None,
+                    name: None
+                }),
                 BubbleComponent::Text(vec![TextAttributes::new(31, 63, TextEffect::Default)]),
             ]
         );
@@ -490,7 +520,13 @@ mod typedstream_tests {
             parse_body_typedstream(&m).unwrap(),
             vec![
                 BubbleComponent::Text(vec![TextAttributes::new(0, 28, TextEffect::Default)]),
-                BubbleComponent::Attachment("D0551D89-4E11-43D0-9A0E-06F19704E97B"),
+                BubbleComponent::Attachment(AttachmentMeta {
+                    guid: Some("D0551D89-4E11-43D0-9A0E-06F19704E97B"),
+                    transcription: None,
+                    height: None,
+                    width: None,
+                    name: None
+                }),
                 BubbleComponent::Text(vec![TextAttributes::new(31, 63, TextEffect::Default)]),
                 BubbleComponent::Retracted,
             ]
@@ -519,7 +555,13 @@ mod typedstream_tests {
         assert_eq!(
             parse_body_typedstream(&m).unwrap(),
             vec![
-                BubbleComponent::Attachment("at_0_2E5F12C3-E649-48AA-954D-3EA67C016BCC"),
+                BubbleComponent::Attachment(AttachmentMeta {
+                    guid: Some("at_0_2E5F12C3-E649-48AA-954D-3EA67C016BCC"),
+                    transcription: None,
+                    height: Some(&1139.0),
+                    width: Some(&952.0),
+                    name: Some("Messages Image(785748029).png")
+                }),
                 BubbleComponent::Text(vec![TextAttributes::new(3, 80, TextEffect::Default)]),
             ]
         );
@@ -543,9 +585,13 @@ mod typedstream_tests {
 
         assert_eq!(
             parse_body_typedstream(&m).unwrap(),
-            vec![BubbleComponent::Attachment(
-                "at_0_BE588799-C4BC-47DF-A56D-7EE90C74911D"
-            )]
+            vec![BubbleComponent::Attachment(AttachmentMeta {
+                guid: Some("at_0_BE588799-C4BC-47DF-A56D-7EE90C74911D"),
+                transcription: None,
+                height: None,
+                width: None,
+                name: Some("brilliant-kids-test-answers-32-93042.jpeg")
+            })]
         );
     }
 
@@ -771,7 +817,13 @@ mod typedstream_tests {
             parse_body_typedstream(&m).unwrap(),
             vec![
                 BubbleComponent::Text(vec![TextAttributes::new(0, 0, TextEffect::Default)]),
-                BubbleComponent::Attachment("41C4376E-397E-4C42-84E2-B16F7801F638")
+                BubbleComponent::Attachment(AttachmentMeta {
+                    guid: Some("41C4376E-397E-4C42-84E2-B16F7801F638"),
+                    transcription: None,
+                    height: None,
+                    width: None,
+                    name: None
+                })
             ]
         );
     }
@@ -916,6 +968,41 @@ mod typedstream_tests {
             ]),]
         );
     }
+
+    #[test]
+    fn can_get_message_body_audio_message() {
+        let mut m = Message::blank();
+        m.text = Some("\u{FFFC}".to_string());
+
+        let typedstream_path = current_dir()
+            .unwrap()
+            .as_path()
+            .join("test_data/typedstream/Transcription");
+        let mut file = File::open(typedstream_path).unwrap();
+        let mut bytes = vec![];
+        file.read_to_end(&mut bytes).unwrap();
+
+        let mut parser = TypedStreamReader::from(&bytes);
+        m.components = parser.parse().ok();
+
+        m.components
+            .as_ref()
+            .unwrap()
+            .iter()
+            .enumerate()
+            .for_each(|(idx, item)| println!("\t{idx}: {item:?}"));
+
+        assert_eq!(
+            parse_body_typedstream(&m).unwrap(),
+            vec![BubbleComponent::Attachment(AttachmentMeta {
+                guid: Some("4C339597-EBBB-4978-9B87-521C0471A848"),
+                transcription: Some("This is a test"),
+                height: None,
+                width: None,
+                name: None
+            }),]
+        );
+    }
 }
 
 #[cfg(test)]
@@ -924,7 +1011,7 @@ mod legacy_tests {
         message_types::text_effects::TextEffect,
         tables::messages::{
             body::parse_body_legacy,
-            models::{BubbleComponent, TextAttributes},
+            models::{BubbleComponent, TextAttributes, AttachmentMeta},
             Message,
         },
     };
@@ -978,7 +1065,7 @@ mod legacy_tests {
         assert_eq!(
             parse_body_legacy(&m),
             vec![
-                BubbleComponent::Attachment(""),
+                BubbleComponent::Attachment(AttachmentMeta::default()),
                 BubbleComponent::Text(vec![TextAttributes::new(3, 14, TextEffect::Default),])
             ]
         );
@@ -1006,11 +1093,11 @@ mod legacy_tests {
             vec![
                 BubbleComponent::Text(vec![TextAttributes::new(0, 3, TextEffect::Default),]),
                 BubbleComponent::App,
-                BubbleComponent::Attachment(""),
+                BubbleComponent::Attachment(AttachmentMeta::default()),
                 BubbleComponent::Text(vec![TextAttributes::new(9, 12, TextEffect::Default),]),
-                BubbleComponent::Attachment(""),
+                BubbleComponent::Attachment(AttachmentMeta::default()),
                 BubbleComponent::Text(vec![TextAttributes::new(15, 20, TextEffect::Default),]),
-                BubbleComponent::Attachment(""),
+                BubbleComponent::Attachment(AttachmentMeta::default()),
                 BubbleComponent::Text(vec![TextAttributes::new(23, 27, TextEffect::Default),]),
             ]
         );
@@ -1024,11 +1111,11 @@ mod legacy_tests {
             parse_body_legacy(&m),
             vec![
                 BubbleComponent::App,
-                BubbleComponent::Attachment(""),
+                BubbleComponent::Attachment(AttachmentMeta::default()),
                 BubbleComponent::Text(vec![TextAttributes::new(6, 9, TextEffect::Default),]),
-                BubbleComponent::Attachment(""),
+                BubbleComponent::Attachment(AttachmentMeta::default()),
                 BubbleComponent::Text(vec![TextAttributes::new(12, 17, TextEffect::Default),]),
-                BubbleComponent::Attachment(""),
+                BubbleComponent::Attachment(AttachmentMeta::default()),
             ]
         );
     }

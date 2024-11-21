@@ -34,7 +34,10 @@ use imessage_database::{
     },
     tables::{
         attachment::{Attachment, MediaType},
-        messages::{models::BubbleComponent, Message},
+        messages::{
+            models::{AttachmentMeta, BubbleComponent},
+            Message,
+        },
         table::{Table, FITNESS_RECEIVER, ME, ORPHANED, YOU},
     },
     util::{
@@ -378,7 +381,7 @@ impl<'a> Writer<'a> for HTML<'a> {
                         }
                     }
                 }
-                BubbleComponent::Attachment(_) => {
+                BubbleComponent::Attachment(metadata) => {
                     match attachments.get_mut(attachment_index) {
                         Some(attachment) => {
                             if attachment.is_sticker {
@@ -390,7 +393,7 @@ impl<'a> Writer<'a> for HTML<'a> {
                                     "</div>",
                                 );
                             } else {
-                                match self.format_attachment(attachment, message) {
+                                match self.format_attachment(attachment, message, metadata) {
                                     Ok(result) => {
                                         attachment_index += 1;
                                         self.add_line(
@@ -539,6 +542,7 @@ impl<'a> Writer<'a> for HTML<'a> {
         &self,
         attachment: &'a mut Attachment,
         message: &Message,
+        metadata: &AttachmentMeta,
     ) -> Result<String, &'a str> {
         // Copy the file, if requested
         self.config
@@ -563,6 +567,9 @@ impl<'a> Writer<'a> for HTML<'a> {
                 format!("<video controls> <source src=\"{embed_path}\" type=\"{media_type}\"> <source src=\"{embed_path}\"> </video>")
             }
             MediaType::Audio(media_type) => {
+                if let Some(transcription) = metadata.transcription {
+                    return Ok(format!("<div><audio controls src=\"{embed_path}\" type=\"{media_type}\" </audio></div> <hr><span class=\"transcription\">Transcription: {transcription}</span>"));
+                }
                 format!("<audio controls src=\"{embed_path}\" type=\"{media_type}\" </audio>")
             }
             MediaType::Text(_) => {
@@ -587,7 +594,7 @@ impl<'a> Writer<'a> for HTML<'a> {
     }
 
     fn format_sticker(&self, sticker: &'a mut Attachment, message: &Message) -> String {
-        match self.format_attachment(sticker, message) {
+        match self.format_attachment(sticker, message, &AttachmentMeta::default()) {
             Ok(sticker_embed) => {
                 let sticker_effect = sticker.get_sticker_effect(
                     &self.config.options.platform,
@@ -1487,7 +1494,7 @@ impl<'a> HTML<'a> {
         } else if let Some(attachment) = attachments.get_mut(0) {
             out_s.push_str(
                 &self
-                    .format_attachment(attachment, message)
+                    .format_attachment(attachment, message, &AttachmentMeta::default())
                     .unwrap_or_default(),
             );
         }
@@ -1576,7 +1583,10 @@ mod tests {
     use crate::{
         app::export_type::ExportType, exporters::exporter::Writer, Config, Exporter, Options, HTML,
     };
-    use imessage_database::{tables::table::ME, util::platform::Platform};
+    use imessage_database::{
+        tables::{messages::models::AttachmentMeta, table::ME},
+        util::platform::Platform,
+    };
 
     #[test]
     fn can_create() {
@@ -2137,7 +2147,7 @@ mod tests {
         let mut attachment = Config::fake_attachment();
 
         let actual = exporter
-            .format_attachment(&mut attachment, &message)
+            .format_attachment(&mut attachment, &message, &AttachmentMeta::default())
             .unwrap();
 
         assert_eq!(actual, "<img src=\"a/b/c/d.jpg\" loading=\"lazy\">");
@@ -2155,7 +2165,8 @@ mod tests {
         let mut attachment = Config::fake_attachment();
         attachment.filename = None;
 
-        let actual = exporter.format_attachment(&mut attachment, &message);
+        let actual =
+            exporter.format_attachment(&mut attachment, &message, &AttachmentMeta::default());
 
         assert_eq!(actual, Err("d.jpg"));
     }
@@ -2173,7 +2184,7 @@ mod tests {
         let mut attachment = Config::fake_attachment();
 
         let actual = exporter
-            .format_attachment(&mut attachment, &message)
+            .format_attachment(&mut attachment, &message, &AttachmentMeta::default())
             .unwrap();
 
         assert!(actual.ends_with("33/33c81da8ae3194fc5a0ea993ef6ffe0b048baedb\">"));
@@ -2191,7 +2202,8 @@ mod tests {
         let mut attachment = Config::fake_attachment();
         attachment.filename = None;
 
-        let actual = exporter.format_attachment(&mut attachment, &message);
+        let actual =
+            exporter.format_attachment(&mut attachment, &message, &AttachmentMeta::default());
 
         assert_eq!(actual, Err("d.jpg"));
     }
@@ -2230,6 +2242,33 @@ mod tests {
             .unwrap()
             .join("orphaned.html");
         std::fs::remove_file(orphaned_path).unwrap();
+    }
+
+    #[test]
+    fn can_format_html_attachment_audio_transcript() {
+        // Create exporter
+        let options = Options::fake_options(ExportType::Html);
+        let config = Config::fake_app(options);
+        let exporter = HTML::new(&config).unwrap();
+
+        let message = Config::fake_message();
+
+        let mut attachment = Config::fake_attachment();
+        attachment.uti = Some("com.apple.coreaudio-format".to_string());
+        attachment.transfer_name = Some("Audio Message.caf".to_string());
+        attachment.filename = Some("Audio Message.caf".to_string());
+        attachment.mime_type = None;
+
+        let meta = AttachmentMeta::<'_> {
+            transcription: Some("Test"),
+            ..Default::default()
+        };
+
+        let actual = exporter
+            .format_attachment(&mut attachment, &message, &meta)
+            .unwrap();
+
+        assert_eq!(actual, "<div><audio controls src=\"Audio Message.caf\" type=\"x-caf; codecs=opus\" </audio></div> <hr><span class=\"transcription\">Transcription: Test</span>");
     }
 }
 

@@ -54,6 +54,7 @@ This tool targets the current latest public release for macOS and iMessage. It m
   - Attachments are displayed as
     - File paths in TXT exports
     - Embeds in HTML exports (including `<img>`, `<video>`, and `<audio>`)
+      - [Audio messages](https://support.apple.com/guide/messages/send-an-audio-message-icht204ef108/mac) include embedded transcripts
   - Attachment date metadata is set to the date and time of message receipt
 - Expressives
   - Detects both bubble and screen [effects](https://support.apple.com/en-us/104970)
