@@ -1,4 +1,5 @@
 use std::{
+    fmt::{Display, Formatter, Result},
     fs::create_dir_all,
     path::Path,
     process::{Command, Stdio},
@@ -77,6 +78,15 @@ impl Converter for ImageConverter {
     }
 }
 
+impl Display for ImageConverter {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        match self {
+            ImageConverter::Sips => write!(f, "sips"),
+            ImageConverter::Imagemagick => write!(f, "imagemagick"),
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub enum AudioConverter {
     AfConvert,
@@ -96,6 +106,15 @@ impl Converter for AudioConverter {
     }
 }
 
+impl Display for AudioConverter {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        match self {
+            AudioConverter::AfConvert => write!(f, "afconvert"),
+            AudioConverter::Ffmpeg => write!(f, "ffmpeg"),
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub enum VideoConverter {
     Ffmpeg,
@@ -108,6 +127,14 @@ impl Converter for VideoConverter {
         }
         eprintln!("No MOV converter found, video attachments will not be converted!");
         None
+    }
+}
+
+impl Display for VideoConverter {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        match self {
+            VideoConverter::Ffmpeg => write!(f, "ffmpeg"),
+        }
     }
 }
 

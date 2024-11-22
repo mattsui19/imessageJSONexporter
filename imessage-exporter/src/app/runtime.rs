@@ -375,6 +375,9 @@ impl Config {
             println!("    Duplicated chats: {duplicated_chats}");
         }
 
+        println!("\nEnvironment Diagnostics\n");
+        self.options.attachment_manager.diagnostic();
+
         Ok(())
     }
 

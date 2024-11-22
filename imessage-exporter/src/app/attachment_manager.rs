@@ -39,6 +39,28 @@ impl AttachmentManager {
 }
 
 impl AttachmentManager {
+    pub(crate) fn diagnostic(&self) {
+        println!("Detected converters:");
+
+        if let Some(converter) = &self.image_converter {
+            println!("    Image converter: {converter}");
+        } else {
+            println!("    Image converter: None");
+        }
+
+        if let Some(converter) = &self.audio_converter {
+            println!("    Audio converter: {converter}");
+        } else {
+            println!("    Audio converter: None");
+        }
+
+        if let Some(converter) = &self.video_converter {
+            println!("    Video converter: {converter}");
+        } else {
+            println!("    Video converter: None");
+        }
+    }
+
     /// Handle a handwriting message, optionally writing it to an SVG file
     pub fn handle_handwriting(
         &self,
@@ -128,24 +150,47 @@ impl AttachmentManager {
                 return Some(());
             }
 
-            match self.mode {
-                AttachmentManagerMode::Compatible => {
-                    match &config.options.attachment_manager.image_converter {
-                        Some(converter) => {
-                            Self::copy_convert(
-                                from,
-                                &mut to,
-                                converter,
-                                attachment.is_sticker,
-                                attachment.mime_type(),
-                            );
+            match attachment.mime_type() {
+                MediaType::Image(_) => {
+                    match self.mode {
+                        AttachmentManagerMode::Compatible => {
+                            match &config.options.attachment_manager.image_converter {
+                                Some(converter) => {
+                                    if attachment.is_sticker {
+                                        Self::sticker_copy_convert(
+                                            from,
+                                            &mut to,
+                                            converter,
+                                            attachment.mime_type(),
+                                        );
+                                    } else {
+                                        Self::image_copy_convert(
+                                            from,
+                                            &mut to,
+                                            converter,
+                                            attachment.mime_type(),
+                                        );
+                                    }
+                                }
+                                None => Self::copy_raw(from, &to),
+                            }
                         }
-                        None => Self::copy_raw(from, &to),
-                    }
+                        AttachmentManagerMode::Efficient => Self::copy_raw(from, &to),
+                        AttachmentManagerMode::Disabled => unreachable!(),
+                    };
                 }
-                AttachmentManagerMode::Efficient => Self::copy_raw(from, &to),
-                AttachmentManagerMode::Disabled => unreachable!(),
-            };
+                MediaType::Video(_) => match self.mode {
+                    AttachmentManagerMode::Compatible => Self::copy_raw(from, &to),
+                    AttachmentManagerMode::Efficient => Self::copy_raw(from, &to),
+                    AttachmentManagerMode::Disabled => unreachable!(),
+                },
+                MediaType::Audio(_) => match self.mode {
+                    AttachmentManagerMode::Compatible => Self::copy_raw(from, &to),
+                    AttachmentManagerMode::Efficient => Self::copy_raw(from, &to),
+                    AttachmentManagerMode::Disabled => unreachable!(),
+                },
+                _ => Self::copy_raw(from, &to),
+            }
 
             // Update file metadata
             update_file_metadata(from, &to, message, config);
@@ -169,43 +214,18 @@ impl AttachmentManager {
         };
     }
 
-    /// Copy a file, converting if possible
+    /// Copy amn image file, converting if possible
     ///
-    /// - Sticker `HEIC` files convert to `PNG`
-    /// - Sticker `HEICS` files convert to `GIF`
     /// - Attachment `HEIC` files convert to `JPEG`
-    /// - Other files are copied with their original formats
-    fn copy_convert(
+    /// - Fallback to the original format
+    fn image_copy_convert(
         from: &Path,
         to: &mut PathBuf,
         converter: &ImageConverter,
-        is_sticker: bool,
         mime_type: MediaType,
     ) {
-        // Handle sticker attachments
-        if is_sticker {
-            // Determine the output type of the sticker
-            let output_type: Option<ImageType> = match mime_type {
-                // Normal stickers get converted to png
-                MediaType::Image("heic") | MediaType::Image("HEIC") => Some(ImageType::Png),
-                MediaType::Image("heics")
-                | MediaType::Image("HEICS")
-                | MediaType::Image("heic-sequence") => Some(ImageType::Gif),
-                _ => None,
-            };
-
-            match output_type {
-                Some(output_type) => {
-                    to.set_extension(output_type.to_str());
-                    if convert_heic(from, to, converter, &output_type).is_none() {
-                        eprintln!("Unable to convert {from:?}");
-                    }
-                }
-                None => Self::copy_raw(from, to),
-            }
-        }
         // Normal attachments always get converted to jpeg
-        else if matches!(
+        if matches!(
             mime_type,
             MediaType::Image("heic") | MediaType::Image("HEIC")
         ) {
@@ -217,6 +237,38 @@ impl AttachmentManager {
             }
         } else {
             Self::copy_raw(from, to);
+        }
+    }
+
+    /// Copy a sticker, converting if possible
+    ///
+    /// - Sticker `HEIC` files convert to `PNG`
+    /// - Sticker `HEICS` files convert to `GIF`
+    /// - Fallback to the original format
+    fn sticker_copy_convert(
+        from: &Path,
+        to: &mut PathBuf,
+        converter: &ImageConverter,
+        mime_type: MediaType,
+    ) {
+        // Determine the output type of the sticker
+        let output_type: Option<ImageType> = match mime_type {
+            // Normal stickers get converted to png
+            MediaType::Image("heic") | MediaType::Image("HEIC") => Some(ImageType::Png),
+            MediaType::Image("heics")
+            | MediaType::Image("HEICS")
+            | MediaType::Image("heic-sequence") => Some(ImageType::Gif),
+            _ => None,
+        };
+
+        match output_type {
+            Some(output_type) => {
+                to.set_extension(output_type.to_str());
+                if convert_heic(from, to, converter, &output_type).is_none() {
+                    eprintln!("Unable to convert {from:?}");
+                }
+            }
+            None => Self::copy_raw(from, to),
         }
     }
 }
