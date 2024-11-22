@@ -6,7 +6,7 @@ use std::{
 
 use imessage_database::tables::attachment::MediaType;
 
-use crate::app::converters::models::{ImageConverter, ImageType};
+use crate::app::converters::models::{AudioConverter, ImageConverter, ImageType, VideoConverter};
 
 /// Copy a file without altering it
 pub(super) fn copy_raw(from: &Path, to: &Path) {
@@ -66,6 +66,7 @@ pub(super) fn sticker_copy_convert(
         MediaType::Image("heic") | MediaType::Image("HEIC") => Some(ImageType::Png),
         MediaType::Image("heics")
         | MediaType::Image("HEICS")
+        // TODO: For heics, use ffmpeg gif converter process
         | MediaType::Image("heic-sequence") => Some(ImageType::Gif),
         _ => None,
     };
@@ -115,57 +116,78 @@ pub(super) fn convert_heic(
     match converter {
         ImageConverter::Sips => {
             // Build the command
-            match Command::new("sips")
-                .args(vec![
+            run_command(
+                "sips",
+                vec![
                     "-s",
                     "format",
                     output_image_type.to_str(),
                     from_path,
                     "-o",
                     to_path,
-                ])
-                .stdout(Stdio::null())
-                .stderr(Stdio::null())
-                .stdin(Stdio::null())
-                .spawn()
-            {
-                Ok(mut sips) => match sips.wait() {
-                    Ok(_) => Some(()),
-                    Err(why) => {
-                        eprintln!("Conversion failed: {why}");
-                        None
-                    }
-                },
-                Err(why) => {
-                    eprintln!("Conversion failed: {why}");
-                    None
-                }
-            }
+                ],
+            )
         }
         ImageConverter::Imagemagick =>
         // Build the command
         {
-            match Command::new("magick")
-                .args(vec![from_path, to_path])
-                .stdout(Stdio::null())
-                .stderr(Stdio::null())
-                .stdin(Stdio::null())
-                .spawn()
-            {
-                Ok(mut convert) => match convert.wait() {
-                    Ok(_) => Some(()),
-                    Err(why) => {
-                        eprintln!("Conversion failed: {why}");
-                        None
-                    }
-                },
-                Err(why) => {
-                    eprintln!("Conversion failed: {why}");
-                    None
-                }
-            }
+            run_command("magick", vec![from_path, to_path])
         }
     };
 
     Some(())
+}
+
+fn run_command(command: &str, args: Vec<&str>) -> Option<()> {
+    match Command::new(command)
+        .args(args)
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .stdin(Stdio::null())
+        .spawn()
+    {
+        Ok(mut convert) => match convert.wait() {
+            Ok(_) => Some(()),
+            Err(why) => {
+                eprintln!("Conversion failed: {why}");
+                None
+            }
+        },
+        Err(why) => {
+            eprintln!("Conversion failed: {why}");
+            None
+        }
+    }
+}
+
+pub(super) fn convert_heics(
+    from: &Path,
+    to: &Path,
+    converter: &ImageConverter,
+    output_image_type: &ImageType,
+) -> Option<()> {
+    todo!()
+}
+
+pub(super) fn convert_caf(
+    from: &Path,
+    to: &Path,
+    converter: &AudioConverter,
+    output_image_type: &ImageType,
+) -> Option<()> {
+    match converter {
+        AudioConverter::AfConvert => todo!(),
+        AudioConverter::Ffmpeg => todo!(),
+    }
+}
+
+pub(super) fn convert_mov(
+    from: &Path,
+    to: &Path,
+    converter: &VideoConverter,
+    output_image_type: &ImageType,
+) -> Option<()> {
+    match converter {
+        VideoConverter::Ffmpeg => todo!(),
+    }
 }
