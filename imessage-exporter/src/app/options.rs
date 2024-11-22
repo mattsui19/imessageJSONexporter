@@ -12,7 +12,7 @@ use imessage_database::{
 };
 
 use crate::app::{
-    attachment_manager::{AttachmentManager, AttachmentManagerMode},
+    converters::attachment_manager::{AttachmentManager, AttachmentManagerMode},
     error::RuntimeError,
     export_type::ExportType,
 };
@@ -482,7 +482,7 @@ mod arg_tests {
     };
 
     use crate::app::{
-        attachment_manager::{AttachmentManager, AttachmentManagerMode},
+        converters::attachment_manager::{AttachmentManager, AttachmentManagerMode},
         export_type::ExportType,
         options::{get_command, validate_path, Options},
     };

@@ -1,12 +1,13 @@
 use std::{
     fmt::Display,
-    fs::{copy, create_dir_all, metadata, write},
+    fs::{create_dir_all, metadata, write},
     path::{Path, PathBuf},
 };
 
 use crate::app::{
-    converter::{
-        convert_heic, AudioConverter, Converter, ImageConverter, ImageType, VideoConverter,
+    converters::{
+        convert::{copy_raw, image_copy_convert, sticker_copy_convert},
+        models::{AudioConverter, Converter, ImageConverter, VideoConverter},
     },
     runtime::Config,
 };
@@ -157,14 +158,14 @@ impl AttachmentManager {
                             match &config.options.attachment_manager.image_converter {
                                 Some(converter) => {
                                     if attachment.is_sticker {
-                                        Self::sticker_copy_convert(
+                                        sticker_copy_convert(
                                             from,
                                             &mut to,
                                             converter,
                                             attachment.mime_type(),
                                         );
                                     } else {
-                                        Self::image_copy_convert(
+                                        image_copy_convert(
                                             from,
                                             &mut to,
                                             converter,
@@ -172,24 +173,24 @@ impl AttachmentManager {
                                         );
                                     }
                                 }
-                                None => Self::copy_raw(from, &to),
+                                None => copy_raw(from, &to),
                             }
                         }
-                        AttachmentManagerMode::Efficient => Self::copy_raw(from, &to),
+                        AttachmentManagerMode::Efficient => copy_raw(from, &to),
                         AttachmentManagerMode::Disabled => unreachable!(),
                     };
                 }
                 MediaType::Video(_) => match self.mode {
-                    AttachmentManagerMode::Compatible => Self::copy_raw(from, &to),
-                    AttachmentManagerMode::Efficient => Self::copy_raw(from, &to),
+                    AttachmentManagerMode::Compatible => copy_raw(from, &to),
+                    AttachmentManagerMode::Efficient => copy_raw(from, &to),
                     AttachmentManagerMode::Disabled => unreachable!(),
                 },
                 MediaType::Audio(_) => match self.mode {
-                    AttachmentManagerMode::Compatible => Self::copy_raw(from, &to),
-                    AttachmentManagerMode::Efficient => Self::copy_raw(from, &to),
+                    AttachmentManagerMode::Compatible => copy_raw(from, &to),
+                    AttachmentManagerMode::Efficient => copy_raw(from, &to),
                     AttachmentManagerMode::Disabled => unreachable!(),
                 },
-                _ => Self::copy_raw(from, &to),
+                _ => copy_raw(from, &to),
             }
 
             // Update file metadata
@@ -197,79 +198,6 @@ impl AttachmentManager {
             attachment.copied_path = Some(to);
         }
         Some(())
-    }
-
-    /// Copy a file without altering it
-    fn copy_raw(from: &Path, to: &Path) {
-        // Ensure the directory tree exists
-        if let Some(folder) = to.parent() {
-            if !folder.exists() {
-                if let Err(why) = create_dir_all(folder) {
-                    eprintln!("Unable to create {folder:?}: {why}");
-                }
-            }
-        }
-        if let Err(why) = copy(from, to) {
-            eprintln!("Unable to copy {from:?} to {to:?}: {why}");
-        };
-    }
-
-    /// Copy amn image file, converting if possible
-    ///
-    /// - Attachment `HEIC` files convert to `JPEG`
-    /// - Fallback to the original format
-    fn image_copy_convert(
-        from: &Path,
-        to: &mut PathBuf,
-        converter: &ImageConverter,
-        mime_type: MediaType,
-    ) {
-        // Normal attachments always get converted to jpeg
-        if matches!(
-            mime_type,
-            MediaType::Image("heic") | MediaType::Image("HEIC")
-        ) {
-            let output_type = ImageType::Jpeg;
-            // Update extension for conversion
-            to.set_extension(output_type.to_str());
-            if convert_heic(from, to, converter, &output_type).is_none() {
-                eprintln!("Unable to convert {from:?}");
-            }
-        } else {
-            Self::copy_raw(from, to);
-        }
-    }
-
-    /// Copy a sticker, converting if possible
-    ///
-    /// - Sticker `HEIC` files convert to `PNG`
-    /// - Sticker `HEICS` files convert to `GIF`
-    /// - Fallback to the original format
-    fn sticker_copy_convert(
-        from: &Path,
-        to: &mut PathBuf,
-        converter: &ImageConverter,
-        mime_type: MediaType,
-    ) {
-        // Determine the output type of the sticker
-        let output_type: Option<ImageType> = match mime_type {
-            // Normal stickers get converted to png
-            MediaType::Image("heic") | MediaType::Image("HEIC") => Some(ImageType::Png),
-            MediaType::Image("heics")
-            | MediaType::Image("HEICS")
-            | MediaType::Image("heic-sequence") => Some(ImageType::Gif),
-            _ => None,
-        };
-
-        match output_type {
-            Some(output_type) => {
-                to.set_extension(output_type.to_str());
-                if convert_heic(from, to, converter, &output_type).is_none() {
-                    eprintln!("Unable to convert {from:?}");
-                }
-            }
-            None => Self::copy_raw(from, to),
-        }
     }
 }
 

@@ -1,7 +1,5 @@
 use std::{
     fmt::{Display, Formatter, Result},
-    fs::create_dir_all,
-    path::Path,
     process::{Command, Stdio},
 };
 
@@ -163,95 +161,6 @@ fn exists(name: &str) -> bool {
         .output()
         .map(|output| output.status.success())
         .unwrap_or(false)
-}
-
-/// Convert a HEIC image file to the provided format
-///
-/// This uses the macOS builtin `sips` program
-/// Docs: <https://www.unix.com/man-page/osx/1/sips/> (or `man sips`)
-///
-/// If `to` contains a directory that does not exist, i.e. `/fake/out.jpg`, instead
-/// of failing, `sips` will create a file called `fake` in `/`. Subsequent writes
-/// by `sips` to the same location will not fail, but since it is a file instead
-/// of a directory, this will fail for non-`sips` copies.
-pub fn convert_heic(
-    from: &Path,
-    to: &Path,
-    converter: &ImageConverter,
-    output_image_type: &ImageType,
-) -> Option<()> {
-    // Get the path we want to copy from
-    let from_path = from.to_str()?;
-
-    // Get the path we want to write to
-    let to_path = to.to_str()?;
-
-    // Ensure the directory tree exists
-    if let Some(folder) = to.parent() {
-        if !folder.exists() {
-            if let Err(why) = create_dir_all(folder) {
-                eprintln!("Unable to create {folder:?}: {why}");
-                return None;
-            }
-        }
-    }
-
-    match converter {
-        ImageConverter::Sips => {
-            // Build the command
-            match Command::new("sips")
-                .args(vec![
-                    "-s",
-                    "format",
-                    output_image_type.to_str(),
-                    from_path,
-                    "-o",
-                    to_path,
-                ])
-                .stdout(Stdio::null())
-                .stderr(Stdio::null())
-                .stdin(Stdio::null())
-                .spawn()
-            {
-                Ok(mut sips) => match sips.wait() {
-                    Ok(_) => Some(()),
-                    Err(why) => {
-                        eprintln!("Conversion failed: {why}");
-                        None
-                    }
-                },
-                Err(why) => {
-                    eprintln!("Conversion failed: {why}");
-                    None
-                }
-            }
-        }
-        ImageConverter::Imagemagick =>
-        // Build the command
-        {
-            match Command::new("magick")
-                .args(vec![from_path, to_path])
-                .stdout(Stdio::null())
-                .stderr(Stdio::null())
-                .stdin(Stdio::null())
-                .spawn()
-            {
-                Ok(mut convert) => match convert.wait() {
-                    Ok(_) => Some(()),
-                    Err(why) => {
-                        eprintln!("Conversion failed: {why}");
-                        None
-                    }
-                },
-                Err(why) => {
-                    eprintln!("Conversion failed: {why}");
-                    None
-                }
-            }
-        }
-    };
-
-    Some(())
 }
 
 #[cfg(test)]
