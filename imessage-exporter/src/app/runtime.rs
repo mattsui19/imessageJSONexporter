@@ -11,8 +11,8 @@ use rusqlite::Connection;
 
 use crate::{
     app::{
-        attachment_manager::AttachmentManager, converter::Converter, error::RuntimeError,
-        export_type::ExportType, options::Options, sanitizers::sanitize_filename,
+        attachment_manager::AttachmentManagerMode, error::RuntimeError, export_type::ExportType,
+        options::Options, sanitizers::sanitize_filename,
     },
     Exporter, HTML, TXT,
 };
@@ -53,8 +53,6 @@ pub struct Config {
     pub offset: i64,
     /// The connection we use to query the database
     pub db: Connection,
-    /// Converter type used when converting image files
-    pub converter: Option<Converter>,
 }
 
 impl Config {
@@ -220,13 +218,6 @@ impl Config {
         let tapbacks = Message::cache(&conn).map_err(RuntimeError::DatabaseError)?;
         eprintln!("Cache built!");
 
-        // Only attempt to create a converter if we need it
-        let converter = match options.attachment_manager {
-            AttachmentManager::Disabled => None,
-            AttachmentManager::Compatible => Converter::determine(),
-            AttachmentManager::Efficient => None,
-        };
-
         Ok(Config {
             chatrooms,
             real_chatrooms: ChatToHandle::dedupe(&chatroom_participants),
@@ -237,7 +228,6 @@ impl Config {
             options,
             offset: get_offset(),
             db: conn,
-            converter,
         })
     }
 
@@ -327,7 +317,7 @@ impl Config {
             available_space(&self.options.export_path).map_err(RuntimeError::DiskError)?;
 
         // Validate that there is enough disk space free to write the export
-        if let AttachmentManager::Disabled = self.options.attachment_manager {
+        if let AttachmentManagerMode::Disabled = self.options.attachment_manager.mode {
             if estimated_export_size >= free_space_at_location {
                 return Err(RuntimeError::NotEnoughAvailableSpace(
                     estimated_export_size,
@@ -422,7 +412,10 @@ impl Config {
             create_dir_all(&self.options.export_path).map_err(RuntimeError::DiskError)?;
 
             // Ensure the path we want to copy attachments to exists, if requested
-            if !matches!(self.options.attachment_manager, AttachmentManager::Disabled) {
+            if !matches!(
+                self.options.attachment_manager.mode,
+                AttachmentManagerMode::Disabled
+            ) {
                 create_dir_all(self.attachment_path()).map_err(RuntimeError::DiskError)?;
             }
 
@@ -484,7 +477,6 @@ impl Config {
             options,
             offset: get_offset(),
             db: connection,
-            converter: Some(crate::app::converter::Converter::Sips),
         }
     }
 

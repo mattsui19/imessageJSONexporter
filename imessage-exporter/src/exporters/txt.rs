@@ -11,7 +11,7 @@ use std::{
 
 use crate::{
     app::{
-        attachment_manager::AttachmentManager, error::RuntimeError,
+        attachment_manager::AttachmentManagerMode, error::RuntimeError,
         progress::build_progress_bar_export, runtime::Config,
     },
     exporters::exporter::{BalloonFormatter, Exporter, Writer},
@@ -846,11 +846,11 @@ impl<'a> BalloonFormatter<&'a str> for TXT<'a> {
         balloon: &HandwrittenMessage,
         indent: &str,
     ) -> String {
-        match self.config.options.attachment_manager {
-            AttachmentManager::Disabled => balloon
+        match self.config.options.attachment_manager.mode {
+            AttachmentManagerMode::Disabled => balloon
                 .render_ascii(40)
                 .replace("\n", &format!("{indent}\n")),
-            AttachmentManager::Compatible | AttachmentManager::Efficient => self
+            AttachmentManagerMode::Compatible | AttachmentManagerMode::Efficient => self
                 .config
                 .options
                 .attachment_manager

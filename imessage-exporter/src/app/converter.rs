@@ -4,42 +4,109 @@ use std::{
     process::{Command, Stdio},
 };
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum ImageType {
-    #[allow(non_camel_case_types)]
     Jpeg,
-    #[allow(non_camel_case_types)]
     Gif,
-    #[allow(non_camel_case_types)]
     Png,
 }
 
 impl ImageType {
     pub fn to_str(&self) -> &'static str {
         match self {
-            ImageType::Jpeg => "jpeg",
-            ImageType::Gif => "gif",
-            ImageType::Png => "png",
+            Self::Jpeg => "jpeg",
+            Self::Gif => "gif",
+            Self::Png => "png",
         }
     }
 }
 
-#[derive(Debug)]
-pub enum Converter {
+#[derive(Debug, PartialEq, Eq)]
+pub enum VideoType {
+    Mp4,
+    Mov,
+}
+
+impl VideoType {
+    pub fn to_str(&self) -> &'static str {
+        match self {
+            Self::Mp4 => "mp4",
+            Self::Mov => "mov",
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum AudioType {
+    Caf,
+    Mp3,
+}
+
+impl AudioType {
+    pub fn to_str(&self) -> &'static str {
+        match self {
+            Self::Caf => "caf",
+            Self::Mp3 => "mp3",
+        }
+    }
+}
+
+pub trait Converter {
+    fn determine() -> Option<Self>
+    where
+        Self: Sized;
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum ImageConverter {
     Sips,
     Imagemagick,
 }
 
-impl Converter {
+impl Converter for ImageConverter {
     /// Determine the converter type for the current shell environment
-    pub fn determine() -> Option<Converter> {
+    fn determine() -> Option<ImageConverter> {
         if exists("sips") {
-            return Some(Converter::Sips);
+            return Some(ImageConverter::Sips);
         }
         if exists("magick") {
-            return Some(Converter::Imagemagick);
+            return Some(ImageConverter::Imagemagick);
         }
-        eprintln!("No HEIC converter found, attachments will not be converted!");
+        eprintln!("No HEIC converter found, image attachments will not be converted!");
+        None
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum AudioConverter {
+    AfConvert,
+    Ffmpeg,
+}
+
+impl Converter for AudioConverter {
+    fn determine() -> Option<AudioConverter> {
+        if exists("afconvert") {
+            return Some(AudioConverter::AfConvert);
+        }
+        if exists("ffmpeg") {
+            return Some(AudioConverter::Ffmpeg);
+        }
+        eprintln!("No CAF converter found, audio attachments will not be converted!");
+        None
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum VideoConverter {
+    Ffmpeg,
+}
+
+impl Converter for VideoConverter {
+    fn determine() -> Option<VideoConverter> {
+        if exists("ffmpeg") {
+            return Some(VideoConverter::Ffmpeg);
+        }
+        eprintln!("No MOV converter found, video attachments will not be converted!");
         None
     }
 }
@@ -83,7 +150,7 @@ fn exists(name: &str) -> bool {
 pub fn convert_heic(
     from: &Path,
     to: &Path,
-    converter: &Converter,
+    converter: &ImageConverter,
     output_image_type: &ImageType,
 ) -> Option<()> {
     // Get the path we want to copy from
@@ -103,7 +170,7 @@ pub fn convert_heic(
     }
 
     match converter {
-        Converter::Sips => {
+        ImageConverter::Sips => {
             // Build the command
             match Command::new("sips")
                 .args(vec![
@@ -132,7 +199,7 @@ pub fn convert_heic(
                 }
             }
         }
-        Converter::Imagemagick =>
+        ImageConverter::Imagemagick =>
         // Build the command
         {
             match Command::new("magick")

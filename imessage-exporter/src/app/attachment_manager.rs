@@ -5,7 +5,9 @@ use std::{
 };
 
 use crate::app::{
-    converter::{convert_heic, Converter, ImageType},
+    converter::{
+        convert_heic, AudioConverter, Converter, ImageConverter, ImageType, VideoConverter,
+    },
     runtime::Config,
 };
 
@@ -17,28 +19,26 @@ use imessage_database::tables::{
 
 use filetime::{set_file_times, FileTime};
 
-/// Represents different ways the app can interact with attachment data
-#[derive(Debug, PartialEq, Eq)]
-pub enum AttachmentManager {
-    /// Do not copy attachments
-    Disabled,
-    /// Copy and convert attachments to more compatible formats using a [`Converter`]
-    Compatible,
-    /// Copy attachments without converting; preserves quality but may not display correctly in all browsers
-    Efficient,
+#[derive(Debug, PartialEq, Eq, Default)]
+pub struct AttachmentManager {
+    pub mode: AttachmentManagerMode,
+    pub image_converter: Option<ImageConverter>,
+    pub audio_converter: Option<AudioConverter>,
+    pub video_converter: Option<VideoConverter>,
 }
 
 impl AttachmentManager {
-    /// Create an instance of the enum given user input
-    pub fn from_cli(copy_state: &str) -> Option<Self> {
-        match copy_state.to_lowercase().as_str() {
-            "compatible" => Some(Self::Compatible),
-            "efficient" => Some(Self::Efficient),
-            "disabled" => Some(Self::Disabled),
-            _ => None,
+    pub fn from(mode: AttachmentManagerMode) -> Self {
+        AttachmentManager {
+            mode,
+            image_converter: ImageConverter::determine(),
+            audio_converter: AudioConverter::determine(),
+            video_converter: VideoConverter::determine(),
         }
     }
+}
 
+impl AttachmentManager {
     /// Handle a handwriting message, optionally writing it to an SVG file
     pub fn handle_handwriting(
         &self,
@@ -46,7 +46,7 @@ impl AttachmentManager {
         handwriting: &HandwrittenMessage,
         config: &Config,
     ) -> Option<PathBuf> {
-        if !matches!(self, AttachmentManager::Disabled) {
+        if !matches!(self.mode, AttachmentManagerMode::Disabled) {
             // Create a path to copy the file to
             let mut to = config.attachment_path();
 
@@ -102,7 +102,7 @@ impl AttachmentManager {
             config.options.attachment_root.as_deref(),
         )?;
 
-        if !matches!(self, AttachmentManager::Disabled) {
+        if !matches!(self.mode, AttachmentManagerMode::Disabled) {
             let from = Path::new(&attachment_path);
 
             // Ensure the file exists at the specified location
@@ -128,21 +128,23 @@ impl AttachmentManager {
                 return Some(());
             }
 
-            match self {
-                AttachmentManager::Compatible => match &config.converter {
-                    Some(converter) => {
-                        Self::copy_convert(
-                            from,
-                            &mut to,
-                            converter,
-                            attachment.is_sticker,
-                            attachment.mime_type(),
-                        );
+            match self.mode {
+                AttachmentManagerMode::Compatible => {
+                    match &config.options.attachment_manager.image_converter {
+                        Some(converter) => {
+                            Self::copy_convert(
+                                from,
+                                &mut to,
+                                converter,
+                                attachment.is_sticker,
+                                attachment.mime_type(),
+                            );
+                        }
+                        None => Self::copy_raw(from, &to),
                     }
-                    None => Self::copy_raw(from, &to),
-                },
-                AttachmentManager::Efficient => Self::copy_raw(from, &to),
-                AttachmentManager::Disabled => unreachable!(),
+                }
+                AttachmentManagerMode::Efficient => Self::copy_raw(from, &to),
+                AttachmentManagerMode::Disabled => unreachable!(),
             };
 
             // Update file metadata
@@ -176,7 +178,7 @@ impl AttachmentManager {
     fn copy_convert(
         from: &Path,
         to: &mut PathBuf,
-        converter: &Converter,
+        converter: &ImageConverter,
         is_sticker: bool,
         mime_type: MediaType,
     ) {
@@ -186,7 +188,9 @@ impl AttachmentManager {
             let output_type: Option<ImageType> = match mime_type {
                 // Normal stickers get converted to png
                 MediaType::Image("heic") | MediaType::Image("HEIC") => Some(ImageType::Png),
-                MediaType::Image("heics") | MediaType::Image("HEICS") => Some(ImageType::Gif),
+                MediaType::Image("heics")
+                | MediaType::Image("HEICS")
+                | MediaType::Image("heic-sequence") => Some(ImageType::Gif),
                 _ => None,
             };
 
@@ -217,18 +221,41 @@ impl AttachmentManager {
     }
 }
 
-impl Default for AttachmentManager {
+/// Represents different ways the app can interact with attachment data
+#[derive(Debug, PartialEq, Eq)]
+pub enum AttachmentManagerMode {
+    /// Do not copy attachments
+    Disabled,
+    /// Copy and convert attachments to more compatible formats using a [`Converter`]
+    Compatible,
+    /// Copy attachments without converting; preserves quality but may not display correctly in all browsers
+    Efficient,
+}
+
+impl Default for AttachmentManagerMode {
     fn default() -> Self {
         Self::Disabled
     }
 }
 
-impl Display for AttachmentManager {
+impl AttachmentManagerMode {
+    /// Create an instance of the enum given user input
+    pub fn from_cli(copy_state: &str) -> Option<Self> {
+        match copy_state.to_lowercase().as_str() {
+            "compatible" => Some(Self::Compatible),
+            "efficient" => Some(Self::Efficient),
+            "disabled" => Some(Self::Disabled),
+            _ => None,
+        }
+    }
+}
+
+impl Display for AttachmentManagerMode {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            AttachmentManager::Disabled => write!(fmt, "disabled"),
-            AttachmentManager::Compatible => write!(fmt, "compatible"),
-            AttachmentManager::Efficient => write!(fmt, "efficient"),
+            AttachmentManagerMode::Disabled => write!(fmt, "disabled"),
+            AttachmentManagerMode::Compatible => write!(fmt, "compatible"),
+            AttachmentManagerMode::Efficient => write!(fmt, "efficient"),
         }
     }
 }

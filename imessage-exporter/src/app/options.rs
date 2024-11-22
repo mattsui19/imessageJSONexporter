@@ -12,7 +12,9 @@ use imessage_database::{
 };
 
 use crate::app::{
-    attachment_manager::AttachmentManager, error::RuntimeError, export_type::ExportType,
+    attachment_manager::{AttachmentManager, AttachmentManagerMode},
+    error::RuntimeError,
+    export_type::ExportType,
 };
 
 /// Default export directory name
@@ -242,11 +244,11 @@ impl Options {
         // Determine the attachment manager mode
         let attachment_manager_mode = match attachment_manager_type {
             Some(manager) => {
-                AttachmentManager::from_cli(manager).ok_or(RuntimeError::InvalidOptions(format!(
+                AttachmentManagerMode::from_cli(manager).ok_or(RuntimeError::InvalidOptions(format!(
                     "{manager} is not a valid attachment manager mode! Must be one of <{SUPPORTED_ATTACHMENT_MANAGER_MODES}>"
                 )))?
             }
-            None => AttachmentManager::default(),
+            None => AttachmentManagerMode::default(),
         };
 
         // Validate the provided export path
@@ -255,7 +257,7 @@ impl Options {
         Ok(Options {
             db_path,
             attachment_root: attachment_root.cloned(),
-            attachment_manager: attachment_manager_mode,
+            attachment_manager: AttachmentManager::from(attachment_manager_mode),
             diagnostic,
             export_type,
             export_path,
@@ -352,7 +354,7 @@ fn get_command() -> Command {
             Arg::new(OPTION_ATTACHMENT_MANAGER)
             .short('c')
             .long(OPTION_ATTACHMENT_MANAGER)
-            .help(format!("Specify an optional method to use when copying message attachments\nCompatible will convert HEIC files to JPEG\nEfficient will copy files without converting anything\nIf omitted, the default is `{}`\nImageMagick is required to convert images on non-macOS platforms.\n", AttachmentManager::default()))
+            .help(format!("Specify an optional method to use when copying message attachments\nCompatible will convert HEIC files to JPEG\nEfficient will copy files without converting anything\nIf omitted, the default is `{}`\nImageMagick is required to convert images on non-macOS platforms.\n", AttachmentManagerMode::default()))
             .display_order(2)
             .value_name(SUPPORTED_ATTACHMENT_MANAGER_MODES),
         )
@@ -451,7 +453,7 @@ impl Options {
         Options {
             db_path: default_db_path(),
             attachment_root: None,
-            attachment_manager: AttachmentManager::Disabled,
+            attachment_manager: AttachmentManager::from(AttachmentManagerMode::Disabled),
             diagnostic: false,
             export_type: Some(export_type),
             export_path: PathBuf::from("/tmp"),
@@ -480,7 +482,7 @@ mod arg_tests {
     };
 
     use crate::app::{
-        attachment_manager::AttachmentManager,
+        attachment_manager::{AttachmentManager, AttachmentManagerMode},
         export_type::ExportType,
         options::{get_command, validate_path, Options},
     };
@@ -499,7 +501,7 @@ mod arg_tests {
         let expected = Options {
             db_path: default_db_path(),
             attachment_root: None,
-            attachment_manager: AttachmentManager::default(),
+            attachment_manager: AttachmentManager::from(AttachmentManagerMode::Disabled),
             diagnostic: true,
             export_type: None,
             export_path: validate_path(None, &None).unwrap(),
@@ -611,7 +613,7 @@ mod arg_tests {
         let expected = Options {
             db_path: default_db_path(),
             attachment_root: None,
-            attachment_manager: AttachmentManager::default(),
+            attachment_manager: AttachmentManager::from(AttachmentManagerMode::Disabled),
             diagnostic: false,
             export_type: Some(ExportType::Html),
             export_path: validate_path(Some(&tmp_dir), &None).unwrap(),
@@ -644,7 +646,7 @@ mod arg_tests {
         let expected = Options {
             db_path: default_db_path(),
             attachment_root: None,
-            attachment_manager: AttachmentManager::default(),
+            attachment_manager: AttachmentManager::from(AttachmentManagerMode::Disabled),
             diagnostic: false,
             export_type: Some(ExportType::Txt),
             export_path: validate_path(None, &None).unwrap(),
@@ -765,7 +767,7 @@ mod arg_tests {
         let expected = Options {
             db_path: default_db_path(),
             attachment_root: None,
-            attachment_manager: AttachmentManager::default(),
+            attachment_manager: AttachmentManager::from(AttachmentManagerMode::Disabled),
             diagnostic: false,
             export_type: Some(ExportType::Txt),
             export_path: validate_path(None, &None).unwrap(),
@@ -795,7 +797,7 @@ mod arg_tests {
         let expected = Options {
             db_path: default_db_path(),
             attachment_root: None,
-            attachment_manager: AttachmentManager::default(),
+            attachment_manager: AttachmentManager::from(AttachmentManagerMode::Disabled),
             diagnostic: false,
             export_type: Some(ExportType::Txt),
             export_path: validate_path(None, &None).unwrap(),
@@ -825,7 +827,7 @@ mod arg_tests {
         let expected = Options {
             db_path: default_db_path(),
             attachment_root: None,
-            attachment_manager: AttachmentManager::default(),
+            attachment_manager: AttachmentManager::from(AttachmentManagerMode::Disabled),
             diagnostic: false,
             export_type: Some(ExportType::Txt),
             export_path: validate_path(None, &None).unwrap(),
@@ -836,6 +838,66 @@ mod arg_tests {
             platform: Platform::default(),
             ignore_disk_space: false,
             conversation_filter: Some(String::from("steve@apple.com")),
+        };
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn can_build_option_compatible() {
+        // Get matches from sample args
+        let cli_args: Vec<&str> = vec!["imessage-exporter", "-f", "txt", "-c", "compatible"];
+        let command = get_command();
+        let args = command.get_matches_from(cli_args);
+
+        // Build the Options
+        let actual = Options::from_args(&args).unwrap();
+
+        // Expected data
+        let expected = Options {
+            db_path: default_db_path(),
+            attachment_root: None,
+            attachment_manager: AttachmentManager::from(AttachmentManagerMode::Compatible),
+            diagnostic: false,
+            export_type: Some(ExportType::Txt),
+            export_path: validate_path(None, &None).unwrap(),
+            query_context: QueryContext::default(),
+            no_lazy: false,
+            custom_name: None,
+            use_caller_id: false,
+            platform: Platform::default(),
+            ignore_disk_space: false,
+            conversation_filter: None,
+        };
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn can_build_option_efficient() {
+        // Get matches from sample args
+        let cli_args: Vec<&str> = vec!["imessage-exporter", "-f", "txt", "-c", "efficient"];
+        let command = get_command();
+        let args = command.get_matches_from(cli_args);
+
+        // Build the Options
+        let actual = Options::from_args(&args).unwrap();
+
+        // Expected data
+        let expected = Options {
+            db_path: default_db_path(),
+            attachment_root: None,
+            attachment_manager: AttachmentManager::from(AttachmentManagerMode::Efficient),
+            diagnostic: false,
+            export_type: Some(ExportType::Txt),
+            export_path: validate_path(None, &None).unwrap(),
+            query_context: QueryContext::default(),
+            no_lazy: false,
+            custom_name: None,
+            use_caller_id: false,
+            platform: Platform::default(),
+            ignore_disk_space: false,
+            conversation_filter: None,
         };
 
         assert_eq!(actual, expected);
