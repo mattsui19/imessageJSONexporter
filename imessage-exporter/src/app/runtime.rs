@@ -11,7 +11,7 @@ use rusqlite::Connection;
 
 use crate::{
     app::{
-        converters::attachment_manager::AttachmentManagerMode, error::RuntimeError,
+        compatibility::attachment_manager::AttachmentManagerMode, error::RuntimeError,
         export_type::ExportType, options::Options, sanitizers::sanitize_filename,
     },
     Exporter, HTML, TXT,

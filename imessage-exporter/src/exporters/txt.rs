@@ -11,7 +11,7 @@ use std::{
 
 use crate::{
     app::{
-        converters::attachment_manager::AttachmentManagerMode, error::RuntimeError,
+        compatibility::attachment_manager::AttachmentManagerMode, error::RuntimeError,
         progress::build_progress_bar_export, runtime::Config,
     },
     exporters::exporter::{BalloonFormatter, Exporter, Writer},

@@ -12,7 +12,7 @@ use imessage_database::{
 };
 
 use crate::app::{
-    converters::attachment_manager::{AttachmentManager, AttachmentManagerMode},
+    compatibility::attachment_manager::{AttachmentManager, AttachmentManagerMode},
     error::RuntimeError,
     export_type::ExportType,
 };
@@ -39,6 +39,7 @@ pub const OPTION_CONVERSATION_FILTER: &str = "conversation-filter";
 // Other CLI Text
 pub const SUPPORTED_FILE_TYPES: &str = "txt, html";
 pub const SUPPORTED_PLATFORMS: &str = "macOS, iOS";
+// TODO: clone (raw), fast (image only), full (image + audio + video), disabled
 pub const SUPPORTED_ATTACHMENT_MANAGER_MODES: &str = "compatible, efficient, disabled";
 pub const ABOUT: &str = concat!(
     "The `imessage-exporter` binary exports iMessage data to\n",
@@ -482,7 +483,7 @@ mod arg_tests {
     };
 
     use crate::app::{
-        converters::attachment_manager::{AttachmentManager, AttachmentManagerMode},
+        compatibility::attachment_manager::{AttachmentManager, AttachmentManagerMode},
         export_type::ExportType,
         options::{get_command, validate_path, Options},
     };

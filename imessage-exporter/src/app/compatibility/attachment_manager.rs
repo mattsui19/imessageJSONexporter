@@ -5,8 +5,11 @@ use std::{
 };
 
 use crate::app::{
-    converters::{
-        convert::{audio_copy_convert, copy_raw, image_copy_convert, sticker_copy_convert},
+    compatibility::{
+        converters::{
+            audio::audio_copy_convert, common::copy_raw, image::image_copy_convert,
+            sticker::sticker_copy_convert, video::video_copy_convert,
+        },
         models::{AudioConverter, Converter, ImageConverter, VideoConverter},
     },
     runtime::Config,
@@ -19,8 +22,6 @@ use imessage_database::tables::{
 };
 
 use filetime::{set_file_times, FileTime};
-
-use super::convert::video_copy_convert;
 
 #[derive(Debug, PartialEq, Eq, Default)]
 pub struct AttachmentManager {
@@ -163,12 +164,12 @@ impl AttachmentManager {
                     match self.mode {
                         AttachmentManagerMode::Compatible => match &self.image_converter {
                             Some(converter) => {
-                                // TODO: check if the video converter exists to make the heics into a gif
                                 if attachment.is_sticker {
                                     new_media_type = sticker_copy_convert(
                                         from,
                                         &mut to,
                                         converter,
+                                        &self.video_converter,
                                         attachment.mime_type(),
                                     );
                                 } else {
