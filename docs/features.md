@@ -50,7 +50,7 @@ This tool targets the current latest public release for macOS and iMessage. It m
   - Less-compatible attachments can be converted for even more portable exports:
     - Image `HEIC` files convert to `JPEG`
     - Sticker `HEIC` files convert to `PNG`
-    - Sticker `HEICS` files convert to `GIF`
+    - Animated Sticker `HEICS` (HEIC sequence) files convert to `GIF`
     - Video `MOV` files convert to `mp4`
     - Audio `CAF` files convert to `mp4`
   - Attachments are displayed as
