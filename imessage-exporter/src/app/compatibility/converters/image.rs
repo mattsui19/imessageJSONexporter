@@ -47,6 +47,7 @@ pub(crate) fn image_copy_convert(
 /// Convert a HEIC image file to the provided format
 ///
 /// This uses the macOS builtin `sips` program
+///
 /// Docs: <https://www.unix.com/man-page/osx/1/sips/> (or `man sips`)
 ///
 /// If `to` contains a directory that does not exist, i.e. `/fake/out.jpg`, instead
