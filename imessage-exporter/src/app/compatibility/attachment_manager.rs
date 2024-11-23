@@ -264,9 +264,9 @@ impl AttachmentManagerMode {
     /// Create an instance of the enum given user input
     pub fn from_cli(copy_state: &str) -> Option<Self> {
         match copy_state.to_lowercase().as_str() {
+            "disabled" => Some(Self::Disabled),
             "partial" => Some(Self::Partial),
             "clone" => Some(Self::Clone),
-            "disabled" => Some(Self::Disabled),
             "full" => Some(Self::Full),
             _ => None,
         }
