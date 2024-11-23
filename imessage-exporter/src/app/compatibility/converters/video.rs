@@ -8,7 +8,7 @@ use imessage_database::tables::attachment::MediaType;
 
 use crate::app::compatibility::{
     converters::common::{copy_raw, ensure_paths, run_command},
-    models::{VideoConverter, VideoType},
+    models::{Converter, VideoConverter, VideoType},
 };
 
 /// Copy a video file, converting if possible
@@ -21,7 +21,6 @@ pub(crate) fn video_copy_convert(
     converter: &VideoConverter,
     mime_type: MediaType,
 ) -> Option<MediaType<'static>> {
-    // Normal attachments always get converted to jpeg
     if matches!(
         mime_type,
         MediaType::Video("mov") | MediaType::Video("MOV") | MediaType::Video("quicktime")
@@ -45,6 +44,6 @@ fn convert_mov(from: &Path, to: &Path, converter: &VideoConverter) -> Option<()>
     let (from_path, to_path) = ensure_paths(from, to)?;
 
     match converter {
-        VideoConverter::Ffmpeg => run_command("ffmpeg", vec!["-i", from_path, to_path]),
+        VideoConverter::Ffmpeg => run_command(converter.name(), vec!["-i", from_path, to_path]),
     }
 }

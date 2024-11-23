@@ -110,7 +110,7 @@ The currently detected image converter, if present.
 One of:
 
 - `sips` (macOS Builtin)
-- `imagemagick`
+- `magick` (`imagemagick`)
 - None
 
 ### Audio converter

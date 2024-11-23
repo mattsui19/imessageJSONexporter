@@ -12,6 +12,11 @@ pub trait Converter {
     fn determine() -> Option<Self>
     where
         Self: Sized;
+
+    /// The name of the program the current variant represents
+    fn name(&self) -> &'static str
+    where
+        Self: Sized;
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -67,23 +72,27 @@ pub enum ImageConverter {
 
 impl Converter for ImageConverter {
     fn determine() -> Option<ImageConverter> {
-        if exists("sips") {
+        if exists(ImageConverter::Sips.name()) {
             return Some(ImageConverter::Sips);
         }
-        if exists("magick") {
+        if exists(ImageConverter::Imagemagick.name()) {
             return Some(ImageConverter::Imagemagick);
         }
         eprintln!("No HEIC converter found, image attachments will not be converted!");
         None
     }
+
+    fn name(&self) -> &'static str {
+        match self {
+            ImageConverter::Sips => "sips",
+            ImageConverter::Imagemagick => "magick",
+        }
+    }
 }
 
 impl Display for ImageConverter {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        match self {
-            ImageConverter::Sips => write!(f, "sips"),
-            ImageConverter::Imagemagick => write!(f, "imagemagick"),
-        }
+        write!(f, "{}", self.name())
     }
 }
 
@@ -97,23 +106,27 @@ pub enum AudioConverter {
 
 impl Converter for AudioConverter {
     fn determine() -> Option<AudioConverter> {
-        if exists("afconvert") {
+        if exists(AudioConverter::AfConvert.name()) {
             return Some(AudioConverter::AfConvert);
         }
-        if exists("ffmpeg") {
+        if exists(AudioConverter::Ffmpeg.name()) {
             return Some(AudioConverter::Ffmpeg);
         }
         eprintln!("No CAF converter found, audio attachments will not be converted!");
         None
     }
+
+    fn name(&self) -> &'static str {
+        match self {
+            AudioConverter::AfConvert => "afconvert",
+            AudioConverter::Ffmpeg => "ffmpeg",
+        }
+    }
 }
 
 impl Display for AudioConverter {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        match self {
-            AudioConverter::AfConvert => write!(f, "afconvert"),
-            AudioConverter::Ffmpeg => write!(f, "ffmpeg"),
-        }
+        write!(f, "{}", self.name())
     }
 }
 
@@ -125,19 +138,23 @@ pub enum VideoConverter {
 
 impl Converter for VideoConverter {
     fn determine() -> Option<VideoConverter> {
-        if exists("ffmpeg") {
+        if exists(VideoConverter::Ffmpeg.name()) {
             return Some(VideoConverter::Ffmpeg);
         }
         eprintln!("No MOV converter found, video attachments will not be converted!");
         None
     }
+
+    fn name(&self) -> &'static str {
+        match self {
+            VideoConverter::Ffmpeg => "ffmpeg",
+        }
+    }
 }
 
 impl Display for VideoConverter {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        match self {
-            VideoConverter::Ffmpeg => write!(f, "ffmpeg"),
-        }
+        write!(f, "{}", self.name())
     }
 }
 

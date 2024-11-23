@@ -8,7 +8,7 @@ use imessage_database::tables::attachment::MediaType;
 
 use crate::app::compatibility::{
     converters::common::{copy_raw, ensure_paths, run_command},
-    models::{AudioConverter, AudioType},
+    models::{AudioConverter, AudioType, Converter},
 };
 
 /// Copy an audio file, converting if possible
@@ -21,7 +21,6 @@ pub(crate) fn audio_copy_convert(
     converter: &AudioConverter,
     mime_type: MediaType,
 ) -> Option<MediaType<'static>> {
-    // Normal attachments always get converted to jpeg
     if matches!(
         mime_type,
         MediaType::Audio("caf") | MediaType::Audio("CAF") | MediaType::Audio("x-caf; codecs=opus")
@@ -44,9 +43,9 @@ fn convert_caf(from: &Path, to: &Path, converter: &AudioConverter) -> Option<()>
 
     match converter {
         AudioConverter::AfConvert => run_command(
-            "afconvert",
+            converter.name(),
             vec!["-f", "mp4f", "-d", "aac", "-v", from_path, to_path],
         ),
-        AudioConverter::Ffmpeg => run_command("ffmpeg", vec!["-i", from_path, to_path]),
+        AudioConverter::Ffmpeg => run_command(converter.name(), vec!["-i", from_path, to_path]),
     }
 }

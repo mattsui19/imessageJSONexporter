@@ -8,7 +8,7 @@ use imessage_database::tables::attachment::MediaType;
 
 use crate::app::compatibility::{
     converters::common::{copy_raw, ensure_paths, run_command},
-    models::{ImageConverter, ImageType},
+    models::{Converter, ImageConverter, ImageType},
 };
 
 /// Copy an image file, converting if possible
@@ -21,7 +21,6 @@ pub(crate) fn image_copy_convert(
     converter: &ImageConverter,
     mime_type: MediaType,
 ) -> Option<MediaType<'static>> {
-    // Normal attachments always get converted to jpeg
     if matches!(
         mime_type,
         MediaType::Image("heic") | MediaType::Image("HEIC")
@@ -63,7 +62,7 @@ pub(super) fn convert_heic(
         ImageConverter::Sips => {
             // Build the command
             run_command(
-                "sips",
+                converter.name(),
                 vec![
                     "-s",
                     "format",
@@ -77,7 +76,7 @@ pub(super) fn convert_heic(
         ImageConverter::Imagemagick =>
         // Build the command
         {
-            run_command("magick", vec![from_path, to_path])
+            run_command(converter.name(), vec![from_path, to_path])
         }
     };
 

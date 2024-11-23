@@ -14,8 +14,10 @@ use crate::app::compatibility::{
         common::{copy_raw, ensure_paths, run_command},
         image::convert_heic,
     },
-    models::{ImageConverter, ImageType, VideoConverter},
+    models::{Converter, ImageConverter, ImageType, VideoConverter},
 };
+
+use super::video;
 
 /// Copy a sticker, converting if possible
 ///
@@ -91,7 +93,7 @@ fn convert_heics(from: &Path, to: &Path, video_converter: &VideoConverter) -> Op
             // The third stream is the video data
             // Stream #0:2[0x1](und): Video: hevc (Main) (hvc1 / 0x31637668), yuv420p(tv, smpte170m/unknown/unknown), 524x600, 1370 kb/s, 22.98 fps, 30 tbr, 600 tbn (default)
             run_command(
-                "ffmpeg",
+                video_converter.name(),
                 vec![
                     "-i",
                     from_path,
@@ -105,7 +107,7 @@ fn convert_heics(from: &Path, to: &Path, video_converter: &VideoConverter) -> Op
             // The fourth stream is the alpha mask
             // Stream #0:3[0x2](und): Video: hevc (Rext) (hvc1 / 0x31637668), gray(pc), 524x600, 426 kb/s, 22.98 fps, 30 tbr, 600 tbn (default)
             run_command(
-                "ffmpeg",
+                video_converter.name(),
                 vec![
                     "-i",
                     from_path,
@@ -121,7 +123,7 @@ fn convert_heics(from: &Path, to: &Path, video_converter: &VideoConverter) -> Op
             let num_frames = &files.into_iter().count() / 2;
             (0..num_frames).try_for_each(|item| {
                 run_command(
-                    "ffmpeg",
+                    video_converter.name(),
                     vec![
                         "-i",
                         &format!("{tmp}/frame_{:04}.png", item),
@@ -137,7 +139,7 @@ fn convert_heics(from: &Path, to: &Path, video_converter: &VideoConverter) -> Op
             // Once we have the transparent frames,
             // we use the first frame to generate a transparency palette
             run_command(
-                "ffmpeg",
+                video_converter.name(),
                 vec![
                     "-i",
                     &format!("{tmp}/merged_0001.png"),
@@ -149,7 +151,7 @@ fn convert_heics(from: &Path, to: &Path, video_converter: &VideoConverter) -> Op
 
             // Create the gif from the parts we parsed above
             run_command(
-                "ffmpeg",
+                video_converter.name(),
                 vec![
                     "-i",
                     &format!("{tmp}/merged_%04d.png"),
