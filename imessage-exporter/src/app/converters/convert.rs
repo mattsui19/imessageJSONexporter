@@ -232,15 +232,6 @@ fn convert_heics(
 
     // This step applies the transparency mask to the images
     let files = read_dir(tmp).ok()?;
-    // let (frames, alphas): (Vec<_>, Vec<_>) = files
-    //     .filter_map(Result::ok) // Handle potential errors in reading directory entries
-    //     .partition(|entry| {
-    //         entry
-    //             .file_name()
-    //             .to_str()
-    //             .map(|name| name.starts_with("frame"))
-    //             .unwrap_or(false)
-    //     });
     let num_frames = &files.into_iter().count() / 2;
     (0..num_frames).for_each(|item| {
         println!(
