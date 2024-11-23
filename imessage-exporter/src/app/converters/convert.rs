@@ -6,7 +6,9 @@ use std::{
 
 use imessage_database::tables::attachment::MediaType;
 
-use crate::app::converters::models::{AudioConverter, ImageConverter, ImageType, VideoConverter};
+use crate::app::converters::models::{
+    AudioConverter, AudioType, ImageConverter, ImageType, VideoConverter, VideoType,
+};
 
 /// Copy a file without altering it
 pub(super) fn copy_raw(from: &Path, to: &Path) {
@@ -23,7 +25,7 @@ pub(super) fn copy_raw(from: &Path, to: &Path) {
     };
 }
 
-/// Copy amn image file, converting if possible
+/// Copy an image file, converting if possible
 ///
 /// - Attachment `HEIC` files convert to `JPEG`
 /// - Fallback to the original format
@@ -160,7 +162,7 @@ fn run_command(command: &str, args: Vec<&str>) -> Option<()> {
     }
 }
 
-pub(super) fn convert_heics(
+fn convert_heics(
     from: &Path,
     to: &Path,
     converter: &ImageConverter,
@@ -169,25 +171,71 @@ pub(super) fn convert_heics(
     todo!()
 }
 
-pub(super) fn convert_caf(
+pub(super) fn audio_copy_convert(
     from: &Path,
-    to: &Path,
+    to: &mut PathBuf,
     converter: &AudioConverter,
-    output_image_type: &ImageType,
-) -> Option<()> {
-    match converter {
-        AudioConverter::AfConvert => todo!(),
-        AudioConverter::Ffmpeg => todo!(),
+    mime_type: MediaType,
+) {
+    // Normal attachments always get converted to jpeg
+    if matches!(mime_type, MediaType::Audio("caf") | MediaType::Audio("CAF")) {
+        let output_type = AudioType::Mp4;
+        // Update extension for conversion
+        to.set_extension(output_type.to_str());
+        if convert_caf(from, to, converter).is_none() {
+            eprintln!("Unable to convert {from:?}");
+        }
+    } else {
+        copy_raw(from, to);
     }
 }
 
-pub(super) fn convert_mov(
-    from: &Path,
-    to: &Path,
-    converter: &VideoConverter,
-    output_image_type: &ImageType,
-) -> Option<()> {
+fn convert_caf(from: &Path, to: &Path, converter: &AudioConverter) -> Option<()> {
+    // Get the path we want to copy from
+    let from_path = from.to_str()?;
+
+    // Get the path we want to write to
+    let to_path = to.to_str()?;
+
     match converter {
-        VideoConverter::Ffmpeg => todo!(),
+        AudioConverter::AfConvert => run_command(
+            "afconvert",
+            vec!["-f", "mp4f", "-d", "aac", "-v", from_path, to_path],
+        ),
+        AudioConverter::Ffmpeg => run_command("ffmpeg", vec!["-i", from_path, to_path]),
+    }
+}
+
+pub(super) fn video_copy_convert(
+    from: &Path,
+    to: &mut PathBuf,
+    converter: &VideoConverter,
+    mime_type: MediaType,
+) {
+    // Normal attachments always get converted to jpeg
+    if matches!(
+        mime_type,
+        MediaType::Video("mov") | MediaType::Video("MOV") | MediaType::Video("quicktime")
+    ) {
+        let output_type = VideoType::Mp4;
+        // Update extension for conversion
+        to.set_extension(output_type.to_str());
+        if convert_mov(from, to, converter).is_none() {
+            eprintln!("Unable to convert {from:?}");
+        }
+    } else {
+        copy_raw(from, to);
+    }
+}
+
+fn convert_mov(from: &Path, to: &Path, converter: &VideoConverter) -> Option<()> {
+    // Get the path we want to copy from
+    let from_path = from.to_str()?;
+
+    // Get the path we want to write to
+    let to_path = to.to_str()?;
+
+    match converter {
+        VideoConverter::Ffmpeg => run_command("ffmpeg", vec!["-i", from_path, to_path]),
     }
 }

@@ -6,7 +6,7 @@ use std::{
 
 use crate::app::{
     converters::{
-        convert::{copy_raw, image_copy_convert, sticker_copy_convert},
+        convert::{audio_copy_convert, copy_raw, image_copy_convert, sticker_copy_convert},
         models::{AudioConverter, Converter, ImageConverter, VideoConverter},
     },
     runtime::Config,
@@ -19,6 +19,8 @@ use imessage_database::tables::{
 };
 
 use filetime::{set_file_times, FileTime};
+
+use super::convert::video_copy_convert;
 
 #[derive(Debug, PartialEq, Eq, Default)]
 pub struct AttachmentManager {
@@ -151,42 +153,53 @@ impl AttachmentManager {
                 return Some(());
             }
 
+            // TODO: Return a new MIME type string and update the attachment below
             match attachment.mime_type() {
                 MediaType::Image(_) => {
                     match self.mode {
-                        AttachmentManagerMode::Compatible => {
-                            match &config.options.attachment_manager.image_converter {
-                                Some(converter) => {
-                                    if attachment.is_sticker {
-                                        sticker_copy_convert(
-                                            from,
-                                            &mut to,
-                                            converter,
-                                            attachment.mime_type(),
-                                        );
-                                    } else {
-                                        image_copy_convert(
-                                            from,
-                                            &mut to,
-                                            converter,
-                                            attachment.mime_type(),
-                                        );
-                                    }
+                        AttachmentManagerMode::Compatible => match &self.image_converter {
+                            Some(converter) => {
+                                // TODO: check if the video converter exists to make the heics into a gif
+                                if attachment.is_sticker {
+                                    sticker_copy_convert(
+                                        from,
+                                        &mut to,
+                                        converter,
+                                        attachment.mime_type(),
+                                    );
+                                } else {
+                                    image_copy_convert(
+                                        from,
+                                        &mut to,
+                                        converter,
+                                        attachment.mime_type(),
+                                    );
                                 }
-                                None => copy_raw(from, &to),
                             }
-                        }
+                            None => copy_raw(from, &to),
+                        },
                         AttachmentManagerMode::Efficient => copy_raw(from, &to),
                         AttachmentManagerMode::Disabled => unreachable!(),
                     };
                 }
                 MediaType::Video(_) => match self.mode {
-                    AttachmentManagerMode::Compatible => copy_raw(from, &to),
+                    AttachmentManagerMode::Compatible => match &self.video_converter {
+                        Some(converter) => {
+                            println!("{:?}", attachment.mime_type());
+                            video_copy_convert(from, &mut to, converter, attachment.mime_type());
+                        }
+                        None => copy_raw(from, &to),
+                    },
                     AttachmentManagerMode::Efficient => copy_raw(from, &to),
                     AttachmentManagerMode::Disabled => unreachable!(),
                 },
                 MediaType::Audio(_) => match self.mode {
-                    AttachmentManagerMode::Compatible => copy_raw(from, &to),
+                    AttachmentManagerMode::Compatible => match &self.audio_converter {
+                        Some(converter) => {
+                            audio_copy_convert(from, &mut to, converter, attachment.mime_type());
+                        }
+                        None => copy_raw(from, &to),
+                    },
                     AttachmentManagerMode::Efficient => copy_raw(from, &to),
                     AttachmentManagerMode::Disabled => unreachable!(),
                 },
@@ -196,6 +209,7 @@ impl AttachmentManager {
             // Update file metadata
             update_file_metadata(from, &to, message, config);
             attachment.copied_path = Some(to);
+            // TODO: Update attachment MIME type, if returned
         }
         Some(())
     }

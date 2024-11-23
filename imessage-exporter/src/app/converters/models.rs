@@ -23,29 +23,25 @@ impl ImageType {
 #[derive(Debug, PartialEq, Eq)]
 pub enum VideoType {
     Mp4,
-    Mov,
 }
 
 impl VideoType {
     pub fn to_str(&self) -> &'static str {
         match self {
             Self::Mp4 => "mp4",
-            Self::Mov => "mov",
         }
     }
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum AudioType {
-    Caf,
-    Mp3,
+    Mp4,
 }
 
 impl AudioType {
     pub fn to_str(&self) -> &'static str {
         match self {
-            Self::Caf => "caf",
-            Self::Mp3 => "mp3",
+            Self::Mp4 => "mp4",
         }
     }
 }
