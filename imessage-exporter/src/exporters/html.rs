@@ -595,14 +595,24 @@ impl<'a> Writer<'a> for HTML<'a> {
 
     fn format_sticker(&self, sticker: &'a mut Attachment, message: &Message) -> String {
         match self.format_attachment(sticker, message, &AttachmentMeta::default()) {
-            Ok(sticker_embed) => {
+            Ok(mut sticker_embed) => {
+                // Add sticker effect
                 let sticker_effect = sticker.get_sticker_effect(
                     &self.config.options.platform,
                     &self.config.options.db_path,
                     self.config.options.attachment_root.as_deref(),
                 );
                 if let Ok(Some(sticker_effect)) = sticker_effect {
-                    return format!("{sticker_embed}\n<div class=\"sticker_effect\">Sent with {sticker_effect} effect</div>");
+                    sticker_embed.push_str(&format!(
+                        "\n<div class=\"sticker_effect\">Sent with {sticker_effect} effect</div>"
+                    ))
+                }
+
+                // Add sticker prompt
+                if let Some(prompt) = &sticker.emoji_description {
+                    sticker_embed.push_str(&format!(
+                        "\n<div class=\"sticker_effect\">Genmoji prompt: {prompt}</div>"
+                    ))
                 }
                 sticker_embed
             }
@@ -2234,6 +2244,43 @@ mod tests {
         let actual = exporter.format_sticker(&mut attachment, &message);
 
         assert_eq!(actual, "<img src=\"imessage-database/test_data/stickers/outline.heic\" loading=\"lazy\">\n<div class=\"sticker_effect\">Sent with Outline effect</div>");
+
+        // Remove the file created by the constructor for this test
+        let orphaned_path = current_dir()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("orphaned.html");
+        std::fs::remove_file(orphaned_path).unwrap();
+    }
+
+    #[test]
+    fn can_format_html_attachment_sticker_genmoji() {
+        // Create exporter
+        let mut options = Options::fake_options(ExportType::Html);
+        options.export_path = current_dir().unwrap().parent().unwrap().to_path_buf();
+
+        let config = Config::fake_app(options);
+        let exporter = HTML::new(&config).unwrap();
+
+        let mut message = Config::fake_message();
+        // Set message to sticker variant
+        message.associated_message_type = Some(1000);
+
+        let mut attachment = Config::fake_attachment();
+        attachment.is_sticker = true;
+        attachment.emoji_description = Some("Example description".to_string());
+        let sticker_path = current_dir()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("imessage-database/test_data/stickers/outline.heic");
+        attachment.filename = Some(sticker_path.to_string_lossy().to_string());
+        attachment.copied_path = Some(PathBuf::from(sticker_path.to_string_lossy().to_string()));
+
+        let actual = exporter.format_sticker(&mut attachment, &message);
+
+        assert_eq!(actual, "<img src=\"imessage-database/test_data/stickers/outline.heic\" loading=\"lazy\">\n<div class=\"sticker_effect\">Sent with Outline effect</div>\n<div class=\"sticker_effect\">Genmoji prompt: Example description</div>");
 
         // Remove the file created by the constructor for this test
         let orphaned_path = current_dir()
