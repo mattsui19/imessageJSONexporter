@@ -180,19 +180,3 @@ fn convert_heics(from: &Path, to: &Path, video_converter: &VideoConverter) -> Op
         }
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use std::path::PathBuf;
-
-    use super::convert_heics;
-
-    #[test]
-    fn test_can_convert_sticker_gif() {
-        convert_heics(
-            &PathBuf::from("/Users/chris/Desktop/107156.heics"),
-            &PathBuf::from("/Users/chris/imessage_export/attachments/187/107156.gif"),
-            &crate::app::compatibility::models::VideoConverter::Ffmpeg,
-        );
-    }
-}
