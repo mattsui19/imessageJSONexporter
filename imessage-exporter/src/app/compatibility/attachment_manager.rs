@@ -162,33 +162,35 @@ impl AttachmentManager {
             match attachment.mime_type() {
                 MediaType::Image(_) => {
                     match self.mode {
-                        AttachmentManagerMode::Compatible => match &self.image_converter {
-                            Some(converter) => {
-                                if attachment.is_sticker {
-                                    new_media_type = sticker_copy_convert(
-                                        from,
-                                        &mut to,
-                                        converter,
-                                        &self.video_converter,
-                                        attachment.mime_type(),
-                                    );
-                                } else {
-                                    new_media_type = image_copy_convert(
-                                        from,
-                                        &mut to,
-                                        converter,
-                                        attachment.mime_type(),
-                                    );
+                        AttachmentManagerMode::Fast | AttachmentManagerMode::Full => {
+                            match &self.image_converter {
+                                Some(converter) => {
+                                    if attachment.is_sticker {
+                                        new_media_type = sticker_copy_convert(
+                                            from,
+                                            &mut to,
+                                            converter,
+                                            &self.video_converter,
+                                            attachment.mime_type(),
+                                        );
+                                    } else {
+                                        new_media_type = image_copy_convert(
+                                            from,
+                                            &mut to,
+                                            converter,
+                                            attachment.mime_type(),
+                                        );
+                                    }
                                 }
+                                None => copy_raw(from, &to),
                             }
-                            None => copy_raw(from, &to),
-                        },
-                        AttachmentManagerMode::Efficient => copy_raw(from, &to),
+                        }
+                        AttachmentManagerMode::Clone => copy_raw(from, &to),
                         AttachmentManagerMode::Disabled => unreachable!(),
                     };
                 }
                 MediaType::Video(_) => match self.mode {
-                    AttachmentManagerMode::Compatible => match &self.video_converter {
+                    AttachmentManagerMode::Full => match &self.video_converter {
                         Some(converter) => {
                             new_media_type = video_copy_convert(
                                 from,
@@ -199,11 +201,13 @@ impl AttachmentManager {
                         }
                         None => copy_raw(from, &to),
                     },
-                    AttachmentManagerMode::Efficient => copy_raw(from, &to),
+                    AttachmentManagerMode::Clone | AttachmentManagerMode::Fast => {
+                        copy_raw(from, &to)
+                    }
                     AttachmentManagerMode::Disabled => unreachable!(),
                 },
                 MediaType::Audio(_) => match self.mode {
-                    AttachmentManagerMode::Compatible => match &self.audio_converter {
+                    AttachmentManagerMode::Full => match &self.audio_converter {
                         Some(converter) => {
                             new_media_type = audio_copy_convert(
                                 from,
@@ -214,7 +218,9 @@ impl AttachmentManager {
                         }
                         None => copy_raw(from, &to),
                     },
-                    AttachmentManagerMode::Efficient => copy_raw(from, &to),
+                    AttachmentManagerMode::Clone | AttachmentManagerMode::Fast => {
+                        copy_raw(from, &to)
+                    }
                     AttachmentManagerMode::Disabled => unreachable!(),
                 },
                 _ => copy_raw(from, &to),
@@ -236,10 +242,12 @@ impl AttachmentManager {
 pub enum AttachmentManagerMode {
     /// Do not copy attachments
     Disabled,
-    /// Copy and convert attachments to more compatible formats using a [`Converter`]
-    Compatible,
+    /// Copy and convert image attachments to more compatible formats using a [`Converter`]
+    Fast,
     /// Copy attachments without converting; preserves quality but may not display correctly in all browsers
-    Efficient,
+    Clone,
+    /// Copy and convert all attachments to more compatible formats using a [`Converter`]
+    Full,
 }
 
 impl Default for AttachmentManagerMode {
@@ -252,9 +260,10 @@ impl AttachmentManagerMode {
     /// Create an instance of the enum given user input
     pub fn from_cli(copy_state: &str) -> Option<Self> {
         match copy_state.to_lowercase().as_str() {
-            "compatible" => Some(Self::Compatible),
-            "efficient" => Some(Self::Efficient),
+            "fast" => Some(Self::Fast),
+            "clone" => Some(Self::Clone),
             "disabled" => Some(Self::Disabled),
+            "full" => Some(Self::Full),
             _ => None,
         }
     }
@@ -264,8 +273,9 @@ impl Display for AttachmentManagerMode {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             AttachmentManagerMode::Disabled => write!(fmt, "disabled"),
-            AttachmentManagerMode::Compatible => write!(fmt, "compatible"),
-            AttachmentManagerMode::Efficient => write!(fmt, "efficient"),
+            AttachmentManagerMode::Fast => write!(fmt, "compatible"),
+            AttachmentManagerMode::Clone => write!(fmt, "efficient"),
+            AttachmentManagerMode::Full => write!(fmt, "full"),
         }
     }
 }

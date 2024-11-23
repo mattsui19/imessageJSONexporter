@@ -850,7 +850,7 @@ impl<'a> BalloonFormatter<&'a str> for TXT<'a> {
             AttachmentManagerMode::Disabled => balloon
                 .render_ascii(40)
                 .replace("\n", &format!("{indent}\n")),
-            AttachmentManagerMode::Compatible | AttachmentManagerMode::Efficient => self
+            _ => self
                 .config
                 .options
                 .attachment_manager
