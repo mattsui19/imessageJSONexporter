@@ -101,7 +101,7 @@ The number of separate chats that contain the same participants. See the [duplic
 
 ## Detected converters
 
-`imessage-exporter` uses third-party tools to convert images when using `--copy-method fast` or `--copy-method full`. This section shows what programs are detected on the current system.
+`imessage-exporter` uses third-party tools to convert images when using `--copy-method partial` or `--copy-method full`. This section shows what programs are detected on the current system.
 
 ### Image converter
 

@@ -44,7 +44,7 @@ pub const OPTION_CONVERSATION_FILTER: &str = "conversation-filter";
 // Other CLI Text
 pub const SUPPORTED_FILE_TYPES: &str = "txt, html";
 pub const SUPPORTED_PLATFORMS: &str = "macOS, iOS";
-pub const SUPPORTED_ATTACHMENT_MANAGER_MODES: &str = "clone, fast, full, disabled";
+pub const SUPPORTED_ATTACHMENT_MANAGER_MODES: &str = "clone, partial, full, disabled";
 pub const ABOUT: &str = concat!(
     "The `imessage-exporter` binary exports iMessage data to\n",
     "`txt` or `html` formats. It can also run diagnostics\n",
@@ -359,7 +359,7 @@ fn get_command() -> Command {
             Arg::new(OPTION_ATTACHMENT_MANAGER)
             .short('c')
             .long(OPTION_ATTACHMENT_MANAGER)
-            .help(format!("Specify an optional method to use when copying message attachments\n`clone` will copy files without converting anything\n`fast` will convert HEIC files to JPEG\n`full` will convert HEIC files to JPEG, CAF to MP4, and MOV to MP4\nIf omitted, the default is `{}`\nImageMagick is required to convert images on non-macOS platforms\nffmpeg is required to convert audio on non-macOS platforms and video on all platforms\n", AttachmentManagerMode::default()))
+            .help(format!("Specify an optional method to use when copying message attachments\n`clone` will copy files without converting anything\n`partial` will convert HEIC files to JPEG\n`full` will convert HEIC files to JPEG, CAF to MP4, and MOV to MP4\nIf omitted, the default is `{}`\nImageMagick is required to convert images on non-macOS platforms\nffmpeg is required to convert audio on non-macOS platforms and video on all platforms\n", AttachmentManagerMode::default()))
             .display_order(2)
             .value_name(SUPPORTED_ATTACHMENT_MANAGER_MODES),
         )
@@ -551,7 +551,7 @@ mod arg_tests {
     #[test]
     fn cant_build_option_diagnostic_flag_with_attachment_manager() {
         // Get matches from sample args
-        let cli_args: Vec<&str> = vec!["imessage-exporter", "-d", "-c", "fast"];
+        let cli_args: Vec<&str> = vec!["imessage-exporter", "-d", "-c", "partial"];
         let command = get_command();
         let args = command.get_matches_from(cli_args);
 
@@ -849,7 +849,7 @@ mod arg_tests {
     }
 
     #[test]
-    fn can_build_option_fast() {
+    fn can_build_option_full() {
         // Get matches from sample args
         let cli_args: Vec<&str> = vec!["imessage-exporter", "-f", "txt", "-c", "full"];
         let command = get_command();

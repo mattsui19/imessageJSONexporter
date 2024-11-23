@@ -43,10 +43,10 @@ The [releases page](https://github.com/ReagentX/imessage-exporter/releases) prov
 -f, --format <txt, html>
         Specify a single file format to export messages into
         
--c, --copy-method <clone, fast, full, disabled>
+-c, --copy-method <clone, partial, full, disabled>
         Specify an optional method to use when copying message attachments
         `clone` will copy files without converting anything
-        `fast` will convert HEIC files to JPEG
+        `partial` will convert HEIC files to JPEG
         `full` will convert HEIC files to JPEG, CAF to MP4, and MOV to MP4
         If omitted, the default is `disabled`
         ImageMagick is required to convert images on non-macOS platforms
