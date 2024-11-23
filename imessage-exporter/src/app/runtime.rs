@@ -1,3 +1,8 @@
+/*!
+ The main app runtime.
+*/
+
+
 use std::{
     cmp::min,
     collections::{BTreeSet, HashMap, HashSet},

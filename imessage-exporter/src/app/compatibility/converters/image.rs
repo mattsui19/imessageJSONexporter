@@ -1,3 +1,7 @@
+/*!
+ Defines routines for converting image files.
+*/
+
 use std::{
     fs::create_dir_all,
     path::{Path, PathBuf},

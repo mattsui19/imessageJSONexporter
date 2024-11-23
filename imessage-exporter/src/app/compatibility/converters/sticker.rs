@@ -1,3 +1,8 @@
+/*!
+ Defines routines for converting sticker image files.
+*/
+
+
 use std::{
     fs::{create_dir_all, read_dir, remove_dir_all},
     path::{Path, PathBuf},

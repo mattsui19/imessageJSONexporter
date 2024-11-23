@@ -1,3 +1,7 @@
+/*!
+ Contains data structures used to describe file converters and associated types.
+*/
+
 use std::{
     fmt::{Display, Formatter, Result},
     process::{Command, Stdio},
@@ -53,7 +57,9 @@ pub trait Converter {
 }
 
 #[derive(Debug, PartialEq, Eq)]
+/// Program used to convert/encode images
 pub enum ImageConverter {
+    /// macOS Builtin
     Sips,
     Imagemagick,
 }
@@ -82,7 +88,9 @@ impl Display for ImageConverter {
 }
 
 #[derive(Debug, PartialEq, Eq)]
+/// Program used to convert/encode audio
 pub enum AudioConverter {
+    /// macOS Builtin
     AfConvert,
     Ffmpeg,
 }
@@ -110,6 +118,7 @@ impl Display for AudioConverter {
 }
 
 #[derive(Debug, PartialEq, Eq)]
+/// Program used to convert/encode videos
 pub enum VideoConverter {
     Ffmpeg,
 }

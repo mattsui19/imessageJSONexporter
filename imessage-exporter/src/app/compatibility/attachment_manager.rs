@@ -1,3 +1,7 @@
+/*!
+ Defines routines for how attachments should be handled.
+*/
+
 use std::{
     fmt::Display,
     fs::{create_dir_all, metadata, write},
@@ -114,7 +118,7 @@ impl AttachmentManager {
 
     /// Handle an attachment, copying and converting if requested
     ///
-    /// If copied, update attachment's `copied_path`
+    /// If copied, update attachment's `copied_path` and `mime_type`
     pub fn handle_attachment<'a>(
         &'a self,
         message: &Message,

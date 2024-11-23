@@ -1,3 +1,8 @@
+/*!
+ Represents CLI options and validation logic.
+*/
+
+
 use std::path::PathBuf;
 
 use clap::{crate_version, Arg, ArgAction, ArgMatches, Command};

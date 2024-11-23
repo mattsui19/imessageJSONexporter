@@ -1,3 +1,8 @@
+/*!
+ Defines routines for converting video files.
+*/
+
+
 use std::{
     fs::create_dir_all,
     path::{Path, PathBuf},
@@ -10,6 +15,10 @@ use crate::app::compatibility::{
     models::{VideoConverter, VideoType},
 };
 
+/// Copy a video file, converting if possible
+///
+/// - Attachment `MOV` files convert to `MP4`
+/// - Fallback to the original format
 pub(crate) fn video_copy_convert(
     from: &Path,
     to: &mut PathBuf,

@@ -1,3 +1,7 @@
+/*!
+ Defines routines for converting audio files.
+*/
+
 use std::{
     fs::create_dir_all,
     path::{Path, PathBuf},
@@ -10,6 +14,10 @@ use crate::app::compatibility::{
     models::{AudioConverter, AudioType},
 };
 
+/// Copy an audio file, converting if possible
+///
+/// - Attachment `CAF` files convert to `MP4`
+/// - Fallback to the original format
 pub(crate) fn audio_copy_convert(
     from: &Path,
     to: &mut PathBuf,

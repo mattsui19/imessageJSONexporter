@@ -1,9 +1,15 @@
+/*!
+ Defines routines common across all converters.
+*/
+
+
 use std::{
     fs::{copy, create_dir_all},
     path::Path,
     process::{Command, Stdio},
 };
 
+/// Run a command, ignoring output; returning [`None`] on failure.
 pub(crate) fn run_command(command: &str, args: Vec<&str>) -> Option<()> {
     match Command::new(command)
         .args(args)
