@@ -34,7 +34,7 @@ pub(super) fn image_copy_convert(
     to: &mut PathBuf,
     converter: &ImageConverter,
     mime_type: MediaType,
-) {
+) -> Option<MediaType<'static>> {
     // Normal attachments always get converted to jpeg
     if matches!(
         mime_type,
@@ -45,10 +45,13 @@ pub(super) fn image_copy_convert(
         to.set_extension(output_type.to_str());
         if convert_heic(from, to, converter, &output_type).is_none() {
             eprintln!("Unable to convert {from:?}");
+        } else {
+            return Some(MediaType::Image(output_type.to_str()));
         }
     } else {
         copy_raw(from, to);
     }
+    None
 }
 
 /// Copy a sticker, converting if possible
@@ -61,7 +64,7 @@ pub(super) fn sticker_copy_convert(
     to: &mut PathBuf,
     converter: &ImageConverter,
     mime_type: MediaType,
-) {
+) -> Option<MediaType<'static>> {
     // Determine the output type of the sticker
     let output_type: Option<ImageType> = match mime_type {
         // Normal stickers get converted to png
@@ -78,10 +81,13 @@ pub(super) fn sticker_copy_convert(
             to.set_extension(output_type.to_str());
             if convert_heic(from, to, converter, &output_type).is_none() {
                 eprintln!("Unable to convert {from:?}");
+            } else {
+                return Some(MediaType::Image(output_type.to_str()));
             }
         }
         None => copy_raw(from, to),
     }
+    None
 }
 
 /// Convert a HEIC image file to the provided format
@@ -165,7 +171,7 @@ fn run_command(command: &str, args: Vec<&str>) -> Option<()> {
 fn convert_heics(
     from: &Path,
     to: &Path,
-    converter: &ImageConverter,
+    converter: &VideoConverter,
     output_image_type: &ImageType,
 ) -> Option<()> {
     todo!()
@@ -176,7 +182,7 @@ pub(super) fn audio_copy_convert(
     to: &mut PathBuf,
     converter: &AudioConverter,
     mime_type: MediaType,
-) {
+) -> Option<MediaType<'static>> {
     // Normal attachments always get converted to jpeg
     if matches!(mime_type, MediaType::Audio("caf") | MediaType::Audio("CAF")) {
         let output_type = AudioType::Mp4;
@@ -184,10 +190,13 @@ pub(super) fn audio_copy_convert(
         to.set_extension(output_type.to_str());
         if convert_caf(from, to, converter).is_none() {
             eprintln!("Unable to convert {from:?}");
+        } else {
+            return Some(MediaType::Audio(output_type.to_str()));
         }
     } else {
         copy_raw(from, to);
     }
+    None
 }
 
 fn convert_caf(from: &Path, to: &Path, converter: &AudioConverter) -> Option<()> {
@@ -211,7 +220,7 @@ pub(super) fn video_copy_convert(
     to: &mut PathBuf,
     converter: &VideoConverter,
     mime_type: MediaType,
-) {
+) -> Option<MediaType<'static>> {
     // Normal attachments always get converted to jpeg
     if matches!(
         mime_type,
@@ -222,10 +231,13 @@ pub(super) fn video_copy_convert(
         to.set_extension(output_type.to_str());
         if convert_mov(from, to, converter).is_none() {
             eprintln!("Unable to convert {from:?}");
+        } else {
+            return Some(MediaType::Video(output_type.to_str()));
         }
     } else {
         copy_raw(from, to);
     }
+    None
 }
 
 fn convert_mov(from: &Path, to: &Path, converter: &VideoConverter) -> Option<()> {

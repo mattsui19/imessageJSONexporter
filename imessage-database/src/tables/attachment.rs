@@ -45,7 +45,7 @@ pub enum MediaType<'a> {
 }
 
 impl<'a> MediaType<'a> {
-    fn as_mime_type(&self) -> String {
+    pub fn as_mime_type(&self) -> String {
         match self {
             MediaType::Image(subtype) => format!("image/{subtype}"),
             MediaType::Video(subtype) => format!("video/{subtype}"),

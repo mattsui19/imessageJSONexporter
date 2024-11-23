@@ -148,12 +148,16 @@ impl AttachmentManager {
 
             // Set the new file's extension to the original one
             to.set_extension(attachment.extension()?);
+
+            // If the same file was referenced more than once, i.e. in a reply or response that we render twice, escape early
             if to.exists() {
                 attachment.copied_path = Some(to);
                 return Some(());
             }
 
-            // TODO: Return a new MIME type string and update the attachment below
+            // If we convert the attachment, we need to update the media type
+            let mut new_media_type: Option<MediaType> = None;
+
             match attachment.mime_type() {
                 MediaType::Image(_) => {
                     match self.mode {
@@ -161,14 +165,14 @@ impl AttachmentManager {
                             Some(converter) => {
                                 // TODO: check if the video converter exists to make the heics into a gif
                                 if attachment.is_sticker {
-                                    sticker_copy_convert(
+                                    new_media_type = sticker_copy_convert(
                                         from,
                                         &mut to,
                                         converter,
                                         attachment.mime_type(),
                                     );
                                 } else {
-                                    image_copy_convert(
+                                    new_media_type = image_copy_convert(
                                         from,
                                         &mut to,
                                         converter,
@@ -185,8 +189,12 @@ impl AttachmentManager {
                 MediaType::Video(_) => match self.mode {
                     AttachmentManagerMode::Compatible => match &self.video_converter {
                         Some(converter) => {
-                            println!("{:?}", attachment.mime_type());
-                            video_copy_convert(from, &mut to, converter, attachment.mime_type());
+                            new_media_type = video_copy_convert(
+                                from,
+                                &mut to,
+                                converter,
+                                attachment.mime_type(),
+                            );
                         }
                         None => copy_raw(from, &to),
                     },
@@ -196,7 +204,12 @@ impl AttachmentManager {
                 MediaType::Audio(_) => match self.mode {
                     AttachmentManagerMode::Compatible => match &self.audio_converter {
                         Some(converter) => {
-                            audio_copy_convert(from, &mut to, converter, attachment.mime_type());
+                            new_media_type = audio_copy_convert(
+                                from,
+                                &mut to,
+                                converter,
+                                attachment.mime_type(),
+                            );
                         }
                         None => copy_raw(from, &to),
                     },
@@ -209,7 +222,9 @@ impl AttachmentManager {
             // Update file metadata
             update_file_metadata(from, &to, message, config);
             attachment.copied_path = Some(to);
-            // TODO: Update attachment MIME type, if returned
+            if let Some(media_type) = new_media_type {
+                attachment.mime_type = Some(media_type.as_mime_type())
+            }
         }
         Some(())
     }
