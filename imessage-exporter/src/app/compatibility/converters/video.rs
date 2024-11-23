@@ -2,16 +2,12 @@
  Defines routines for converting video files.
 */
 
-
-use std::{
-    fs::create_dir_all,
-    path::{Path, PathBuf},
-};
+use std::path::{Path, PathBuf};
 
 use imessage_database::tables::attachment::MediaType;
 
 use crate::app::compatibility::{
-    converters::common::{copy_raw, run_command},
+    converters::common::{copy_raw, ensure_paths, run_command},
     models::{VideoConverter, VideoType},
 };
 
@@ -46,21 +42,7 @@ pub(crate) fn video_copy_convert(
 }
 
 fn convert_mov(from: &Path, to: &Path, converter: &VideoConverter) -> Option<()> {
-    // Get the path we want to copy from
-    let from_path = from.to_str()?;
-
-    // Get the path we want to write to
-    let to_path = to.to_str()?;
-
-    // Ensure the directory tree exists
-    if let Some(folder) = to.parent() {
-        if !folder.exists() {
-            if let Err(why) = create_dir_all(folder) {
-                eprintln!("Unable to create {folder:?}: {why}");
-                return None;
-            }
-        }
-    }
+    let (from_path, to_path) = ensure_paths(from, to)?;
 
     match converter {
         VideoConverter::Ffmpeg => run_command("ffmpeg", vec!["-i", from_path, to_path]),

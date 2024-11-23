@@ -7,6 +7,13 @@ use std::{
     process::{Command, Stdio},
 };
 
+pub trait Converter {
+    /// Determine the converter type for the current shell environment
+    fn determine() -> Option<Self>
+    where
+        Self: Sized;
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub enum ImageType {
     Jpeg,
@@ -50,12 +57,6 @@ impl AudioType {
     }
 }
 
-pub trait Converter {
-    fn determine() -> Option<Self>
-    where
-        Self: Sized;
-}
-
 #[derive(Debug, PartialEq, Eq)]
 /// Program used to convert/encode images
 pub enum ImageConverter {
@@ -65,7 +66,6 @@ pub enum ImageConverter {
 }
 
 impl Converter for ImageConverter {
-    /// Determine the converter type for the current shell environment
     fn determine() -> Option<ImageConverter> {
         if exists("sips") {
             return Some(ImageConverter::Sips);
