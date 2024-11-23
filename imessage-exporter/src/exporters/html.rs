@@ -17,7 +17,7 @@ use crate::{
 };
 
 use imessage_database::{
-    error::{attachment, plist::PlistParseError, table::TableError},
+    error::{plist::PlistParseError, table::TableError},
     message_types::{
         app::AppMessage,
         app_store::AppStoreMessage,
