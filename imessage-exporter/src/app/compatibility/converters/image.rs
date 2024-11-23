@@ -58,27 +58,17 @@ pub(super) fn convert_heic(
 ) -> Option<()> {
     let (from_path, to_path) = ensure_paths(from, to)?;
 
-    match converter {
-        ImageConverter::Sips => {
-            // Build the command
-            run_command(
-                converter.name(),
-                vec![
-                    "-s",
-                    "format",
-                    output_image_type.to_str(),
-                    from_path,
-                    "-o",
-                    to_path,
-                ],
-            )
-        }
-        ImageConverter::Imagemagick =>
-        // Build the command
-        {
-            run_command(converter.name(), vec![from_path, to_path])
-        }
+    let args = match converter {
+        ImageConverter::Sips => vec![
+            "-s",
+            "format",
+            output_image_type.to_str(),
+            from_path,
+            "-o",
+            to_path,
+        ],
+        ImageConverter::Imagemagick => vec![from_path, to_path],
     };
 
-    Some(())
+    run_command(converter.name(), args)
 }

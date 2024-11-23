@@ -43,7 +43,8 @@ pub(crate) fn video_copy_convert(
 fn convert_mov(from: &Path, to: &Path, converter: &VideoConverter) -> Option<()> {
     let (from_path, to_path) = ensure_paths(from, to)?;
 
-    match converter {
-        VideoConverter::Ffmpeg => run_command(converter.name(), vec!["-i", from_path, to_path]),
-    }
+    let args = match converter {
+        VideoConverter::Ffmpeg => vec!["-i", from_path, to_path],
+    };
+    run_command(converter.name(), args)
 }

@@ -41,11 +41,10 @@ pub(crate) fn audio_copy_convert(
 fn convert_caf(from: &Path, to: &Path, converter: &AudioConverter) -> Option<()> {
     let (from_path, to_path) = ensure_paths(from, to)?;
 
-    match converter {
-        AudioConverter::AfConvert => run_command(
-            converter.name(),
-            vec!["-f", "mp4f", "-d", "aac", "-v", from_path, to_path],
-        ),
-        AudioConverter::Ffmpeg => run_command(converter.name(), vec!["-i", from_path, to_path]),
-    }
+    let args = match converter {
+        AudioConverter::AfConvert => vec!["-f", "mp4f", "-d", "aac", "-v", from_path, to_path],
+        AudioConverter::Ffmpeg => vec!["-i", from_path, to_path],
+    };
+
+    run_command(converter.name(), args)
 }

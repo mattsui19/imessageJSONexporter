@@ -17,8 +17,6 @@ use crate::app::compatibility::{
     models::{Converter, ImageConverter, ImageType, VideoConverter},
 };
 
-use super::video;
-
 /// Copy a sticker, converting if possible
 ///
 /// - Sticker `HEIC` files convert to `PNG`
