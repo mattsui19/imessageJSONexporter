@@ -273,8 +273,8 @@ impl Display for AttachmentManagerMode {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             AttachmentManagerMode::Disabled => write!(fmt, "disabled"),
-            AttachmentManagerMode::Fast => write!(fmt, "compatible"),
-            AttachmentManagerMode::Clone => write!(fmt, "efficient"),
+            AttachmentManagerMode::Fast => write!(fmt, "fast"),
+            AttachmentManagerMode::Clone => write!(fmt, "clone"),
             AttachmentManagerMode::Full => write!(fmt, "full"),
         }
     }

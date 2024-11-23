@@ -546,7 +546,7 @@ mod arg_tests {
     #[test]
     fn cant_build_option_diagnostic_flag_with_attachment_manager() {
         // Get matches from sample args
-        let cli_args: Vec<&str> = vec!["imessage-exporter", "-d", "-c", "compatible"];
+        let cli_args: Vec<&str> = vec!["imessage-exporter", "-d", "-c", "fast"];
         let command = get_command();
         let args = command.get_matches_from(cli_args);
 
@@ -665,7 +665,7 @@ mod arg_tests {
     #[test]
     fn cant_build_option_attachment_manager_no_export_type() {
         // Get matches from sample args
-        let cli_args: Vec<&str> = vec!["imessage-exporter", "-c", "compatible"];
+        let cli_args: Vec<&str> = vec!["imessage-exporter", "-c", "clone"];
         let command = get_command();
         let args = command.get_matches_from(cli_args);
 
