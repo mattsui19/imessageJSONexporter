@@ -413,15 +413,24 @@ impl<'a> Writer<'a> for TXT<'a> {
         );
         match self.format_attachment(sticker, message, &AttachmentMeta::default()) {
             Ok(path_to_sticker) => {
+                let mut out_s = format!("Sticker from {who}: {path_to_sticker}");
+
+                // Add sticker effect
                 let sticker_effect = sticker.get_sticker_effect(
                     &self.config.options.platform,
                     &self.config.options.db_path,
                     self.config.options.attachment_root.as_deref(),
                 );
                 if let Ok(Some(sticker_effect)) = sticker_effect {
-                    return format!("{sticker_effect} Sticker from {who}: {path_to_sticker}");
+                    out_s = format!("{sticker_effect} {out_s}");
                 }
-                format!("Sticker from {who}: {path_to_sticker}")
+
+                // Add sticker prompt
+                if let Some(prompt) = &sticker.emoji_description {
+                    out_s = format!("{out_s} (Genmoji prompt: {prompt})");
+                }
+
+                out_s
             }
             Err(path) => format!("Sticker from {who}: {path}"),
         }
@@ -1677,6 +1686,48 @@ mod tests {
         assert_eq!(
             actual,
             "Outline Sticker from Me: imessage-database/test_data/stickers/outline.heic"
+        );
+
+        // Remove the file created by the constructor for this test
+        let orphaned_path = current_dir()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("orphaned.txt");
+        std::fs::remove_file(orphaned_path).unwrap();
+    }
+
+    #[test]
+    fn can_format_txt_attachment_sticker_genmoji() {
+        // Create exporter
+        let mut options = Options::fake_options(ExportType::Txt);
+        options.export_path = current_dir().unwrap().parent().unwrap().to_path_buf();
+
+        let mut config = Config::fake_app(options);
+        config.participants.insert(0, ME.to_string());
+
+        let exporter = TXT::new(&config).unwrap();
+
+        let mut message = Config::fake_message();
+        // Set message to sticker variant
+        message.associated_message_type = Some(1000);
+
+        let mut attachment = Config::fake_attachment();
+        attachment.is_sticker = true;
+        attachment.emoji_description = Some("Example description".to_string());
+        let sticker_path = current_dir()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("imessage-database/test_data/stickers/outline.heic");
+        attachment.filename = Some(sticker_path.to_string_lossy().to_string());
+        attachment.copied_path = Some(PathBuf::from(sticker_path.to_string_lossy().to_string()));
+
+        let actual = exporter.format_sticker(&mut attachment, &message);
+
+        assert_eq!(
+            actual,
+            "Outline Sticker from Me: imessage-database/test_data/stickers/outline.heic (Genmoji prompt: Example description)"
         );
 
         // Remove the file created by the constructor for this test

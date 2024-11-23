@@ -2,7 +2,6 @@
  The main app runtime.
 */
 
-
 use std::{
     cmp::min,
     collections::{BTreeSet, HashMap, HashSet},
@@ -535,6 +534,7 @@ impl Config {
             total_bytes: 100,
             is_sticker: false,
             hide_attachment: 0,
+            emoji_description: None,
             copied_path: None,
         }
     }
@@ -921,22 +921,7 @@ mod who_tests {
 #[cfg(test)]
 mod directory_tests {
     use crate::{Config, Options};
-    use imessage_database::tables::attachment::Attachment;
     use std::path::PathBuf;
-
-    pub fn fake_attachment() -> Attachment {
-        Attachment {
-            rowid: 0,
-            filename: Some("a/b/c/d.jpg".to_string()),
-            uti: Some("public.png".to_string()),
-            mime_type: Some("image/png".to_string()),
-            transfer_name: Some("d.jpg".to_string()),
-            total_bytes: 100,
-            is_sticker: false,
-            hide_attachment: 0,
-            copied_path: None,
-        }
-    }
 
     #[test]
     fn can_get_valid_attachment_sub_dir() {
@@ -983,7 +968,7 @@ mod directory_tests {
         let app = Config::fake_app(options);
 
         // Create attachment
-        let attachment = fake_attachment();
+        let attachment = Config::fake_attachment();
 
         let result = app.message_attachment_path(&attachment);
         let expected = String::from("a/b/c/d.jpg");
@@ -999,7 +984,7 @@ mod directory_tests {
         let app = Config::fake_app(options);
 
         // Create attachment
-        let mut attachment = fake_attachment();
+        let mut attachment = Config::fake_attachment();
         let mut full_path = PathBuf::from("/Users/ReagentX/exports/attachments");
         full_path.push(attachment.filename());
         attachment.copied_path = Some(full_path);
@@ -1018,7 +1003,7 @@ mod directory_tests {
         let app = Config::fake_app(options);
 
         // Create attachment
-        let mut attachment = fake_attachment();
+        let mut attachment = Config::fake_attachment();
         attachment.copied_path = Some(PathBuf::from(attachment.filename.as_ref().unwrap()));
 
         let result = app.message_attachment_path(&attachment);
