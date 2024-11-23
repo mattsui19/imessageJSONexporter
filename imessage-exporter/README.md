@@ -45,10 +45,11 @@ The [releases page](https://github.com/ReagentX/imessage-exporter/releases) prov
         
 -c, --copy-method <compatible, efficient, disabled>
         Specify an optional method to use when copying message attachments
-        Compatible will convert HEIC files to JPEG
         Efficient will copy files without converting anything
+        Compatible will convert HEIC files to JPEG, CAF to MP4, and MOV to MP4
         If omitted, the default is `disabled`
-        ImageMagick is required to convert images on non-macOS platforms.
+        ImageMagick is required to convert images on non-macOS platforms
+        ffmpeg is required to convert audio on non-macOS platforms and video on all platforms
         
 -p, --db-path <path/to/source>
         Specify an optional custom path for the iMessage database location
