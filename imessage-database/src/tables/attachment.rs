@@ -44,6 +44,20 @@ pub enum MediaType<'a> {
     Unknown,
 }
 
+impl<'a> MediaType<'a> {
+    pub fn as_mime_type(&self) -> String {
+        match self {
+            MediaType::Image(subtype) => format!("image/{subtype}"),
+            MediaType::Video(subtype) => format!("video/{subtype}"),
+            MediaType::Audio(subtype) => format!("audio/{subtype}"),
+            MediaType::Text(subtype) => format!("text/{subtype}"),
+            MediaType::Application(subtype) => format!("application/{subtype}"),
+            MediaType::Other(mime) => mime.to_string(),
+            MediaType::Unknown => String::new(),
+        }
+    }
+}
+
 /// Represents a single row in the `attachment` table.
 #[derive(Debug)]
 pub struct Attachment {
