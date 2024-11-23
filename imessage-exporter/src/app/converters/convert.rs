@@ -184,7 +184,10 @@ pub(super) fn audio_copy_convert(
     mime_type: MediaType,
 ) -> Option<MediaType<'static>> {
     // Normal attachments always get converted to jpeg
-    if matches!(mime_type, MediaType::Audio("caf") | MediaType::Audio("CAF")) {
+    if matches!(
+        mime_type,
+        MediaType::Audio("caf") | MediaType::Audio("CAF") | MediaType::Audio("x-caf; codecs=opus")
+    ) {
         let output_type = AudioType::Mp4;
         // Update extension for conversion
         to.set_extension(output_type.to_str());
