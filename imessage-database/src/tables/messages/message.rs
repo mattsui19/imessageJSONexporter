@@ -751,7 +751,7 @@ impl Message {
     }
 
     /// See [`Tapback`] for details on this data.
-    pub(crate) fn clean_associated_guid(&self) -> Option<(usize, &str)> {
+    pub fn clean_associated_guid(&self) -> Option<(usize, &str)> {
         if let Some(guid) = &self.associated_message_guid {
             if guid.starts_with("p:") {
                 let mut split = guid.split('/');
@@ -867,7 +867,7 @@ impl Message {
     ///
     /// For example, a Bundle ID like `com.apple.messages.MSMessageExtensionBalloonPlugin:0000000000:com.apple.SafetyMonitorApp.SafetyMonitorMessages`
     /// should get parsed into `com.apple.SafetyMonitorApp.SafetyMonitorMessages`.
-    pub(crate) fn parse_balloon_bundle_id(&self) -> Option<&str> {
+    pub fn parse_balloon_bundle_id(&self) -> Option<&str> {
         if let Some(bundle_id) = &self.balloon_bundle_id {
             let mut parts = bundle_id.split(':');
             let bundle_id = parts.next();
