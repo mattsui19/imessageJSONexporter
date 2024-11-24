@@ -75,7 +75,7 @@ pub(crate) fn sticker_copy_convert(
 ///
 /// `magick` attempts to extract all of them; but for compatibility purposes we only
 /// take the highest resolution. This is done automatically in `sips` but requires
-/// manual adjustment in `magick`: https://github.com/ImageMagick/ImageMagick/issues/1391
+/// manual adjustment in `magick`: <https://github.com/ImageMagick/ImageMagick/issues/1391>
 fn convert_heic(
     from: &Path,
     to: &Path,
