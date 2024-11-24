@@ -19,10 +19,12 @@ use crate::app::{
     runtime::Config,
 };
 
-use imessage_database::message_types::handwriting::HandwrittenMessage;
-use imessage_database::tables::{
-    attachment::{Attachment, MediaType},
-    messages::Message,
+use imessage_database::{
+    message_types::handwriting::HandwrittenMessage,
+    tables::{
+        attachment::{Attachment, MediaType},
+        messages::Message,
+    },
 };
 
 use filetime::{set_file_times, FileTime};
