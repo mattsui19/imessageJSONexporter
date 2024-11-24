@@ -73,7 +73,7 @@ pub(crate) fn sticker_copy_convert(
 ///
 /// Sticker HEIC files contain 5 images: 320x320, 160x160, 96x96, 64x64, and 40x40
 /// `magick` attempts to extract all of them; but for compatibility purposes we only
-/// take the hightest resolution. This is done automatically in `sips` but requires
+/// take the highest resolution. This is done automatically in `sips` but requires
 /// manual adjustment in `magick`: https://github.com/ImageMagick/ImageMagick/issues/1391
 fn convert_heic(
     from: &Path,
