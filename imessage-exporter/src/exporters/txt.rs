@@ -1667,9 +1667,7 @@ mod tests {
 
         let exporter = TXT::new(&config).unwrap();
 
-        let mut message = Config::fake_message();
-        // Set message to sticker variant
-        message.associated_message_type = Some(1000);
+        let message = Config::fake_message();
 
         let mut attachment = Config::fake_attachment();
         attachment.is_sticker = true;
@@ -1708,9 +1706,7 @@ mod tests {
 
         let exporter = TXT::new(&config).unwrap();
 
-        let mut message = Config::fake_message();
-        // Set message to sticker variant
-        message.associated_message_type = Some(1000);
+        let message = Config::fake_message();
 
         let mut attachment = Config::fake_attachment();
         attachment.is_sticker = true;
