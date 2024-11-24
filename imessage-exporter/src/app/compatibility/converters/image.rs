@@ -50,7 +50,7 @@ pub(crate) fn image_copy_convert(
 /// of failing, `sips` will create a file called `fake` in `/`. Subsequent writes
 /// by `sips` to the same location will not fail, but since it is a file instead
 /// of a directory, this will fail for non-`sips` copies.
-pub(super) fn convert_heic(
+fn convert_heic(
     from: &Path,
     to: &Path,
     converter: &ImageConverter,

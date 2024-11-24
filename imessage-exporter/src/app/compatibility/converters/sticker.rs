@@ -10,10 +10,7 @@ use std::{
 use imessage_database::tables::attachment::MediaType;
 
 use crate::app::compatibility::{
-    converters::{
-        common::{copy_raw, ensure_paths, run_command},
-        image::convert_heic,
-    },
+    converters::common::{copy_raw, ensure_paths, run_command},
     models::{Converter, ImageConverter, ImageType, VideoConverter},
 };
 
@@ -61,6 +58,48 @@ pub(crate) fn sticker_copy_convert(
 
     copy_raw(from, to);
     None
+}
+
+/// Convert a HEIC sticker file to the provided format
+///
+/// This uses the macOS builtin `sips` program
+///
+/// Docs: <https://www.unix.com/man-page/osx/1/sips/> (or `man sips`)
+///
+/// If `to` contains a directory that does not exist, i.e. `/fake/out.jpg`, instead
+/// of failing, `sips` will create a file called `fake` in `/`. Subsequent writes
+/// by `sips` to the same location will not fail, but since it is a file instead
+/// of a directory, this will fail for non-`sips` copies.
+///
+/// Sticker HEIC files contain 5 images: 320x320, 160x160, 96x96, 64x64, and 40x40
+/// `magick` attempts to extract all of them; but for compatibility purposes we only
+/// take the hightest resolution. This is done automatically in `sips` but requires
+/// manual adjustment in `magick`: https://github.com/ImageMagick/ImageMagick/issues/1391
+fn convert_heic(
+    from: &Path,
+    to: &Path,
+    converter: &ImageConverter,
+    output_image_type: &ImageType,
+) -> Option<()> {
+    let (from_path, to_path) = ensure_paths(from, to)?;
+    // Used for `magick` conversion
+    let formatted_from = format!("{from_path}[0]");
+
+    let args = match converter {
+        ImageConverter::Sips => vec![
+            "-s",
+            "format",
+            output_image_type.to_str(),
+            from_path,
+            "-o",
+            to_path,
+        ],
+        ImageConverter::Imagemagick => {
+            vec![&formatted_from, to_path]
+        }
+    };
+
+    run_command(converter.name(), args)
 }
 
 fn convert_heics(from: &Path, to: &Path, video_converter: &VideoConverter) -> Option<()> {
