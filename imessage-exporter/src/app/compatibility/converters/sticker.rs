@@ -72,6 +72,7 @@ pub(crate) fn sticker_copy_convert(
 /// of a directory, this will fail for non-`sips` copies.
 ///
 /// Sticker HEIC files contain 5 images: 320x320, 160x160, 96x96, 64x64, and 40x40
+///
 /// `magick` attempts to extract all of them; but for compatibility purposes we only
 /// take the highest resolution. This is done automatically in `sips` but requires
 /// manual adjustment in `magick`: https://github.com/ImageMagick/ImageMagick/issues/1391
@@ -82,24 +83,25 @@ fn convert_heic(
     output_image_type: &ImageType,
 ) -> Option<()> {
     let (from_path, to_path) = ensure_paths(from, to)?;
-    // Used for `magick` conversion
-    let formatted_from = format!("{from_path}[0]");
 
-    let args = match converter {
-        ImageConverter::Sips => vec![
-            "-s",
-            "format",
-            output_image_type.to_str(),
-            from_path,
-            "-o",
-            to_path,
-        ],
-        ImageConverter::Imagemagick => {
-            vec![&formatted_from, to_path]
+    match converter {
+        ImageConverter::Sips => {
+            let args = vec![
+                "-s",
+                "format",
+                output_image_type.to_str(),
+                from_path,
+                "-o",
+                to_path,
+            ];
+            run_command(converter.name(), args)
         }
-    };
-
-    run_command(converter.name(), args)
+        ImageConverter::Imagemagick => {
+            let formatted_from = format!("{from_path}[0]");
+            let args = vec![&formatted_from, to_path];
+            run_command(converter.name(), args)
+        }
+    }
 }
 
 fn convert_heics(from: &Path, to: &Path, video_converter: &VideoConverter) -> Option<()> {
