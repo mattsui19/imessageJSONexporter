@@ -71,7 +71,7 @@ pub struct Attachment {
     /// The name of the file when sent or received
     pub transfer_name: Option<String>,
     /// The total amount of data transferred over the network (not necessarily the size of the file)
-    pub total_bytes: u64,
+    pub total_bytes: i64,
     /// `true` if the attachment was a sticker, else `false`
     pub is_sticker: bool,
     pub hide_attachment: i32,
@@ -254,7 +254,7 @@ impl Attachment {
 
     /// Get a human readable file size for an attachment
     pub fn file_size(&self) -> String {
-        format_file_size(self.total_bytes)
+        format_file_size(self.total_bytes.try_into().unwrap_or(0))
     }
 
     /// Get the total attachment bytes referenced in the table
@@ -289,7 +289,8 @@ impl Attachment {
         };
 
         bytes_query
-            .query_row([], |r| r.get(0))
+            .query_row([], |r| -> Result<i64> { r.get(0) })
+            .map(|res: i64| res.try_into().unwrap_or(0))
             .map_err(TableError::Attachment)
     }
 
@@ -690,8 +691,8 @@ mod tests {
     #[test]
     fn can_get_file_size_cap() {
         let mut attachment: Attachment = sample_attachment();
-        attachment.total_bytes = u64::MAX;
+        attachment.total_bytes = i64::MAX;
 
-        assert_eq!(attachment.file_size(), String::from("16777216.00 TB"));
+        assert_eq!(attachment.file_size(), String::from("8388608.00 TB"));
     }
 }
