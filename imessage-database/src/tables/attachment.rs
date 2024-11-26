@@ -262,24 +262,21 @@ impl Attachment {
         db: &Connection,
         context: &QueryContext,
     ) -> Result<u64, TableError> {
-        let mut bytes_query = if context.has_filters() {
+        let mut bytes_query = if context.start.is_some() || context.end.is_some() {
             let mut statement = format!("SELECT SUM(total_bytes) FROM {ATTACHMENT} a");
 
-            if context.has_filters() {
-                statement.push_str(" WHERE ");
-                if let Some(start) = context.start {
-                    statement.push_str(&format!(
-                        "    a.created_date >= {}",
-                        start / TIMESTAMP_FACTOR
-                    ));
+            statement.push_str(" WHERE ");
+            if let Some(start) = context.start {
+                statement.push_str(&format!(
+                    "    a.created_date >= {}",
+                    start / TIMESTAMP_FACTOR
+                ));
+            }
+            if let Some(end) = context.end {
+                if context.start.is_some() {
+                    statement.push_str(" AND ");
                 }
-                if let Some(end) = context.end {
-                    if context.start.is_some() {
-                        statement.push_str(" AND ");
-                    }
-                    statement
-                        .push_str(&format!("    a.created_date <= {}", end / TIMESTAMP_FACTOR));
-                }
+                statement.push_str(&format!("    a.created_date <= {}", end / TIMESTAMP_FACTOR));
             }
 
             db.prepare(&statement).map_err(TableError::Attachment)?
