@@ -453,11 +453,17 @@ impl Attachment {
 #[cfg(test)]
 mod tests {
     use crate::{
-        tables::attachment::{Attachment, MediaType, DEFAULT_ATTACHMENT_ROOT},
-        util::platform::Platform,
+        tables::{
+            attachment::{Attachment, MediaType, DEFAULT_ATTACHMENT_ROOT},
+            table::get_connection,
+        },
+        util::{dirs::default_db_path, platform::Platform, query_context::QueryContext},
     };
 
-    use std::path::{Path, PathBuf};
+    use std::{
+        collections::BTreeSet,
+        path::{Path, PathBuf},
+    };
 
     fn sample_attachment() -> Attachment {
         Attachment {
@@ -652,6 +658,76 @@ mod tests {
             attachment.resolved_attachment_path(&Platform::iOS, &db_path, None),
             None
         );
+    }
+
+    #[test]
+    fn can_get_attachment_bytes_no_filter() {
+        let db_path = default_db_path();
+        let connection = get_connection(&db_path).unwrap();
+
+        let context = QueryContext::default();
+
+        assert!(Attachment::get_total_attachment_bytes(&connection, &context).is_ok());
+    }
+
+    #[test]
+    fn can_get_attachment_bytes_start_filter() {
+        let db_path = default_db_path();
+        let connection = get_connection(&db_path).unwrap();
+
+        let mut context = QueryContext::default();
+        context.set_start("2020-01-01").unwrap();
+
+        assert!(Attachment::get_total_attachment_bytes(&connection, &context).is_ok());
+    }
+
+    #[test]
+    fn can_get_attachment_bytes_end_filter() {
+        let db_path = default_db_path();
+        let connection = get_connection(&db_path).unwrap();
+
+        let mut context = QueryContext::default();
+        context.set_end("2020-01-01").unwrap();
+
+        assert!(Attachment::get_total_attachment_bytes(&connection, &context).is_ok());
+    }
+
+    #[test]
+    fn can_get_attachment_bytes_start_end_filter() {
+        let db_path = default_db_path();
+        let connection = get_connection(&db_path).unwrap();
+
+        let mut context = QueryContext::default();
+        context.set_start("2020-01-01").unwrap();
+        context.set_end("2021-01-01").unwrap();
+
+        assert!(Attachment::get_total_attachment_bytes(&connection, &context).is_ok());
+    }
+
+    #[test]
+    fn can_get_attachment_bytes_contact_filter() {
+        let db_path = default_db_path();
+        let connection = get_connection(&db_path).unwrap();
+
+        let mut context = QueryContext::default();
+        context.set_selected_chat_ids(BTreeSet::from([1, 2, 3]));
+        context.set_selected_handle_ids(BTreeSet::from([1, 2, 3]));
+
+        assert!(Attachment::get_total_attachment_bytes(&connection, &context).is_ok());
+    }
+
+    #[test]
+    fn can_get_attachment_bytes_contact_date_filter() {
+        let db_path = default_db_path();
+        let connection = get_connection(&db_path).unwrap();
+
+        let mut context = QueryContext::default();
+        context.set_start("2020-01-01").unwrap();
+        context.set_end("2021-01-01").unwrap();
+        context.set_selected_chat_ids(BTreeSet::from([1, 2, 3]));
+        context.set_selected_handle_ids(BTreeSet::from([1, 2, 3]));
+
+        assert!(Attachment::get_total_attachment_bytes(&connection, &context).is_ok());
     }
 
     #[test]
