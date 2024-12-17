@@ -156,7 +156,7 @@ impl<'a> Exporter<'a> for HTML<'a> {
         match self.config.conversation(message) {
             Some((chatroom, _)) => {
                 let filename = self.config.filename(chatroom);
-                return match self.files.entry(filename) {
+                match self.files.entry(filename) {
                     Occupied(entry) => Ok(entry.into_mut()),
                     Vacant(entry) => {
                         let mut path = self.config.options.export_path.clone();
@@ -182,7 +182,7 @@ impl<'a> Exporter<'a> for HTML<'a> {
 
                         Ok(entry.insert(buf))
                     }
-                };
+                }
             }
             None => Ok(&mut self.orphaned),
         }
@@ -554,7 +554,7 @@ impl<'a> Writer<'a> for HTML<'a> {
         // Build a relative filepath from the fully qualified one on the `Attachment`
         let embed_path = self.config.message_attachment_path(attachment);
 
-        return Ok(match attachment.mime_type() {
+        Ok(match attachment.mime_type() {
             MediaType::Image(_) => {
                 if self.config.options.no_lazy {
                     format!("<img src=\"{embed_path}\">")
@@ -590,7 +590,7 @@ impl<'a> Writer<'a> for HTML<'a> {
             MediaType::Other(media_type) => {
                 format!("<p>Unable to embed {media_type} attachments: {embed_path}</p>")
             }
-        });
+        })
     }
 
     fn format_sticker(&self, sticker: &'a mut Attachment, message: &Message) -> String {
@@ -778,7 +778,7 @@ impl<'a> Writer<'a> for HTML<'a> {
         }
         let timestamp = format(&msg.date(&self.config.offset));
 
-        return match msg.get_announcement() {
+        match msg.get_announcement() {
             Some(announcement) => match announcement {
                 Announcement::NameChange(name) => {
                     let clean_name = sanitize_html(name);
@@ -805,7 +805,7 @@ impl<'a> Writer<'a> for HTML<'a> {
             None => String::from(
                 "\n<div class =\"announcement\"><p>Unable to format announcement!</p></div>\n",
             ),
-        };
+        }
     }
 
     fn format_shareplay(&self) -> &str {
@@ -894,7 +894,7 @@ impl<'a> Writer<'a> for HTML<'a> {
         None
     }
 
-    fn format_attributed(&'a self, text: &'a str, attribute: &'a TextEffect) -> Cow<str> {
+    fn format_attributed(&'a self, text: &'a str, attribute: &'a TextEffect) -> Cow<'a, str> {
         match attribute {
             TextEffect::Default => Cow::Borrowed(text),
             TextEffect::Mention(mentioned) => Cow::Owned(self.format_mention(text, mentioned)),
@@ -1397,7 +1397,7 @@ impl<'a> BalloonFormatter<&'a Message> for HTML<'a> {
     }
 }
 
-impl<'a> TextEffectFormatter for HTML<'a> {
+impl TextEffectFormatter for HTML<'_> {
     fn format_mention(&self, text: &str, mentioned: &str) -> String {
         format!("<span title=\"{mentioned}\"><b>{text}</b></span>")
     }
@@ -1438,7 +1438,7 @@ impl<'a> TextEffectFormatter for HTML<'a> {
     }
 }
 
-impl<'a> HTML<'a> {
+impl HTML<'_> {
     fn get_time(&self, message: &Message) -> String {
         let mut date = format(&message.date(&self.config.offset));
         let read_after = message.time_until_read(&self.config.offset);
