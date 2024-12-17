@@ -60,7 +60,7 @@ pub enum Tapback<'a> {
     Emoji(Option<&'a str>),
 }
 
-impl<'a> Display for Tapback<'a> {
+impl Display for Tapback<'_> {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Tapback::Emoji(emoji) => match emoji {

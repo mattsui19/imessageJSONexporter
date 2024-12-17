@@ -58,7 +58,7 @@ impl<'a> Service<'a> {
     }
 }
 
-impl<'a> Display for Service<'a> {
+impl Display for Service<'_> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
         match self {
             Service::iMessage => write!(fmt, "iMessage"),

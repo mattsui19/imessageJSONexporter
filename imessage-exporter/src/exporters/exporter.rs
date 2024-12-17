@@ -16,7 +16,7 @@ use imessage_database::{
     },
     tables::{
         attachment::Attachment,
-        messages::{Message, models::AttachmentMeta},
+        messages::{models::AttachmentMeta, Message},
     },
 };
 
@@ -76,7 +76,7 @@ pub(super) trait Writer<'a> {
         indent: &str,
     ) -> Option<String>;
     /// Format some attributed text
-    fn format_attributed(&'a self, text: &'a str, attribute: &'a TextEffect) -> Cow<str>;
+    fn format_attributed(&'a self, text: &'a str, attribute: &'a TextEffect) -> Cow<'a, str>;
     fn write_to_file(file: &mut BufWriter<File>, text: &str) -> Result<(), RuntimeError>;
 }
 

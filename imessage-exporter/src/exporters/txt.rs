@@ -144,7 +144,7 @@ impl<'a> Exporter<'a> for TXT<'a> {
         match self.config.conversation(message) {
             Some((chatroom, _)) => {
                 let filename = self.config.filename(chatroom);
-                return match self.files.entry(filename) {
+                match self.files.entry(filename) {
                     Occupied(entry) => Ok(entry.into_mut()),
                     Vacant(entry) => {
                         let mut path = self.config.options.export_path.clone();
@@ -159,7 +159,7 @@ impl<'a> Exporter<'a> for TXT<'a> {
 
                         Ok(entry.insert(BufWriter::new(file)))
                     }
-                };
+                }
             }
             None => Ok(&mut self.orphaned),
         }
@@ -581,7 +581,7 @@ impl<'a> Writer<'a> for TXT<'a> {
 
         let timestamp = format(&msg.date(&self.config.offset));
 
-        return match msg.get_announcement() {
+        match msg.get_announcement() {
             Some(announcement) => match announcement {
                 Announcement::NameChange(name) => {
                     format!("{timestamp} {who} renamed the conversation to {name}\n\n")
@@ -595,7 +595,7 @@ impl<'a> Writer<'a> for TXT<'a> {
                 Announcement::FullyUnsent => format!("{timestamp} {who} unsent a message!\n\n"),
             },
             None => String::from("Unable to format announcement!\n\n"),
-        };
+        }
     }
 
     fn format_shareplay(&self) -> &str {
@@ -687,7 +687,7 @@ impl<'a> Writer<'a> for TXT<'a> {
         None
     }
 
-    fn format_attributed(&'a self, msg: &'a str, _: &'a TextEffect) -> Cow<str> {
+    fn format_attributed(&'a self, msg: &'a str, _: &'a TextEffect) -> Cow<'a, str> {
         // There isn't really a way to represent formatted text in a plain text export
         Cow::Borrowed(msg)
     }
@@ -1031,7 +1031,7 @@ impl<'a> BalloonFormatter<&'a str> for TXT<'a> {
     }
 }
 
-impl<'a> TXT<'a> {
+impl TXT<'_> {
     fn get_time(&self, message: &Message) -> String {
         let mut date = format(&message.date(&self.config.offset));
         let read_after = message.time_until_read(&self.config.offset);

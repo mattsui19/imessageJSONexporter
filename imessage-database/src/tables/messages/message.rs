@@ -974,11 +974,11 @@ impl Message {
             return Some(Announcement::FullyUnsent);
         }
 
-        return match &self.group_action_type {
+        match &self.group_action_type {
             0 => None,
             1 => Some(Announcement::PhotoChange),
             other => Some(Announcement::Unknown(other)),
-        };
+        }
     }
 
     /// Determine the service the message was sent from, i.e. iMessage, SMS, IRC, etc.
