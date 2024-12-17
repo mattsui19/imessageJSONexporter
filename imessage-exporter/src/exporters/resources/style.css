@@ -28,37 +28,35 @@ a[href^="#"] {
 	overflow-wrap: break-word;
 }
 
-.message .sent.iMessage {
+.message .sent,
+.message .received {
+	border-radius: 25px;
+	padding: 15px;
+	max-width: 60%;
+	width: fit-content;
+}
+
+.message .sent {
+	background-color: #65c466
+}
+
+
+.message .sent.iMessage,
+.message .sent.Satellite {
 	background-color: #1982FC;
-}
-
-.message .sent.sms {
-	background-color: #65c466
-}
-
-.message .sent.rcs {
-	background-color: #65c466
 }
 
 .message .sent {
 	color: white;
-	border-radius: 25px;
-	padding: 15px;
 	margin-left: auto;
 	margin-right: 0;
-	max-width: 60%;
-	width: fit-content;
 }
 
 .message .received {
 	background-color: #d8d8d8;
 	color: black;
-	border-radius: 25px;
-	padding: 15px;
 	margin-right: auto;
 	margin-left: 0;
-	max-width: 60%;
-	width: fit-content;
 }
 
 .message .sent .replies .reply .message .sent {
