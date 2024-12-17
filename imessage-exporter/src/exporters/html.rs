@@ -212,7 +212,7 @@ impl<'a> Writer<'a> for HTML<'a> {
         if message.is_from_me() {
             self.add_line(
                 &mut formatted_message,
-                &format!("<div class=\"sent {:?}\">", message.service()),
+                &format!("<div class=\"sent {}\">", message.service()),
                 "",
                 "",
             );

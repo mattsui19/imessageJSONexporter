@@ -2,6 +2,8 @@
  This module contains Data structures and models that represent message data.
 */
 
+use std::fmt::{Display, Formatter, Result};
+
 use crate::{message_types::text_effects::TextEffect, util::typedstream::models::Archivable};
 
 /// Defines the parts of a message bubble, i.e. the content that can exist in a single message.
@@ -23,7 +25,7 @@ pub enum BubbleComponent<'a> {
     Retracted,
 }
 
-/// Defines different types of services we can receive messages from.
+/// Defines different types of [services](https://support.apple.com/en-us/104972) we can receive messages from.
 #[derive(Debug)]
 pub enum Service<'a> {
     /// An iMessage
@@ -33,10 +35,40 @@ pub enum Service<'a> {
     SMS,
     /// A message sent as RCS
     RCS,
+    /// A message sent via [satellite](https://support.apple.com/en-us/120930)
+    Satellite,
     /// Any other type of message
     Other(&'a str),
     /// Used when service field is not set
     Unknown,
+}
+
+impl<'a> Service<'a> {
+    pub fn from(service: Option<&'a str>) -> Self {
+        if let Some(service_name) = service {
+            return match service_name.trim() {
+                "iMessage" => Service::iMessage,
+                "iMessageLite" => Service::Satellite,
+                "SMS" => Service::SMS,
+                "rcs" | "RCS" => Service::RCS,
+                service_name => Service::Other(service_name),
+            };
+        }
+        Service::Unknown
+    }
+}
+
+impl<'a> Display for Service<'a> {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
+        match self {
+            Service::iMessage => write!(fmt, "iMessage"),
+            Service::SMS => write!(fmt, "SMS"),
+            Service::RCS => write!(fmt, "RCS"),
+            Service::Satellite => write!(fmt, "Satellite"),
+            Service::Other(other) => write!(fmt, "{other}"),
+            Service::Unknown => write!(fmt, "Unknown"),
+        }
+    }
 }
 
 /// Defines ranges of text and associated attributes parsed from [`typedstream`](crate::util::typedstream) `attributedBody` data.
