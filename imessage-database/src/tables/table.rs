@@ -115,12 +115,14 @@ pub const CHAT_HANDLE_JOIN: &str = "chat_handle_join";
 pub const RECENTLY_DELETED: &str = "chat_recoverable_message_join";
 
 // Column names
-/// The payload data column contains app message data
+/// The payload data column contains plist-encoded app message data
 pub const MESSAGE_PAYLOAD: &str = "payload_data";
-/// The message summary info column contains edited message information
+/// The message summary info column contains plist-encoded edited message information
 pub const MESSAGE_SUMMARY_INFO: &str = "message_summary_info";
-/// The attributedBody column contains a message's body text with any other attributes
+/// The attributedBody column contains [typedstream](crate::util::typedstream)-encoded a message's body text with any other attributes
 pub const ATTRIBUTED_BODY: &str = "attributedBody";
+/// The sticker_user_info contains plist-encoded metadata for sticker attachments
+pub const STICKER_USER_INFO: &str = "sticker_user_info";
 
 // Default information
 /// Name used for messages sent by the database owner in a first-person context
