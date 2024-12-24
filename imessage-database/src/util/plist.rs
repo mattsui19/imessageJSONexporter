@@ -51,6 +51,13 @@ pub fn parse_ns_keyed_archiver(plist: &Value) -> Result<Value, PlistParseError> 
     follow_uid(objects, root, &None, None)
 }
 
+/// Extract a dictionary from table `plist` data.
+pub fn plist_as_dictionary(plist: &Value) -> Result<&Dictionary, PlistParseError> {
+    plist
+        .as_dictionary()
+        .ok_or_else(|| PlistParseError::InvalidType("body".to_string(), "dictionary".to_string()))
+}
+
 /// Recursively follows pointers in an `NSKeyedArchiver` format, promoting the values
 /// to the positions where the pointers live
 fn follow_uid<'a>(
