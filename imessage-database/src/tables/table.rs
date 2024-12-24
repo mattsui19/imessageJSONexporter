@@ -123,6 +123,8 @@ pub const MESSAGE_SUMMARY_INFO: &str = "message_summary_info";
 pub const ATTRIBUTED_BODY: &str = "attributedBody";
 /// The sticker user info column contains `plist`-encoded metadata for sticker attachments
 pub const STICKER_USER_INFO: &str = "sticker_user_info";
+/// The attribution info contains `plist`-encoded metadata for sticker attachments
+pub const ATTRIBUTION_INFO: &str = "attribution_info";
 
 // Default information
 /// Name used for messages sent by the database owner in a first-person context
