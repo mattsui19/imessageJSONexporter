@@ -42,6 +42,12 @@ pub trait Diagnostic {
     fn run_diagnostic(db: &Connection) -> Result<(), TableError>;
 }
 
+/// Defines behavior for getting BLOB data from from a table
+pub trait GetBlob {
+    /// Retreive `BLOB` data from a table
+    fn get_blob<'a>(&self, db: &'a Connection, column: &str) -> Option<Blob<'a>>;
+}
+
 /// Get a connection to the iMessage `SQLite` database
 // # Example:
 ///
