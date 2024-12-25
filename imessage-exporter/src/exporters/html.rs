@@ -2245,11 +2245,6 @@ mod tests {
         // Create exporter
         let mut options = Options::fake_options(ExportType::Html);
         options.export_path = current_dir().unwrap().parent().unwrap().to_path_buf();
-        options.db_path = current_dir()
-            .unwrap()
-            .parent()
-            .unwrap()
-            .join("imessage-database/test_data/db/test.db");
 
         let config = Config::fake_app(options);
         let exporter = HTML::new(&config).unwrap();
@@ -2285,11 +2280,6 @@ mod tests {
         // Create exporter
         let mut options = Options::fake_options(ExportType::Html);
         options.export_path = current_dir().unwrap().parent().unwrap().to_path_buf();
-        options.db_path = current_dir()
-            .unwrap()
-            .parent()
-            .unwrap()
-            .join("imessage-database/test_data/db/test.db");
 
         let config = Config::fake_app(options);
         let exporter = HTML::new(&config).unwrap();
@@ -2326,11 +2316,6 @@ mod tests {
         // Create exporter
         let mut options = Options::fake_options(ExportType::Html);
         options.export_path = current_dir().unwrap().parent().unwrap().to_path_buf();
-        options.db_path = current_dir()
-            .unwrap()
-            .parent()
-            .unwrap()
-            .join("imessage-database/test_data/db/test.db");
 
         let config = Config::fake_app(options);
         let exporter = HTML::new(&config).unwrap();
