@@ -34,7 +34,7 @@ use imessage_database::{
         variants::{Announcement, BalloonProvider, CustomBalloon, URLOverride, Variant},
     },
     tables::{
-        attachment::Attachment,
+        attachment::{Attachment, StickerSource},
         messages::{
             models::{AttachmentMeta, BubbleComponent},
             Message,
@@ -415,19 +415,32 @@ impl<'a> Writer<'a> for TXT<'a> {
             Ok(path_to_sticker) => {
                 let mut out_s = format!("Sticker from {who}: {path_to_sticker}");
 
-                // Add sticker effect
-                let sticker_effect = sticker.get_sticker_effect(
-                    &self.config.options.platform,
-                    &self.config.options.db_path,
-                    self.config.options.attachment_root.as_deref(),
-                );
-                if let Ok(Some(sticker_effect)) = sticker_effect {
-                    out_s = format!("{sticker_effect} {out_s}");
-                }
-
-                // Add sticker prompt
-                if let Some(prompt) = &sticker.emoji_description {
-                    out_s = format!("{out_s} (Genmoji prompt: {prompt})");
+                // Determine the source of the sticker
+                if let Some(sticker_source) = sticker.get_sticker_source(&self.config.db) {
+                    match sticker_source {
+                        StickerSource::Genmoji => {
+                            if let Some(prompt) = &sticker.emoji_description {
+                                out_s = format!("{out_s} (Genmoji prompt: {prompt})");
+                            }
+                        }
+                        StickerSource::Memoji => out_s.push_str(" (App: Stickers)"),
+                        StickerSource::UserGenerated => {
+                            // Add sticker effect
+                            if let Ok(Some(sticker_effect)) = sticker.get_sticker_effect(
+                                &self.config.options.platform,
+                                &self.config.options.db_path,
+                                self.config.options.attachment_root.as_deref(),
+                            ) {
+                                out_s = format!("{sticker_effect} {out_s}");
+                            }
+                        }
+                        StickerSource::App(bundle_id) => {
+                            let app_name = sticker
+                                .get_sticker_source_application_name(&self.config.db)
+                                .unwrap_or(bundle_id);
+                            out_s.push_str(&format!(" (App: {app_name})"));
+                        }
+                    }
                 }
 
                 out_s
@@ -1661,6 +1674,11 @@ mod tests {
         // Create exporter
         let mut options = Options::fake_options(ExportType::Txt);
         options.export_path = current_dir().unwrap().parent().unwrap().to_path_buf();
+        options.db_path = current_dir()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("imessage-database/test_data/db/test.db");
 
         let mut config = Config::fake_app(options);
         config.participants.insert(0, ME.to_string());
@@ -1670,6 +1688,7 @@ mod tests {
         let message = Config::fake_message();
 
         let mut attachment = Config::fake_attachment();
+        attachment.rowid = 3;
         attachment.is_sticker = true;
         let sticker_path = current_dir()
             .unwrap()
@@ -1692,7 +1711,7 @@ mod tests {
             .parent()
             .unwrap()
             .join("orphaned.txt");
-        std::fs::remove_file(orphaned_path).unwrap();
+        let _ = std::fs::remove_file(orphaned_path);
     }
 
     #[test]
@@ -1700,6 +1719,11 @@ mod tests {
         // Create exporter
         let mut options = Options::fake_options(ExportType::Txt);
         options.export_path = current_dir().unwrap().parent().unwrap().to_path_buf();
+        options.db_path = current_dir()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("imessage-database/test_data/db/test.db");
 
         let mut config = Config::fake_app(options);
         config.participants.insert(0, ME.to_string());
@@ -1709,6 +1733,7 @@ mod tests {
         let message = Config::fake_message();
 
         let mut attachment = Config::fake_attachment();
+        attachment.rowid = 2;
         attachment.is_sticker = true;
         attachment.emoji_description = Some("Example description".to_string());
         let sticker_path = current_dir()
@@ -1723,7 +1748,7 @@ mod tests {
 
         assert_eq!(
             actual,
-            "Outline Sticker from Me: imessage-database/test_data/stickers/outline.heic (Genmoji prompt: Example description)"
+            "Sticker from Me: imessage-database/test_data/stickers/outline.heic (Genmoji prompt: Example description)"
         );
 
         // Remove the file created by the constructor for this test
@@ -1732,7 +1757,52 @@ mod tests {
             .parent()
             .unwrap()
             .join("orphaned.txt");
-        std::fs::remove_file(orphaned_path).unwrap();
+        let _ = std::fs::remove_file(orphaned_path);
+    }
+
+    #[test]
+    fn can_format_txt_attachment_sticker_app() {
+        // Create exporter
+        let mut options = Options::fake_options(ExportType::Txt);
+        options.export_path = current_dir().unwrap().parent().unwrap().to_path_buf();
+        options.db_path = current_dir()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("imessage-database/test_data/db/test.db");
+
+        let mut config = Config::fake_app(options);
+        config.participants.insert(0, ME.to_string());
+
+        let exporter = TXT::new(&config).unwrap();
+
+        let message = Config::fake_message();
+
+        let mut attachment = Config::fake_attachment();
+        attachment.rowid = 1;
+        attachment.is_sticker = true;
+        let sticker_path = current_dir()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("imessage-database/test_data/stickers/outline.heic");
+        attachment.filename = Some(sticker_path.to_string_lossy().to_string());
+        attachment.copied_path = Some(PathBuf::from(sticker_path.to_string_lossy().to_string()));
+
+        let actual = exporter.format_sticker(&mut attachment, &message);
+
+        assert_eq!(
+            actual,
+            "Sticker from Me: imessage-database/test_data/stickers/outline.heic (App: Free People)"
+        );
+
+        // Remove the file created by the constructor for this test
+        let orphaned_path = current_dir()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("orphaned.txt");
+        let _ = std::fs::remove_file(orphaned_path);
     }
 
     #[test]
