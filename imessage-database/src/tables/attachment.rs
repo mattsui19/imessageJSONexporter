@@ -49,6 +49,15 @@ pub enum MediaType<'a> {
 }
 
 impl MediaType<'_> {
+    /// Given a [`MediaType`], generate the corresponding MIME type string
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use imessage_database::tables::attachment::MediaType;
+    ///
+    /// println!("{:?}", MediaType::Image("png").as_mime_type()); // "image/png"
+    /// ```
     pub fn as_mime_type(&self) -> String {
         match self {
             MediaType::Image(subtype) => format!("image/{subtype}"),
@@ -76,7 +85,16 @@ pub enum StickerSource {
 }
 
 impl StickerSource {
-    fn from_bundle_id(bundle_id: &str) -> Option<Self> {
+    /// Given an application's bundle ID, determine the source
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use imessage_database::tables::attachment::StickerSource;
+    ///
+    /// println!("{:?}", StickerSource::from_bundle_id("com.apple.messages.genmoji")); // StickerSource::Genmoji
+    /// ```
+    pub fn from_bundle_id(bundle_id: &str) -> Option<Self> {
         match parse_balloon_bundle_id(Some(bundle_id)) {
             Some("com.apple.messages.genmoji") => Some(StickerSource::Genmoji),
             Some("com.apple.Animoji.StickersApp.MessagesExtension") => Some(StickerSource::Memoji),

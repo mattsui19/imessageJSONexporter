@@ -1,4 +1,4 @@
-/// Parse the App's Bundle ID out of the Balloon's Bundle ID
+/// Parse an App's Bundle ID out of a Balloon's Bundle ID
 ///
 /// For example, a Bundle ID like `com.apple.messages.MSMessageExtensionBalloonPlugin:0000000000:com.apple.SafetyMonitorApp.SafetyMonitorMessages`
 /// should get parsed into `com.apple.SafetyMonitorApp.SafetyMonitorMessages`.
