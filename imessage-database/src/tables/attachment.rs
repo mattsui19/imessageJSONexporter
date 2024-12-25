@@ -328,7 +328,7 @@ impl Attachment {
         context: &QueryContext,
     ) -> Result<u64, TableError> {
         let mut bytes_query = if context.start.is_some() || context.end.is_some() {
-            let mut statement = format!("SELECT SUM(total_bytes) FROM {ATTACHMENT} a");
+            let mut statement = format!("SELECT IFNULL(SUM(total_bytes), 0) FROM {ATTACHMENT} a");
 
             statement.push_str(" WHERE ");
             if let Some(start) = context.start {
@@ -344,12 +344,12 @@ impl Attachment {
                 statement.push_str(&format!("    a.created_date <= {}", end / TIMESTAMP_FACTOR));
             }
 
+            println!("{statement}");
             db.prepare(&statement).map_err(TableError::Attachment)?
         } else {
-            db.prepare(&format!("SELECT SUM(total_bytes) FROM {ATTACHMENT}"))
+            db.prepare(&format!("SELECT IFNULL(SUM(total_bytes), 0) FROM {ATTACHMENT}"))
                 .map_err(TableError::Attachment)?
         };
-
         bytes_query
             .query_row([], |r| -> Result<i64> { r.get(0) })
             .map(|res: i64| res.try_into().unwrap_or(0))
@@ -567,11 +567,12 @@ mod tests {
             attachment::{Attachment, MediaType, DEFAULT_ATTACHMENT_ROOT},
             table::get_connection,
         },
-        util::{dirs::default_db_path, platform::Platform, query_context::QueryContext},
+        util::{platform::Platform, query_context::QueryContext},
     };
 
     use std::{
         collections::BTreeSet,
+        env::current_dir,
         path::{Path, PathBuf},
     };
 
@@ -772,7 +773,11 @@ mod tests {
 
     #[test]
     fn can_get_attachment_bytes_no_filter() {
-        let db_path = default_db_path();
+        let db_path = current_dir()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("imessage-database/test_data/db/test.db");
         let connection = get_connection(&db_path).unwrap();
 
         let context = QueryContext::default();
@@ -782,7 +787,11 @@ mod tests {
 
     #[test]
     fn can_get_attachment_bytes_start_filter() {
-        let db_path = default_db_path();
+        let db_path = current_dir()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("imessage-database/test_data/db/test.db");
         let connection = get_connection(&db_path).unwrap();
 
         let mut context = QueryContext::default();
@@ -793,7 +802,11 @@ mod tests {
 
     #[test]
     fn can_get_attachment_bytes_end_filter() {
-        let db_path = default_db_path();
+        let db_path = current_dir()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("imessage-database/test_data/db/test.db");
         let connection = get_connection(&db_path).unwrap();
 
         let mut context = QueryContext::default();
@@ -804,19 +817,28 @@ mod tests {
 
     #[test]
     fn can_get_attachment_bytes_start_end_filter() {
-        let db_path = default_db_path();
+        let db_path = current_dir()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("imessage-database/test_data/db/test.db");
         let connection = get_connection(&db_path).unwrap();
 
         let mut context = QueryContext::default();
         context.set_start("2020-01-01").unwrap();
         context.set_end("2021-01-01").unwrap();
 
+        println!("{:?}", Attachment::get_total_attachment_bytes(&connection, &context));
         assert!(Attachment::get_total_attachment_bytes(&connection, &context).is_ok());
     }
 
     #[test]
     fn can_get_attachment_bytes_contact_filter() {
-        let db_path = default_db_path();
+        let db_path = current_dir()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("imessage-database/test_data/db/test.db");
         let connection = get_connection(&db_path).unwrap();
 
         let mut context = QueryContext::default();
@@ -828,7 +850,11 @@ mod tests {
 
     #[test]
     fn can_get_attachment_bytes_contact_date_filter() {
-        let db_path = default_db_path();
+        let db_path = current_dir()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("imessage-database/test_data/db/test.db");
         let connection = get_connection(&db_path).unwrap();
 
         let mut context = QueryContext::default();
