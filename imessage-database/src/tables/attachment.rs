@@ -2,8 +2,10 @@
  This module represents common (but not all) columns in the `attachment` table.
 */
 
-use rusqlite::{Connection, Error, Result, Row, Statement};
+use plist::Value;
+use rusqlite::{blob::Blob, Connection, Error, Result, Row, Statement};
 use sha1::{Digest, Sha1};
+
 use std::{
     fs::File,
     io::Read,
@@ -15,13 +17,15 @@ use crate::{
     message_types::sticker::{get_sticker_effect, StickerEffect},
     tables::{
         messages::Message,
-        table::{Table, ATTACHMENT},
+        table::{GetBlob, Table, ATTACHMENT, ATTRIBUTION_INFO, STICKER_USER_INFO},
     },
     util::{
+        bundle_id::parse_balloon_bundle_id,
         dates::TIMESTAMP_FACTOR,
         dirs::home,
         output::{done_processing, processing},
         platform::Platform,
+        plist::plist_as_dictionary,
         query_context::QueryContext,
         size::format_file_size,
     },
@@ -54,6 +58,33 @@ impl MediaType<'_> {
             MediaType::Application(subtype) => format!("application/{subtype}"),
             MediaType::Other(mime) => mime.to_string(),
             MediaType::Unknown => String::new(),
+        }
+    }
+}
+
+/// Represents the source that created a sticker attachment
+#[derive(Debug, PartialEq, Eq)]
+pub enum StickerSource {
+    /// A [Genmoji](https://support.apple.com/guide/iphone/create-genmoji-with-apple-intelligence-iph4e76f5667/ios)
+    Genmoji,
+    /// A [Memoji](https://support.apple.com/en-us/111115)
+    Memoji,
+    /// User-created stickers
+    UserGenerated,
+    /// Application provided stickers
+    App(String),
+}
+
+impl StickerSource {
+    fn from_bundle_id(bundle_id: &str) -> Option<Self> {
+        match parse_balloon_bundle_id(Some(bundle_id)) {
+            Some("com.apple.messages.genmoji") => Some(StickerSource::Genmoji),
+            Some("com.apple.Animoji.StickersApp.MessagesExtension") => Some(StickerSource::Memoji),
+            Some("com.apple.Stickers.UserGenerated.MessagesExtension") => {
+                Some(StickerSource::UserGenerated)
+            }
+            Some(other) => Some(StickerSource::App(other.to_string())),
+            None => None,
         }
     }
 }
@@ -106,6 +137,22 @@ impl Table for Attachment {
         match attachment {
             Ok(Ok(attachment)) => Ok(attachment),
             Err(why) | Ok(Err(why)) => Err(TableError::Attachment(why)),
+        }
+    }
+}
+
+impl GetBlob for Attachment {
+    /// Extract a blob of data that belongs to a single attachment from a given column
+    fn get_blob<'a>(&self, db: &'a Connection, column: &str) -> Option<Blob<'a>> {
+        match db.blob_open(
+            rusqlite::DatabaseName::Main,
+            ATTACHMENT,
+            column,
+            self.rowid as i64,
+            true,
+        ) {
+            Ok(blob) => Some(blob),
+            Err(_) => None,
         }
     }
 }
@@ -447,6 +494,51 @@ impl Attachment {
         let directory = filename.get(0..2)?;
 
         Some(format!("{}/{directory}/{filename}", db_path.display()))
+    }
+
+    /// Get an attachment's plist from the [STICKER_USER_INFO] BLOB column
+    ///
+    /// Calling this hits the database, so it is expensive and should
+    /// only get invoked when needed.
+    ///
+    /// This column contains data used for sticker attachments.
+    fn sticker_info(&self, db: &Connection) -> Option<Value> {
+        Value::from_reader(self.get_blob(db, STICKER_USER_INFO)?).ok()
+    }
+
+    /// Get an attachment's plist from the [ATTRIBUTION_INFO] BLOB column
+    ///
+    /// Calling this hits the database, so it is expensive and should
+    /// only get invoked when needed.
+    ///
+    /// This column contains metadata used by image attachments.
+    fn attribution_info(&self, db: &Connection) -> Option<Value> {
+        Value::from_reader(self.get_blob(db, ATTRIBUTION_INFO)?).ok()
+    }
+
+    /// Parse a sticker's source from the Bundle ID stored in [STICKER_USER_INFO] `plist` data
+    ///
+    /// Calling this hits the database, so it is expensive and should
+    /// only get invoked when needed.
+    pub fn get_sticker_source(&self, db: &Connection) -> Option<StickerSource> {
+        if let Some(sticker_info) = self.sticker_info(db) {
+            let plist = plist_as_dictionary(&sticker_info).ok()?;
+            let bundle_id = plist.get("pid")?.as_string()?;
+            return StickerSource::from_bundle_id(bundle_id);
+        }
+        None
+    }
+
+    /// Parse a sticker's application name stored in [ATTRIBUTION_INFO] `plist` data
+    ///
+    /// Calling this hits the database, so it is expensive and should
+    /// only get invoked when needed.
+    pub fn get_sticker_source_application_name(&self, db: &Connection) -> Option<String> {
+        if let Some(attribution_info) = self.attribution_info(db) {
+            let plist = plist_as_dictionary(&attribution_info).ok()?;
+            return Some(plist.get("name")?.as_string()?.to_owned());
+        }
+        None
     }
 }
 
