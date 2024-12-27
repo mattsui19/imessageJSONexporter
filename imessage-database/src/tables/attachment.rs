@@ -14,13 +14,12 @@ use std::{
 
 use crate::{
     error::{attachment::AttachmentError, table::TableError},
-    message_types::sticker::{get_sticker_effect, StickerEffect},
+    message_types::sticker::{get_sticker_effect, StickerEffect, StickerSource},
     tables::{
         messages::Message,
         table::{GetBlob, Table, ATTACHMENT, ATTRIBUTION_INFO, STICKER_USER_INFO},
     },
     util::{
-        bundle_id::parse_balloon_bundle_id,
         dates::TIMESTAMP_FACTOR,
         dirs::home,
         output::{done_processing, processing},
@@ -67,42 +66,6 @@ impl MediaType<'_> {
             MediaType::Application(subtype) => format!("application/{subtype}"),
             MediaType::Other(mime) => mime.to_string(),
             MediaType::Unknown => String::new(),
-        }
-    }
-}
-
-/// Represents the source that created a sticker attachment
-#[derive(Debug, PartialEq, Eq)]
-pub enum StickerSource {
-    /// A [Genmoji](https://support.apple.com/guide/iphone/create-genmoji-with-apple-intelligence-iph4e76f5667/ios)
-    Genmoji,
-    /// A [Memoji](https://support.apple.com/en-us/111115)
-    Memoji,
-    /// User-created stickers
-    UserGenerated,
-    /// Application provided stickers
-    App(String),
-}
-
-impl StickerSource {
-    /// Given an application's bundle ID, determine the source
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use imessage_database::tables::attachment::StickerSource;
-    ///
-    /// println!("{:?}", StickerSource::from_bundle_id("com.apple.messages.genmoji")); // StickerSource::Genmoji
-    /// ```
-    pub fn from_bundle_id(bundle_id: &str) -> Option<Self> {
-        match parse_balloon_bundle_id(Some(bundle_id)) {
-            Some("com.apple.messages.genmoji") => Some(StickerSource::Genmoji),
-            Some("com.apple.Animoji.StickersApp.MessagesExtension") => Some(StickerSource::Memoji),
-            Some("com.apple.Stickers.UserGenerated.MessagesExtension") => {
-                Some(StickerSource::UserGenerated)
-            }
-            Some(other) => Some(StickerSource::App(other.to_string())),
-            None => None,
         }
     }
 }
@@ -344,11 +307,12 @@ impl Attachment {
                 statement.push_str(&format!("    a.created_date <= {}", end / TIMESTAMP_FACTOR));
             }
 
-            println!("{statement}");
             db.prepare(&statement).map_err(TableError::Attachment)?
         } else {
-            db.prepare(&format!("SELECT IFNULL(SUM(total_bytes), 0) FROM {ATTACHMENT}"))
-                .map_err(TableError::Attachment)?
+            db.prepare(&format!(
+                "SELECT IFNULL(SUM(total_bytes), 0) FROM {ATTACHMENT}"
+            ))
+            .map_err(TableError::Attachment)?
         };
         bytes_query
             .query_row([], |r| -> Result<i64> { r.get(0) })
@@ -828,7 +792,6 @@ mod tests {
         context.set_start("2020-01-01").unwrap();
         context.set_end("2021-01-01").unwrap();
 
-        println!("{:?}", Attachment::get_total_attachment_bytes(&connection, &context));
         assert!(Attachment::get_total_attachment_bytes(&connection, &context).is_ok());
     }
 

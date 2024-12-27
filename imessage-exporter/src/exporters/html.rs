@@ -28,12 +28,13 @@ use imessage_database::{
         handwriting::HandwrittenMessage,
         music::MusicMessage,
         placemark::PlacemarkMessage,
+        sticker::StickerSource,
         text_effects::{Animation, Style, TextEffect, Unit},
         url::URLMessage,
         variants::{Announcement, BalloonProvider, CustomBalloon, URLOverride, Variant},
     },
     tables::{
-        attachment::{Attachment, MediaType, StickerSource},
+        attachment::{Attachment, MediaType},
         messages::{
             models::{AttachmentMeta, BubbleComponent},
             Message,
@@ -608,7 +609,7 @@ impl<'a> Writer<'a> for HTML<'a> {
                             }
                         }
                         StickerSource::Memoji => sticker_embed
-                            .push_str("\n<div class=\"sticker_name\">App: Stickers</div>"),
+                            .push_str("\n<div class=\"sticker_name\">App: Memoji</div>"),
                         StickerSource::UserGenerated => {
                             // Add sticker effect
                             if let Ok(Some(sticker_effect)) = sticker.get_sticker_effect(

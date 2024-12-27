@@ -29,12 +29,13 @@ use imessage_database::{
         handwriting::HandwrittenMessage,
         music::MusicMessage,
         placemark::PlacemarkMessage,
+        sticker::StickerSource,
         text_effects::TextEffect,
         url::URLMessage,
         variants::{Announcement, BalloonProvider, CustomBalloon, URLOverride, Variant},
     },
     tables::{
-        attachment::{Attachment, StickerSource},
+        attachment::Attachment,
         messages::{
             models::{AttachmentMeta, BubbleComponent},
             Message,
@@ -424,7 +425,7 @@ impl<'a> Writer<'a> for TXT<'a> {
                                 out_s = format!("{out_s} (Genmoji prompt: {prompt})");
                             }
                         }
-                        StickerSource::Memoji => out_s.push_str(" (App: Stickers)"),
+                        StickerSource::Memoji => out_s.push_str(" (App: Memoji)"),
                         StickerSource::UserGenerated => {
                             // Add sticker effect
                             if let Ok(Some(sticker_effect)) = sticker.get_sticker_effect(
