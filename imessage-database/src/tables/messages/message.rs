@@ -21,11 +21,12 @@ use crate::{
             models::{BubbleComponent, Service},
         },
         table::{
-            Cacheable, Diagnostic, Table, ATTRIBUTED_BODY, CHAT_MESSAGE_JOIN, MESSAGE,
+            Cacheable, Diagnostic, GetBlob, Table, ATTRIBUTED_BODY, CHAT_MESSAGE_JOIN, MESSAGE,
             MESSAGE_ATTACHMENT_JOIN, MESSAGE_PAYLOAD, MESSAGE_SUMMARY_INFO, RECENTLY_DELETED,
         },
     },
     util::{
+        bundle_id::parse_balloon_bundle_id,
         dates::{get_local_time, readable_diff},
         output::{done_processing, processing},
         query_context::QueryContext,
@@ -356,6 +357,22 @@ impl Cacheable for Message {
         }
 
         Ok(map)
+    }
+}
+
+impl GetBlob for Message {
+    /// Extract a blob of data that belongs to a single message from a given column
+    fn get_blob<'a>(&self, db: &'a Connection, column: &str) -> Option<Blob<'a>> {
+        match db.blob_open(
+            rusqlite::DatabaseName::Main,
+            MESSAGE,
+            column,
+            self.rowid as i64,
+            true,
+        ) {
+            Ok(blob) => Some(blob),
+            Err(_) => None,
+        }
     }
 }
 
@@ -863,26 +880,6 @@ impl Message {
         Ok(out_h)
     }
 
-    /// Parse the App's Bundle ID out of the Balloon's Bundle ID
-    ///
-    /// For example, a Bundle ID like `com.apple.messages.MSMessageExtensionBalloonPlugin:0000000000:com.apple.SafetyMonitorApp.SafetyMonitorMessages`
-    /// should get parsed into `com.apple.SafetyMonitorApp.SafetyMonitorMessages`.
-    pub fn parse_balloon_bundle_id(&self) -> Option<&str> {
-        if let Some(bundle_id) = &self.balloon_bundle_id {
-            let mut parts = bundle_id.split(':');
-            let bundle_id = parts.next();
-            // If there is only one part, use that, otherwise get the third part
-            if parts.next().is_none() {
-                bundle_id
-            } else {
-                // Will be None if there is no third part
-                parts.next()
-            }
-        } else {
-            None
-        }
-    }
-
     /// Get the variant of a message, see [`variants`](crate::message_types::variants) for detail.
     pub fn variant(&self) -> Variant {
         // Check if a message was edited first as those have special properties
@@ -894,7 +891,7 @@ impl Message {
         if let Some(associated_message_type) = self.associated_message_type {
             return match associated_message_type {
                 // Standard iMessages with either text or a message payload
-                0 | 2 | 3 => match self.parse_balloon_bundle_id() {
+                0 | 2 | 3 => match parse_balloon_bundle_id(self.balloon_bundle_id.as_deref()) {
                     Some(bundle_id) => match bundle_id {
                         "com.apple.messages.URLBalloonProvider" => Variant::App(CustomBalloon::URL),
                         "com.apple.Handwriting.HandwritingProvider" => {
@@ -986,21 +983,7 @@ impl Message {
         Service::from(self.service.as_deref())
     }
 
-    /// Extract a blob of data that belongs to a single message from a given column
-    fn get_blob<'a>(&self, db: &'a Connection, column: &str) -> Option<Blob<'a>> {
-        match db.blob_open(
-            rusqlite::DatabaseName::Main,
-            MESSAGE,
-            column,
-            self.rowid as i64,
-            true,
-        ) {
-            Ok(blob) => Some(blob),
-            Err(_) => None,
-        }
-    }
-
-    /// Get a message's plist from the `payload_data` BLOB column
+    /// Get a message's plist from the [`MESSAGE_PAYLOAD`] BLOB column
     ///
     /// Calling this hits the database, so it is expensive and should
     /// only get invoked when needed.
@@ -1010,7 +993,7 @@ impl Message {
         Value::from_reader(self.get_blob(db, MESSAGE_PAYLOAD)?).ok()
     }
 
-    /// Get a message's raw data from the `payload_data` BLOB column
+    /// Get a message's raw data from the [`MESSAGE_PAYLOAD`] BLOB column
     ///
     /// Calling this hits the database, so it is expensive and should
     /// only get invoked when needed.
@@ -1024,7 +1007,7 @@ impl Message {
         Some(buf)
     }
 
-    /// Get a message's plist from the `message_summary_info` BLOB column
+    /// Get a message's plist from the [`MESSAGE_SUMMARY_INFO`] BLOB column
     ///
     /// Calling this hits the database, so it is expensive and should
     /// only get invoked when needed.
@@ -1034,7 +1017,7 @@ impl Message {
         Value::from_reader(self.get_blob(db, MESSAGE_SUMMARY_INFO)?).ok()
     }
 
-    /// Get a message's plist from the `attributedBody` BLOB column
+    /// Get a message's [typedstream](crate::util::typedstream) from the [`ATTRIBUTED_BODY`] BLOB column
     ///
     /// Calling this hits the database, so it is expensive and should
     /// only get invoked when needed.
@@ -1117,7 +1100,7 @@ impl Message {
             group_title: None,
             group_action_type: 0,
             associated_message_guid: None,
-            associated_message_type: Some(i32::default()),
+            associated_message_type: None,
             balloon_bundle_id: None,
             expressive_send_style_id: None,
             thread_originator_guid: None,

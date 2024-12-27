@@ -28,6 +28,7 @@ use imessage_database::{
         handwriting::HandwrittenMessage,
         music::MusicMessage,
         placemark::PlacemarkMessage,
+        sticker::StickerSource,
         text_effects::{Animation, Style, TextEffect, Unit},
         url::URLMessage,
         variants::{Announcement, BalloonProvider, CustomBalloon, URLOverride, Variant},
@@ -42,7 +43,7 @@ use imessage_database::{
     },
     util::{
         dates::{format, get_local_time, readable_diff, TIMESTAMP_FACTOR},
-        plist::parse_plist,
+        plist::parse_ns_keyed_archiver,
     },
 };
 
@@ -596,24 +597,43 @@ impl<'a> Writer<'a> for HTML<'a> {
     fn format_sticker(&self, sticker: &'a mut Attachment, message: &Message) -> String {
         match self.format_attachment(sticker, message, &AttachmentMeta::default()) {
             Ok(mut sticker_embed) => {
-                // Add sticker effect
-                let sticker_effect = sticker.get_sticker_effect(
-                    &self.config.options.platform,
-                    &self.config.options.db_path,
-                    self.config.options.attachment_root.as_deref(),
-                );
-                if let Ok(Some(sticker_effect)) = sticker_effect {
-                    sticker_embed.push_str(&format!(
-                        "\n<div class=\"sticker_effect\">Sent with {sticker_effect} effect</div>"
-                    ))
+                // Determine the source of the sticker
+                if let Some(sticker_source) = sticker.get_sticker_source(&self.config.db) {
+                    match sticker_source {
+                        StickerSource::Genmoji => {
+                            // Add sticker prompt
+                            if let Some(prompt) = &sticker.emoji_description {
+                                sticker_embed.push_str(&format!(
+                                    "\n<div class=\"genmoji_prompt\">Genmoji prompt: {prompt}</div>"
+                                ))
+                            }
+                        }
+                        StickerSource::Memoji => sticker_embed
+                            .push_str("\n<div class=\"sticker_name\">App: Memoji</div>"),
+                        StickerSource::UserGenerated => {
+                            // Add sticker effect
+                            if let Ok(Some(sticker_effect)) = sticker.get_sticker_effect(
+                                &self.config.options.platform,
+                                &self.config.options.db_path,
+                                self.config.options.attachment_root.as_deref(),
+                            ) {
+                                sticker_embed.push_str(&format!(
+                                    "\n<div class=\"sticker_effect\">Sent with {sticker_effect} effect</div>"
+                                ))
+                            }
+                        }
+                        StickerSource::App(bundle_id) => {
+                            // Add the application name used to generate/send the sticker
+                            let app_name = sticker
+                                .get_sticker_source_application_name(&self.config.db)
+                                .unwrap_or(bundle_id);
+                            sticker_embed.push_str(&format!(
+                                "\n<div class=\"sticker_name\">App: {app_name}</div>"
+                            ))
+                        }
+                    }
                 }
 
-                // Add sticker prompt
-                if let Some(prompt) = &sticker.emoji_description {
-                    sticker_embed.push_str(&format!(
-                        "\n<div class=\"sticker_effect\">Genmoji prompt: {prompt}</div>"
-                    ))
-                }
                 sticker_embed
             }
             Err(embed) => embed.to_string(),
@@ -650,7 +670,7 @@ impl<'a> Writer<'a> for HTML<'a> {
 
             if let Some(payload) = message.payload_data(&self.config.db) {
                 let res = if message.is_url() {
-                    let parsed = parse_plist(&payload)?;
+                    let parsed = parse_ns_keyed_archiver(&payload)?;
                     let bubble = URLMessage::get_url_message_override(&parsed)?;
                     match bubble {
                         URLOverride::Normal(balloon) => self.format_url(message, &balloon, message),
@@ -664,7 +684,7 @@ impl<'a> Writer<'a> for HTML<'a> {
                         }
                     }
                 } else {
-                    let parsed = parse_plist(&payload)?;
+                    let parsed = parse_ns_keyed_archiver(&payload)?;
                     match AppMessage::from_map(&parsed) {
                         Ok(bubble) => match balloon {
                             CustomBalloon::Application(bundle_id) => {
@@ -2230,6 +2250,7 @@ mod tests {
         let message = Config::fake_message();
 
         let mut attachment = Config::fake_attachment();
+        attachment.rowid = 3;
         attachment.is_sticker = true;
         let sticker_path = current_dir()
             .unwrap()
@@ -2249,7 +2270,7 @@ mod tests {
             .parent()
             .unwrap()
             .join("orphaned.html");
-        std::fs::remove_file(orphaned_path).unwrap();
+        let _ = std::fs::remove_file(orphaned_path);
     }
 
     #[test]
@@ -2264,8 +2285,44 @@ mod tests {
         let message = Config::fake_message();
 
         let mut attachment = Config::fake_attachment();
+        attachment.rowid = 2;
         attachment.is_sticker = true;
-        attachment.emoji_description = Some("Example description".to_string());
+        let sticker_path = current_dir()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("imessage-database/test_data/stickers/outline.heic");
+        attachment.filename = Some(sticker_path.to_string_lossy().to_string());
+        attachment.copied_path = Some(PathBuf::from(sticker_path.to_string_lossy().to_string()));
+        attachment.emoji_description = Some("pink poodle".to_string());
+
+        let actual = exporter.format_sticker(&mut attachment, &message);
+
+        assert_eq!(actual, "<img src=\"imessage-database/test_data/stickers/outline.heic\" loading=\"lazy\">\n<div class=\"genmoji_prompt\">Genmoji prompt: pink poodle</div>");
+
+        // Remove the file created by the constructor for this test
+        let orphaned_path = current_dir()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("orphaned.html");
+        let _ = std::fs::remove_file(orphaned_path);
+    }
+
+    #[test]
+    fn can_format_html_attachment_sticker_app() {
+        // Create exporter
+        let mut options = Options::fake_options(ExportType::Html);
+        options.export_path = current_dir().unwrap().parent().unwrap().to_path_buf();
+
+        let config = Config::fake_app(options);
+        let exporter = HTML::new(&config).unwrap();
+
+        let message = Config::fake_message();
+
+        let mut attachment = Config::fake_attachment();
+        attachment.rowid = 1;
+        attachment.is_sticker = true;
         let sticker_path = current_dir()
             .unwrap()
             .parent()
@@ -2276,7 +2333,7 @@ mod tests {
 
         let actual = exporter.format_sticker(&mut attachment, &message);
 
-        assert_eq!(actual, "<img src=\"imessage-database/test_data/stickers/outline.heic\" loading=\"lazy\">\n<div class=\"sticker_effect\">Sent with Outline effect</div>\n<div class=\"sticker_effect\">Genmoji prompt: Example description</div>");
+        assert_eq!(actual, "<img src=\"imessage-database/test_data/stickers/outline.heic\" loading=\"lazy\">\n<div class=\"sticker_name\">App: Free People</div>");
 
         // Remove the file created by the constructor for this test
         let orphaned_path = current_dir()
@@ -2284,7 +2341,7 @@ mod tests {
             .parent()
             .unwrap()
             .join("orphaned.html");
-        std::fs::remove_file(orphaned_path).unwrap();
+        let _ = std::fs::remove_file(orphaned_path);
     }
 
     #[test]

@@ -42,6 +42,8 @@ mod tests {
 
     #[test]
     fn can_generate_filter_statement_start_end() {
+        set_var("TZ", "PST");
+
         let mut context = QueryContext::default();
         context.set_start("2020-01-01").unwrap();
         context.set_end("2020-02-02").unwrap();
@@ -52,6 +54,8 @@ mod tests {
 
     #[test]
     fn can_generate_filter_statement_chat_ids() {
+        set_var("TZ", "PST");
+
         let mut context = QueryContext::default();
         context.set_selected_chat_ids(BTreeSet::from([1, 2, 3]));
 
@@ -64,6 +68,8 @@ mod tests {
 
     #[test]
     fn can_generate_filter_statement_start_end_chat_ids() {
+        set_var("TZ", "PST");
+
         let mut context = QueryContext::default();
         context.set_start("2020-01-01").unwrap();
         context.set_end("2020-02-02").unwrap();
@@ -75,6 +81,8 @@ mod tests {
 
     #[test]
     fn can_create_invalid_start() {
+        set_var("TZ", "PST");
+
         let mut context = QueryContext::default();
         assert!(context.set_start("2020-13-32").is_err());
         assert!(!context.has_filters());
@@ -85,6 +93,8 @@ mod tests {
 
     #[test]
     fn can_create_invalid_end() {
+        set_var("TZ", "PST");
+
         let mut context = QueryContext::default();
         assert!(context.set_end("fake").is_err());
         assert!(!context.has_filters());
