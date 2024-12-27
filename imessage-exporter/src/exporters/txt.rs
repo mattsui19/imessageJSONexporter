@@ -419,6 +419,7 @@ impl<'a> Writer<'a> for TXT<'a> {
                 if let Some(sticker_source) = sticker.get_sticker_source(&self.config.db) {
                     match sticker_source {
                         StickerSource::Genmoji => {
+                            // Add sticker prompt
                             if let Some(prompt) = &sticker.emoji_description {
                                 out_s = format!("{out_s} (Genmoji prompt: {prompt})");
                             }
@@ -435,6 +436,7 @@ impl<'a> Writer<'a> for TXT<'a> {
                             }
                         }
                         StickerSource::App(bundle_id) => {
+                            // Add the application name used to generate/send the sticker
                             let app_name = sticker
                                 .get_sticker_source_application_name(&self.config.db)
                                 .unwrap_or(bundle_id);

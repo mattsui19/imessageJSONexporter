@@ -599,7 +599,6 @@ impl<'a> Writer<'a> for HTML<'a> {
                 // Determine the source of the sticker
                 if let Some(sticker_source) = sticker.get_sticker_source(&self.config.db) {
                     match sticker_source {
-                        // Emit the prompt used for the Genmoji
                         StickerSource::Genmoji => {
                             // Add sticker prompt
                             if let Some(prompt) = &sticker.emoji_description {
@@ -608,10 +607,8 @@ impl<'a> Writer<'a> for HTML<'a> {
                                 ))
                             }
                         }
-                        // Add the app name
                         StickerSource::Memoji => sticker_embed
                             .push_str("\n<div class=\"sticker_name\">App: Stickers</div>"),
-                        // Add the sticker effect the user provided
                         StickerSource::UserGenerated => {
                             // Add sticker effect
                             if let Ok(Some(sticker_effect)) = sticker.get_sticker_effect(
@@ -624,8 +621,8 @@ impl<'a> Writer<'a> for HTML<'a> {
                                 ))
                             }
                         }
-                        // Add the application name used to generate/send the sticker
                         StickerSource::App(bundle_id) => {
+                            // Add the application name used to generate/send the sticker
                             let app_name = sticker
                                 .get_sticker_source_application_name(&self.config.db)
                                 .unwrap_or(bundle_id);
