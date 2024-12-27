@@ -603,7 +603,7 @@ impl<'a> Writer<'a> for HTML<'a> {
                             // Add sticker prompt
                             if let Some(prompt) = &sticker.emoji_description {
                                 sticker_embed.push_str(&format!(
-                                    "\n<div class=\"sticker_effect\">Genmoji prompt: {prompt}</div>"
+                                    "\n<div class=\"genmoji_prompt\">Genmoji prompt: {prompt}</div>"
                                 ))
                             }
                         }
@@ -2297,7 +2297,7 @@ mod tests {
 
         let actual = exporter.format_sticker(&mut attachment, &message);
 
-        assert_eq!(actual, "<img src=\"imessage-database/test_data/stickers/outline.heic\" loading=\"lazy\">\n<div class=\"sticker_effect\">Genmoji prompt: pink poodle</div>");
+        assert_eq!(actual, "<img src=\"imessage-database/test_data/stickers/outline.heic\" loading=\"lazy\">\n<div class=\"genmoji_prompt\">Genmoji prompt: pink poodle</div>");
 
         // Remove the file created by the constructor for this test
         let orphaned_path = current_dir()
