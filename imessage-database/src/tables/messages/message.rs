@@ -313,9 +313,10 @@ impl Cacheable for Message {
         // Create query, independent of table schema
         let statement = db.prepare(&format!(
             "SELECT 
-                 *, 
+                 {COLS}, 
                  c.chat_id, 
                  (SELECT COUNT(*) FROM {MESSAGE_ATTACHMENT_JOIN} a WHERE m.ROWID = a.message_id) as num_attachments,
+                 NULL as deleted_from,
                  (SELECT COUNT(*) FROM {MESSAGE} m2 WHERE m2.thread_originator_guid = m.guid) as num_replies
              FROM 
                  message as m 
@@ -325,7 +326,7 @@ impl Cacheable for Message {
         ));
 
         if let Ok(mut statement) = statement {
-            // Execute query to build the Handles
+            // Execute query to build the message tapback map
             let messages = statement
                 .query_map([], |row| Ok(Message::from_row(row)))
                 .map_err(TableError::Messages)?;
@@ -733,8 +734,9 @@ impl Message {
             db.prepare(&format!("SELECT COUNT(*) FROM {MESSAGE}"))
                 .map_err(TableError::Messages)?
         };
-        // Execute query to build the Handles
+        // Execute query, defaulting to zero if it fails
         let count: u64 = statement.query_row([], |r| r.get(0)).unwrap_or(0);
+
         Ok(count)
     }
 
