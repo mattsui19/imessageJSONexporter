@@ -154,11 +154,12 @@ impl Table for Message {
                  {COLS},
                  c.chat_id,
                  (SELECT COUNT(*) FROM {MESSAGE_ATTACHMENT_JOIN} a WHERE m.ROWID = a.message_id) as num_attachments,
-                 (SELECT b.chat_id FROM {RECENTLY_DELETED} b WHERE m.ROWID = b.message_id) as deleted_from,
+                 d.chat_id as deleted_from,
                  (SELECT COUNT(*) FROM {MESSAGE} m2 WHERE m2.thread_originator_guid = m.guid) as num_replies
              FROM
                  message as m
              LEFT JOIN {CHAT_MESSAGE_JOIN} as c ON m.ROWID = c.message_id
+             LEFT JOIN {RECENTLY_DELETED} as d ON m.ROWID = d.message_id
              ORDER BY
                  m.date;
             "
