@@ -1,5 +1,5 @@
 #[cfg(test)]
-mod false_tests {
+mod exclude_recoverable_tests {
     use std::{collections::BTreeSet, env::set_var};
 
     use crate::{tables::messages::Message, util::query_context::QueryContext};
@@ -105,7 +105,7 @@ mod false_tests {
 }
 
 #[cfg(test)]
-mod true_tests {
+mod include_recoverable_tests {
     use std::{collections::BTreeSet, env::set_var};
 
     use crate::{tables::messages::Message, util::query_context::QueryContext};

@@ -646,24 +646,33 @@ impl Message {
         include_recoverable: bool,
     ) -> String {
         let mut filters = String::new();
+
+        // Start date filter
         if let Some(start) = context.start {
             filters.push_str(&format!("    m.date >= {start}"));
         }
+
+        // End date filter
         if let Some(end) = context.end {
             if !filters.is_empty() {
                 filters.push_str(" AND ");
             }
             filters.push_str(&format!("    m.date <= {end}"));
         }
+
+        // Chat ID filter, optionally including recoverable messages
         if let Some(chat_ids) = &context.selected_chat_ids {
             if !filters.is_empty() {
                 filters.push_str(" AND ");
             }
+
+            // Allocate the filter string for interpolation
             let ids = chat_ids
                 .iter()
                 .map(|x| x.to_string())
                 .collect::<Vec<String>>()
                 .join(", ");
+
             if include_recoverable {
                 filters.push_str(&format!(
                     "    (c.chat_id IN ({ids}) OR d.chat_id IN ({ids}))"
