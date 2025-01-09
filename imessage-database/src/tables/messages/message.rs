@@ -36,7 +36,7 @@ use crate::{
 };
 
 /// The required columns, interpolated into the most recent schema due to performance considerations
-const COLS: &str = "rowid, guid, text, service, handle_id, destination_caller_id, subject, date, date_read, date_delivered, is_from_me, is_read, item_type, other_handle, share_status, share_direction, group_title, group_action_type, associated_message_guid, associated_message_type, balloon_bundle_id, expressive_send_style_id, thread_originator_guid, thread_originator_part, date_edited, chat_id";
+const COLS: &str = "rowid, guid, text, service, handle_id, destination_caller_id, subject, date, date_read, date_delivered, is_from_me, is_read, item_type, other_handle, share_status, share_direction, group_title, group_action_type, associated_message_guid, associated_message_type, balloon_bundle_id, expressive_send_style_id, thread_originator_guid, thread_originator_part, date_edited";
 
 /// Represents a single row in the `message` table.
 #[derive(Debug)]
@@ -754,7 +754,7 @@ impl Message {
         // If database has `thread_originator_guid`, we can parse replies, otherwise default to 0
         db.prepare(&format!(
                 "SELECT
-                     *,
+                     {COLS},
                      c.chat_id,
                      (SELECT COUNT(*) FROM {MESSAGE_ATTACHMENT_JOIN} a WHERE m.ROWID = a.message_id) as num_attachments,
                      d.chat_id as deleted_from,
@@ -769,22 +769,25 @@ impl Message {
                 ",
                 Self::generate_filter_statement(context, true)
             ))
-            .or_else( |_| db.prepare(&format!(
-                "SELECT
-                     *,
-                     c.chat_id,
-                     (SELECT COUNT(*) FROM {MESSAGE_ATTACHMENT_JOIN} a WHERE m.ROWID = a.message_id) as num_attachments,
-                     (SELECT NULL) as deleted_from,
-                     (SELECT 0) as num_replies
-                 FROM
-                     message as m
-                 LEFT JOIN {CHAT_MESSAGE_JOIN} as c ON m.ROWID = c.message_id
-                 {}
-                 ORDER BY
-                     m.date;
-                ",
-                Self::generate_filter_statement(context, false)
-            ))).map_err(TableError::Messages)
+            .or_else( |_|
+                db.prepare(&format!(
+                    "SELECT
+                        *,
+                        c.chat_id,
+                        (SELECT COUNT(*) FROM {MESSAGE_ATTACHMENT_JOIN} a WHERE m.ROWID = a.message_id) as num_attachments,
+                        (SELECT NULL) as deleted_from,
+                        (SELECT 0) as num_replies
+                    FROM
+                        message as m
+                    LEFT JOIN {CHAT_MESSAGE_JOIN} as c ON m.ROWID = c.message_id
+                    {}
+                    ORDER BY
+                        m.date;
+                    ",
+                    Self::generate_filter_statement(context, false)
+                )
+            )
+        ).map_err(TableError::Messages)
     }
 
     /// See [`Tapback`] for details on this data.
