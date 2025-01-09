@@ -577,7 +577,7 @@ impl Message {
 
     /// `true` if all message components were unsent, else `false`
     pub fn is_fully_unsent(&self) -> bool {
-        self.edited_parts.as_ref().map_or(false, |ep| {
+        self.edited_parts.as_ref().is_some_and(|ep| {
             ep.parts
                 .iter()
                 .all(|part| matches!(part.status, EditStatus::Unsent))
