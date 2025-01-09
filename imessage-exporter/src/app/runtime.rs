@@ -114,7 +114,7 @@ impl Config {
                     &self.options.db_path,
                     self.options.attachment_root.as_deref(),
                 )
-                .unwrap_or(attachment.filename().to_string()),
+                .unwrap_or_else(|| attachment.filename().to_string()),
         }
     }
 
