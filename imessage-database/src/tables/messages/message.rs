@@ -119,7 +119,7 @@ impl Table for Message {
             date_read: row.get("date_read").unwrap_or(0),
             date_delivered: row.get("date_delivered").unwrap_or(0),
             is_from_me: row.get("is_from_me")?,
-            is_read: row.get("is_read")?,
+            is_read: row.get("is_read").unwrap_or(false),
             item_type: row.get("item_type").unwrap_or_default(),
             other_handle: row.get("other_handle").unwrap_or_default(),
             share_status: row.get("share_status").unwrap_or(false),
