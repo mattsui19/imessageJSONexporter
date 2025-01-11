@@ -642,7 +642,9 @@ impl Message {
 
     /// Generate the SQL `WHERE` clause described by a [`QueryContext`].
     ///
-    /// If `include_recoverable` is included, add relevant filter details to the query
+    /// If `include_recoverable` is `true`, the filter includes messages from the recently deleted messages
+    /// table that match the chat IDs. This allows recovery of deleted messages that are still
+    /// present in the database but no longer visible in the Messages app.
     pub(crate) fn generate_filter_statement(
         context: &QueryContext,
         include_recoverable: bool,
