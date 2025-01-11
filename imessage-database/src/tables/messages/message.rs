@@ -36,7 +36,7 @@ use crate::{
 };
 
 /// The required columns, interpolated into the most recent schema due to performance considerations
-const COLS: &str = "rowid, guid, text, service, handle_id, destination_caller_id, subject, date, date_read, date_delivered, is_from_me, is_read, item_type, other_handle, share_status, share_direction, group_title, group_action_type, associated_message_guid, associated_message_type, balloon_bundle_id, expressive_send_style_id, thread_originator_guid, thread_originator_part, date_edited, chat_id";
+const COLS: &str = "rowid, guid, text, service, handle_id, destination_caller_id, subject, date, date_read, date_delivered, is_from_me, is_read, item_type, other_handle, share_status, share_direction, group_title, group_action_type, associated_message_guid, associated_message_type, balloon_bundle_id, expressive_send_style_id, thread_originator_guid, thread_originator_part, date_edited";
 
 /// Represents a single row in the `message` table.
 #[derive(Debug)]
@@ -119,7 +119,7 @@ impl Table for Message {
             date_read: row.get("date_read").unwrap_or(0),
             date_delivered: row.get("date_delivered").unwrap_or(0),
             is_from_me: row.get("is_from_me")?,
-            is_read: row.get("is_read")?,
+            is_read: row.get("is_read").unwrap_or(false),
             item_type: row.get("item_type").unwrap_or_default(),
             other_handle: row.get("other_handle").unwrap_or_default(),
             share_status: row.get("share_status").unwrap_or(false),
@@ -148,21 +148,22 @@ impl Table for Message {
     fn get(db: &Connection) -> Result<Statement, TableError> {
         // If the database has `chat_recoverable_message_join`, we can restore some deleted messages.
         // If database has `thread_originator_guid`, we can parse replies, otherwise default to 0
-        Ok(db.prepare(&format!(
+        db.prepare(&format!(
             // macOS Ventura+ and i0S 16+ schema, interpolated with required columns for performance
             "SELECT
                  {COLS},
                  c.chat_id,
                  (SELECT COUNT(*) FROM {MESSAGE_ATTACHMENT_JOIN} a WHERE m.ROWID = a.message_id) as num_attachments,
-                 (SELECT b.chat_id FROM {RECENTLY_DELETED} b WHERE m.ROWID = b.message_id) as deleted_from,
+                 d.chat_id as deleted_from,
                  (SELECT COUNT(*) FROM {MESSAGE} m2 WHERE m2.thread_originator_guid = m.guid) as num_replies
              FROM
                  message as m
              LEFT JOIN {CHAT_MESSAGE_JOIN} as c ON m.ROWID = c.message_id
+             LEFT JOIN {RECENTLY_DELETED} as d ON m.ROWID = d.message_id
              ORDER BY
                  m.date;
             "
-        )).or(db.prepare(&format!(
+        )).or_else( |_| db.prepare(&format!(
             // macOS Big Sur to Monterey, iOS 14 to iOS 15 schema
             "SELECT
                  *,
@@ -177,7 +178,7 @@ impl Table for Message {
                  m.date;
             "
         )))
-        .unwrap_or(db.prepare(&format!(
+        .or_else( |_| db.prepare(&format!(
             // macOS Catalina, iOS 13 and older 
             "SELECT
                  *,
@@ -191,8 +192,7 @@ impl Table for Message {
              ORDER BY
                  m.date;
             "
-        )).map_err(TableError::Messages)?)
-    )
+        ))).map_err(TableError::Messages)
     }
 
     fn extract(message: Result<Result<Self, Error>, Error>) -> Result<Self, TableError> {
@@ -313,9 +313,10 @@ impl Cacheable for Message {
         // Create query, independent of table schema
         let statement = db.prepare(&format!(
             "SELECT 
-                 *, 
+                 {COLS}, 
                  c.chat_id, 
                  (SELECT COUNT(*) FROM {MESSAGE_ATTACHMENT_JOIN} a WHERE m.ROWID = a.message_id) as num_attachments,
+                 NULL as deleted_from,
                  (SELECT COUNT(*) FROM {MESSAGE} m2 WHERE m2.thread_originator_guid = m.guid) as num_replies
              FROM 
                  message as m 
@@ -325,7 +326,7 @@ impl Cacheable for Message {
         ));
 
         if let Ok(mut statement) = statement {
-            // Execute query to build the Handles
+            // Execute query to build the message tapback map
             let messages = statement
                 .query_map([], |row| Ok(Message::from_row(row)))
                 .map_err(TableError::Messages)?;
@@ -576,7 +577,7 @@ impl Message {
 
     /// `true` if all message components were unsent, else `false`
     pub fn is_fully_unsent(&self) -> bool {
-        self.edited_parts.as_ref().map_or(false, |ep| {
+        self.edited_parts.as_ref().is_some_and(|ep| {
             ep.parts
                 .iter()
                 .all(|part| matches!(part.status, EditStatus::Unsent))
@@ -639,30 +640,50 @@ impl Message {
         0
     }
 
-    /// Generate the SQL `WHERE` clause described by a [`QueryContext`]
-    pub(crate) fn generate_filter_statement(context: &QueryContext) -> String {
+    /// Generate the SQL `WHERE` clause described by a [`QueryContext`].
+    ///
+    /// If `include_recoverable` is `true`, the filter includes messages from the recently deleted messages
+    /// table that match the chat IDs. This allows recovery of deleted messages that are still
+    /// present in the database but no longer visible in the Messages app.
+    pub(crate) fn generate_filter_statement(
+        context: &QueryContext,
+        include_recoverable: bool,
+    ) -> String {
         let mut filters = String::new();
+
+        // Start date filter
         if let Some(start) = context.start {
             filters.push_str(&format!("    m.date >= {start}"));
         }
+
+        // End date filter
         if let Some(end) = context.end {
             if !filters.is_empty() {
                 filters.push_str(" AND ");
             }
             filters.push_str(&format!("    m.date <= {end}"));
         }
+
+        // Chat ID filter, optionally including recoverable messages
         if let Some(chat_ids) = &context.selected_chat_ids {
             if !filters.is_empty() {
                 filters.push_str(" AND ");
             }
-            filters.push_str(&format!(
-                "    c.chat_id IN ({})",
-                chat_ids
-                    .iter()
-                    .map(|x| x.to_string())
-                    .collect::<Vec<String>>()
-                    .join(", "),
-            ));
+
+            // Allocate the filter string for interpolation
+            let ids = chat_ids
+                .iter()
+                .map(|x| x.to_string())
+                .collect::<Vec<String>>()
+                .join(", ");
+
+            if include_recoverable {
+                filters.push_str(&format!(
+                    "    (c.chat_id IN ({ids}) OR d.chat_id IN ({ids}))"
+                ));
+            } else {
+                filters.push_str(&format!("    c.chat_id IN ({ids})"));
+            }
         }
 
         if !filters.is_empty() {
@@ -696,16 +717,28 @@ impl Message {
                     COUNT(*) 
                  FROM {MESSAGE} as m
                  LEFT JOIN {CHAT_MESSAGE_JOIN} as c ON m.ROWID = c.message_id
+                 LEFT JOIN {RECENTLY_DELETED} as d ON m.ROWID = d.message_id
                  {}",
-                Self::generate_filter_statement(context)
+                Self::generate_filter_statement(context, true)
             ))
+            .or_else(|_| {
+                db.prepare(&format!(
+                    "SELECT 
+                    COUNT(*) 
+                 FROM {MESSAGE} as m
+                 LEFT JOIN {CHAT_MESSAGE_JOIN} as c ON m.ROWID = c.message_id
+                 {}",
+                    Self::generate_filter_statement(context, false)
+                ))
+            })
             .map_err(TableError::Messages)?
         } else {
             db.prepare(&format!("SELECT COUNT(*) FROM {MESSAGE}"))
                 .map_err(TableError::Messages)?
         };
-        // Execute query to build the Handles
+        // Execute query, defaulting to zero if it fails
         let count: u64 = statement.query_row([], |r| r.get(0)).unwrap_or(0);
+
         Ok(count)
     }
 
@@ -732,39 +765,43 @@ impl Message {
             return Self::get(db);
         }
 
-        let filters = Self::generate_filter_statement(context);
-
         // If database has `thread_originator_guid`, we can parse replies, otherwise default to 0
-        Ok(db.prepare(&format!(
+        db.prepare(&format!(
                 "SELECT
-                     *,
+                     {COLS},
                      c.chat_id,
                      (SELECT COUNT(*) FROM {MESSAGE_ATTACHMENT_JOIN} a WHERE m.ROWID = a.message_id) as num_attachments,
-                     (SELECT b.chat_id FROM {RECENTLY_DELETED} b WHERE m.ROWID = b.message_id) as deleted_from,
+                     d.chat_id as deleted_from,
                      (SELECT COUNT(*) FROM {MESSAGE} m2 WHERE m2.thread_originator_guid = m.guid) as num_replies
                  FROM
                      message as m
                  LEFT JOIN {CHAT_MESSAGE_JOIN} as c ON m.ROWID = c.message_id
-                 {filters}
+                 LEFT JOIN {RECENTLY_DELETED} as d ON m.ROWID = d.message_id
+                 {}
                  ORDER BY
                      m.date;
-                "
+                ",
+                Self::generate_filter_statement(context, true)
             ))
-            .unwrap_or(db.prepare(&format!(
-                "SELECT
-                     *,
-                     c.chat_id,
-                     (SELECT COUNT(*) FROM {MESSAGE_ATTACHMENT_JOIN} a WHERE m.ROWID = a.message_id) as num_attachments,
-                     (SELECT NULL) as deleted_from,
-                     (SELECT 0) as num_replies
-                 FROM
-                     message as m
-                 LEFT JOIN {CHAT_MESSAGE_JOIN} as c ON m.ROWID = c.message_id
-                 {filters}
-                 ORDER BY
-                     m.date;
-                "
-            )).map_err(TableError::Messages)?))
+            .or_else( |_|
+                db.prepare(&format!(
+                    "SELECT
+                        *,
+                        c.chat_id,
+                        (SELECT COUNT(*) FROM {MESSAGE_ATTACHMENT_JOIN} a WHERE m.ROWID = a.message_id) as num_attachments,
+                        (SELECT NULL) as deleted_from,
+                        (SELECT 0) as num_replies
+                    FROM
+                        message as m
+                    LEFT JOIN {CHAT_MESSAGE_JOIN} as c ON m.ROWID = c.message_id
+                    {}
+                    ORDER BY
+                        m.date;
+                    ",
+                    Self::generate_filter_statement(context, false)
+                )
+            )
+        ).map_err(TableError::Messages)
     }
 
     /// See [`Tapback`] for details on this data.
