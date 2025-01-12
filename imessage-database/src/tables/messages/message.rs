@@ -36,7 +36,7 @@ use crate::{
 };
 
 /// The required columns, interpolated into the most recent schema due to performance considerations
-const COLS: &str = "rowid, guid, text, service, handle_id, destination_caller_id, subject, date, date_read, date_delivered, is_from_me, is_read, item_type, other_handle, share_status, share_direction, group_title, group_action_type, associated_message_guid, associated_message_type, balloon_bundle_id, expressive_send_style_id, thread_originator_guid, thread_originator_part, date_edited";
+const COLS: &str = "rowid, guid, text, service, handle_id, destination_caller_id, subject, date, date_read, date_delivered, is_from_me, is_read, item_type, other_handle, share_status, share_direction, group_title, group_action_type, associated_message_guid, associated_message_type, balloon_bundle_id, expressive_send_style_id, thread_originator_guid, thread_originator_part, date_edited, associated_message_emoji";
 
 /// Represents a single row in the `message` table.
 #[derive(Debug)]
@@ -157,7 +157,7 @@ impl Table for Message {
                  d.chat_id as deleted_from,
                  (SELECT COUNT(*) FROM {MESSAGE} m2 WHERE m2.thread_originator_guid = m.guid) as num_replies
              FROM
-                 message as m
+                 {MESSAGE} as m
              LEFT JOIN {CHAT_MESSAGE_JOIN} as c ON m.ROWID = c.message_id
              LEFT JOIN {RECENTLY_DELETED} as d ON m.ROWID = d.message_id
              ORDER BY
@@ -172,7 +172,7 @@ impl Table for Message {
                  NULL as deleted_from,
                  (SELECT COUNT(*) FROM {MESSAGE} m2 WHERE m2.thread_originator_guid = m.guid) as num_replies
              FROM
-                 message as m
+                 {MESSAGE} as m
              LEFT JOIN {CHAT_MESSAGE_JOIN} as c ON m.ROWID = c.message_id
              ORDER BY
                  m.date;
@@ -187,7 +187,7 @@ impl Table for Message {
                  NULL as deleted_from,
                  0 as num_replies
              FROM
-                 message as m
+                 {MESSAGE} as m
              LEFT JOIN {CHAT_MESSAGE_JOIN} as c ON m.ROWID = c.message_id
              ORDER BY
                  m.date;
@@ -317,13 +317,25 @@ impl Cacheable for Message {
                  c.chat_id, 
                  (SELECT COUNT(*) FROM {MESSAGE_ATTACHMENT_JOIN} a WHERE m.ROWID = a.message_id) as num_attachments,
                  NULL as deleted_from,
-                 (SELECT COUNT(*) FROM {MESSAGE} m2 WHERE m2.thread_originator_guid = m.guid) as num_replies
+                 0 as num_replies
              FROM 
-                 message as m 
+                 {MESSAGE} as m
              LEFT JOIN {CHAT_MESSAGE_JOIN} as c ON m.ROWID = c.message_id
-             WHERE m.associated_message_guid NOT NULL
+             WHERE m.associated_message_guid IS NOT NULL
             "
-        ));
+        )).or_else(|_| db.prepare(&format!(
+            "SELECT 
+                 *, 
+                 c.chat_id, 
+                 (SELECT COUNT(*) FROM {MESSAGE_ATTACHMENT_JOIN} a WHERE m.ROWID = a.message_id) as num_attachments,
+                 NULL as deleted_from,
+                 0 as num_replies
+             FROM 
+                 {MESSAGE} as m
+             LEFT JOIN {CHAT_MESSAGE_JOIN} as c ON m.ROWID = c.message_id
+             WHERE m.associated_message_guid IS NOT NULL
+            "
+        )));
 
         if let Ok(mut statement) = statement {
             // Execute query to build the message tapback map
@@ -774,7 +786,7 @@ impl Message {
                      d.chat_id as deleted_from,
                      (SELECT COUNT(*) FROM {MESSAGE} m2 WHERE m2.thread_originator_guid = m.guid) as num_replies
                  FROM
-                     message as m
+                     {MESSAGE} as m
                  LEFT JOIN {CHAT_MESSAGE_JOIN} as c ON m.ROWID = c.message_id
                  LEFT JOIN {RECENTLY_DELETED} as d ON m.ROWID = d.message_id
                  {}
@@ -792,7 +804,7 @@ impl Message {
                         (SELECT NULL) as deleted_from,
                         (SELECT 0) as num_replies
                     FROM
-                        message as m
+                        {MESSAGE} as m
                     LEFT JOIN {CHAT_MESSAGE_JOIN} as c ON m.ROWID = c.message_id
                     {}
                     ORDER BY
@@ -830,7 +842,7 @@ impl Message {
         }
     }
 
-    /// Build a `HashMap` of message component index to messages that react to that component
+    /// Build a `HashMap` of message component index to tapbacks that map to that component
     pub fn get_tapbacks(
         &self,
         db: &Connection,
@@ -847,7 +859,7 @@ impl Message {
                         (SELECT COUNT(*) FROM {MESSAGE_ATTACHMENT_JOIN} a WHERE m.ROWID = a.message_id) as num_attachments,
                         (SELECT COUNT(*) FROM {MESSAGE} m2 WHERE m2.thread_originator_guid = m.guid) as num_replies
                     FROM 
-                        message as m 
+                        {MESSAGE} as m 
                     LEFT JOIN {CHAT_MESSAGE_JOIN} as c ON m.ROWID = c.message_id
                     WHERE m.guid IN ({})
                     ORDER BY 
@@ -856,7 +868,7 @@ impl Message {
                 filter.join(",")
             )).map_err(TableError::Messages)?;
 
-            // Execute query to build the Handles
+            // Execute query to build the tapbacks
             let messages = statement
                 .query_map([], |row| Ok(Message::from_row(row)))
                 .map_err(TableError::Messages)?;
@@ -884,18 +896,34 @@ impl Message {
         if self.has_replies() {
             let mut statement = db.prepare(&format!(
                 "SELECT 
-                     *, 
-                     c.chat_id, 
+                     {COLS},
+                     c.chat_id,
                      (SELECT COUNT(*) FROM {MESSAGE_ATTACHMENT_JOIN} a WHERE m.ROWID = a.message_id) as num_attachments,
+                     d.chat_id as deleted_from,
                      (SELECT COUNT(*) FROM {MESSAGE} m2 WHERE m2.thread_originator_guid = m.guid) as num_replies
-                 FROM 
-                     message as m 
-                 LEFT JOIN {CHAT_MESSAGE_JOIN} as c ON m.ROWID = c.message_id 
+                 FROM
+                     {MESSAGE} as m
+                 LEFT JOIN {CHAT_MESSAGE_JOIN} as c ON m.ROWID = c.message_id
+                 LEFT JOIN {RECENTLY_DELETED} as d ON m.ROWID = d.message_id
                  WHERE m.thread_originator_guid = \"{}\"
-                 ORDER BY 
+                 ORDER BY
                      m.date;
                 ", self.guid
-            ))
+            )).or_else(|_| db.prepare(&format!(
+                "SELECT 
+                     *,
+                     c.chat_id,
+                     (SELECT COUNT(*) FROM {MESSAGE_ATTACHMENT_JOIN} a WHERE m.ROWID = a.message_id) as num_attachments,
+                     NULL as deleted_from,
+                     (SELECT COUNT(*) FROM {MESSAGE} m2 WHERE m2.thread_originator_guid = m.guid) as num_replies
+                 FROM
+                     {MESSAGE} as m
+                 LEFT JOIN {CHAT_MESSAGE_JOIN} as c ON m.ROWID = c.message_id
+                 WHERE m.thread_originator_guid = \"{}\"
+                 ORDER BY
+                     m.date;
+                ", self.guid
+            )))
             .map_err(TableError::Messages)?;
 
             let iter = statement
