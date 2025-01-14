@@ -21,8 +21,9 @@ use crate::{
             models::{BubbleComponent, Service},
         },
         table::{
-            Cacheable, Diagnostic, GetBlob, Table, ATTRIBUTED_BODY, CHAT_MESSAGE_JOIN, MESSAGE,
-            MESSAGE_ATTACHMENT_JOIN, MESSAGE_PAYLOAD, MESSAGE_SUMMARY_INFO, RECENTLY_DELETED,
+            AttributedBody, Cacheable, Diagnostic, GetBlob, Table, ATTRIBUTED_BODY,
+            CHAT_MESSAGE_JOIN, MESSAGE, MESSAGE_ATTACHMENT_JOIN, MESSAGE_PAYLOAD,
+            MESSAGE_SUMMARY_INFO, RECENTLY_DELETED,
         },
     },
     util::{
@@ -389,6 +390,29 @@ impl GetBlob for Message {
     }
 }
 
+impl AttributedBody for Message {
+    /// Get a vector of a message body's components. If the text has not been captured with [`Self::generate_text()`], the vector will be empty.
+    /// 
+    /// For more detail see the trait documentation [here](crate::tables::table::AttributedBody).
+    fn body(&self) -> Vec<BubbleComponent> {
+        // If the message is an app, it will be rendered differently, so just escape there
+        if self.balloon_bundle_id.is_some() {
+            return vec![BubbleComponent::App];
+        }
+
+        if let Some(body) = parse_body_typedstream(
+            self.components.as_ref(),
+            self.text.as_deref(),
+            self.edited_parts.as_ref(),
+        ) {
+            return body;
+        }
+
+        // Naive logic for when `typedstream` component parsing fails
+        parse_body_legacy(&self.text)
+    }
+}
+
 impl Message {
     /// Generate the text of a message, deserializing it as [`typedstream`](crate::util::typedstream) (and falling back to [`streamtyped`]) data if necessary.
     pub fn generate_text<'a>(&'a mut self, db: &'a Connection) -> Result<&'a str, MessageError> {
@@ -426,62 +450,6 @@ impl Message {
         } else {
             Err(MessageError::NoText)
         }
-    }
-
-    /// Get a vector of a message body's components. If the text has not been captured with [`Self::generate_text()`], the vector will be empty.
-    ///
-    /// # Parsing
-    ///
-    /// There are two different ways this crate will attempt to parse this data.
-    ///
-    /// ## Default parsing
-    ///
-    /// In most cases, the message body will be deserialized using the [`typedstream`](crate::util::typedstream) deserializer.
-    ///
-    /// Note: message body text can be formatted with a [`Vec`] of [`TextAttributes`](crate::tables::messages::models::TextAttributes).
-    ///
-    /// An iMessage that contains body text like:
-    ///
-    /// ```
-    /// let message_text = "\u{FFFC}Check out this photo!";
-    /// ```
-    ///
-    /// Will have a `body()` of:
-    ///
-    /// ```
-    /// use imessage_database::message_types::text_effects::TextEffect;
-    /// use imessage_database::tables::messages::{models::{TextAttributes, BubbleComponent, AttachmentMeta}};
-    ///  
-    /// let result = vec![
-    ///     BubbleComponent::Attachment(AttachmentMeta::default()),
-    ///     BubbleComponent::Text(vec![TextAttributes::new(3, 24, TextEffect::Default)]),
-    /// ];
-    /// ```
-    ///
-    /// ## Legacy parsing
-    ///
-    /// If the `typedstream` data cannot be deserialized, this method falls back to a legacy string parsing algorithm that
-    /// only supports unstyled text.
-    ///
-    /// If the message has attachments, there will be one [`U+FFFC`](https://www.compart.com/en/unicode/U+FFFC) character
-    /// for each attachment and one [`U+FFFD`](https://www.compart.com/en/unicode/U+FFFD) for app messages that we need
-    /// to format.
-    pub fn body(&self) -> Vec<BubbleComponent> {
-        // If the message is an app, it will be rendered differently, so just escape there
-        if self.balloon_bundle_id.is_some() {
-            return vec![BubbleComponent::App];
-        }
-
-        if let Some(body) = parse_body_typedstream(
-            self.components.as_ref(),
-            self.text.as_deref(),
-            self.edited_parts.as_ref(),
-        ) {
-            return body;
-        }
-
-        // Naive logic for when `typedstream` component parsing fails
-        parse_body_legacy(self)
     }
 
     /// Calculates the date a message was written to the database.
