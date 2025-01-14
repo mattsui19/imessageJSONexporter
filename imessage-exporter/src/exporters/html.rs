@@ -36,7 +36,7 @@ use imessage_database::{
     tables::{
         attachment::{Attachment, MediaType},
         messages::{
-            models::{AttachmentMeta, BubbleComponent},
+            models::{AttachmentMeta, BubbleComponent, TextAttributes},
             Message,
         },
         table::{AttributedBody, Table, FITNESS_RECEIVER, ME, ORPHANED, YOU},
@@ -339,19 +339,7 @@ impl<'a> Writer<'a> for HTML<'a> {
                                 };
                             }
                         } else {
-                            let mut formatted_text = String::with_capacity(text.len());
-
-                            for text_attr in text_attrs {
-                                // We cannot sanitize the html beforehand because it may change the length of the text
-                                if let Some(message_content) =
-                                    text.get(text_attr.start..text_attr.end)
-                                {
-                                    formatted_text.push_str(&self.format_attributed(
-                                        &sanitize_html(message_content),
-                                        &text_attr.effect,
-                                    ))
-                                }
-                            }
+                            let mut formatted_text = self.format_attributes(text, text_attrs);
 
                             // If we failed to parse any text above, make sure we sanitize if before using it
                             if formatted_text.is_empty() {
@@ -862,8 +850,19 @@ impl<'a> Writer<'a> for HTML<'a> {
                         if let Some(text) = &event.text {
                             let clean_text = sanitize_html(text);
 
+                            let formatted_text = match event.body().first() {
+                                Some(BubbleComponent::Text(attributes)) => {
+                                    Some(self.format_attributes(&clean_text, attributes))
+                                }
+                                _ => None,
+                            };
+
                             match previous_timestamp {
-                                None => out_s.push_str(&self.edited_to_html("", &clean_text, last)),
+                                None => out_s.push_str(&self.edited_to_html(
+                                    "",
+                                    formatted_text.as_ref().map_or(clean_text.as_ref(), |v| v),
+                                    last,
+                                )),
                                 Some(prev_timestamp) => {
                                     let end = get_local_time(&event.date, &self.config.offset);
                                     let start = get_local_time(prev_timestamp, &self.config.offset);
@@ -871,7 +870,7 @@ impl<'a> Writer<'a> for HTML<'a> {
                                     let diff = readable_diff(start, end).unwrap_or_default();
                                     out_s.push_str(&self.edited_to_html(
                                         &format!("Edited {diff} later"),
-                                        &clean_text,
+                                        formatted_text.as_ref().map_or(clean_text.as_ref(), |v| v),
                                         last,
                                     ));
                                 }
@@ -917,16 +916,15 @@ impl<'a> Writer<'a> for HTML<'a> {
         None
     }
 
-    fn format_attributed(&'a self, text: &'a str, attribute: &'a TextEffect) -> Cow<'a, str> {
-        match attribute {
-            TextEffect::Default => Cow::Borrowed(text),
-            TextEffect::Mention(mentioned) => Cow::Owned(self.format_mention(text, mentioned)),
-            TextEffect::Link(url) => Cow::Owned(self.format_link(text, url)),
-            TextEffect::OTP => Cow::Owned(self.format_otp(text)),
-            TextEffect::Styles(styles) => Cow::Owned(self.format_styles(text, styles)),
-            TextEffect::Animated(animation) => Cow::Owned(self.format_animated(text, animation)),
-            TextEffect::Conversion(unit) => Cow::Owned(self.format_conversion(text, unit)),
-        }
+    fn format_attributes(&'a self, text: &'a str, effects: &'a [TextAttributes]) -> String {
+        let mut formatted_text: String = String::with_capacity(text.len());
+        effects.iter().for_each(|effect| {
+            if let Some(message_content) = text.get(effect.start..effect.end) {
+                formatted_text
+                    .push_str(&self.format_effect(&sanitize_html(message_content), &effect.effect));
+            }
+        });
+        formatted_text
     }
 
     fn write_to_file(file: &mut BufWriter<File>, text: &str) -> Result<(), RuntimeError> {
@@ -1420,7 +1418,19 @@ impl<'a> BalloonFormatter<&'a Message> for HTML<'a> {
     }
 }
 
-impl TextEffectFormatter for HTML<'_> {
+impl<'a> TextEffectFormatter<'a> for HTML<'a> {
+    fn format_effect(&'a self, text: &'a str, effect: &'a TextEffect) -> Cow<'a, str> {
+        match effect {
+            TextEffect::Default => Cow::Borrowed(text),
+            TextEffect::Mention(mentioned) => Cow::Owned(self.format_mention(text, mentioned)),
+            TextEffect::Link(url) => Cow::Owned(self.format_link(text, url)),
+            TextEffect::OTP => Cow::Owned(self.format_otp(text)),
+            TextEffect::Styles(styles) => Cow::Owned(self.format_styles(text, styles)),
+            TextEffect::Animated(animation) => Cow::Owned(self.format_animated(text, animation)),
+            TextEffect::Conversion(unit) => Cow::Owned(self.format_conversion(text, unit)),
+        }
+    }
+
     fn format_mention(&self, text: &str, mentioned: &str) -> String {
         format!("<span title=\"{mentioned}\"><b>{text}</b></span>")
     }
@@ -2784,7 +2794,7 @@ mod text_effect_tests {
         let config = Config::fake_app(options);
         let exporter = HTML::new(&config).unwrap();
 
-        let expected = exporter.format_attributed("Chris", &TextEffect::Default);
+        let expected = exporter.format_effect("Chris", &TextEffect::Default);
         let actual = "Chris";
 
         assert_eq!(expected, actual);
@@ -3180,9 +3190,156 @@ mod edited_tests {
 
     use crate::{exporters::exporter::Writer, Config, Exporter, Options, HTML};
     use imessage_database::{
-        message_types::edited::{EditStatus, EditedMessage, EditedMessagePart},
-        util::typedstream::parser::TypedStreamReader,
+        message_types::edited::{EditStatus, EditedEvent, EditedMessage, EditedMessagePart},
+        util::typedstream::{
+            models::{Archivable, Class, OutputData},
+            parser::TypedStreamReader,
+        },
     };
+
+    #[test]
+    fn can_format_html_edited_with_formatting() {
+        // Set timezone to PST for consistent Local time
+        set_var("TZ", "PST");
+
+        // Create exporter
+        let options = Options::fake_options(crate::app::export_type::ExportType::Html);
+        let config = Config::fake_app(options);
+        let exporter = HTML::new(&config).unwrap();
+
+        // Create edited message data
+        let edited_message = EditedMessage {
+            parts: vec![EditedMessagePart {
+                status: EditStatus::Edited,
+                edit_history: vec![
+                    EditedEvent {
+                        date: 758573156000000000,
+                        text: Some("Test".to_string()),
+                        components: Some(vec![
+                            Archivable::Object(
+                                Class {
+                                    name: "NSString".to_string(),
+                                    version: 1,
+                                },
+                                vec![OutputData::String("Test".to_string())],
+                            ),
+                            Archivable::Data(vec![
+                                OutputData::SignedInteger(1),
+                                OutputData::UnsignedInteger(4),
+                            ]),
+                            Archivable::Object(
+                                Class {
+                                    name: "NSDictionary".to_string(),
+                                    version: 0,
+                                },
+                                vec![OutputData::SignedInteger(1)],
+                            ),
+                            Archivable::Object(
+                                Class {
+                                    name: "NSString".to_string(),
+                                    version: 1,
+                                },
+                                vec![OutputData::String(
+                                    "__kIMMessagePartAttributeName".to_string(),
+                                )],
+                            ),
+                            Archivable::Object(
+                                Class {
+                                    name: "NSNumber".to_string(),
+                                    version: 0,
+                                },
+                                vec![OutputData::SignedInteger(0)],
+                            ),
+                        ]),
+                        guid: None,
+                    },
+                    EditedEvent {
+                        date: 758573166000000000,
+                        text: Some("Test".to_string()),
+                        components: Some(vec![
+                            Archivable::Object(
+                                Class {
+                                    name: "NSString".to_string(),
+                                    version: 1,
+                                },
+                                vec![OutputData::String("Test".to_string())],
+                            ),
+                            Archivable::Data(vec![
+                                OutputData::SignedInteger(1),
+                                OutputData::UnsignedInteger(4),
+                            ]),
+                            Archivable::Object(
+                                Class {
+                                    name: "NSDictionary".to_string(),
+                                    version: 0,
+                                },
+                                vec![OutputData::SignedInteger(2)],
+                            ),
+                            Archivable::Object(
+                                Class {
+                                    name: "NSString".to_string(),
+                                    version: 1,
+                                },
+                                vec![OutputData::String(
+                                    "__kIMTextStrikethroughAttributeName".to_string(),
+                                )],
+                            ),
+                            Archivable::Object(
+                                Class {
+                                    name: "NSNumber".to_string(),
+                                    version: 0,
+                                },
+                                vec![OutputData::SignedInteger(1)],
+                            ),
+                            Archivable::Object(
+                                Class {
+                                    name: "NSString".to_string(),
+                                    version: 1,
+                                },
+                                vec![OutputData::String(
+                                    "__kIMMessagePartAttributeName".to_string(),
+                                )],
+                            ),
+                            Archivable::Object(
+                                Class {
+                                    name: "NSNumber".to_string(),
+                                    version: 0,
+                                },
+                                vec![OutputData::SignedInteger(0)],
+                            ),
+                        ]),
+                        guid: Some("76A466B8-D21E-4A20-AF62-FF2D3A20D31C".to_string()),
+                    },
+                ],
+            }],
+        };
+
+        let mut message = Config::fake_message();
+        // May 17, 2022  8:29:42 PM
+        message.date = 674526582885055488;
+        message.date_edited = 674530231992568192;
+        message.text = Some("Test".to_string());
+        message.is_from_me = true;
+        message.chat_id = Some(0);
+        message.edited_parts = Some(edited_message);
+
+        let typedstream_path = current_dir()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("imessage-database/test_data/typedstream/EditedWithFormatting");
+        let mut file = File::open(typedstream_path).unwrap();
+        let mut bytes = vec![];
+        file.read_to_end(&mut bytes).unwrap();
+
+        let mut parser = TypedStreamReader::from(&bytes);
+        message.components = parser.parse().ok();
+
+        let actual = exporter.format_message(&message, 0).unwrap();
+        let expected = "<div class=\"message\">\n<div class=\"sent iMessage\">\n<p><span class=\"timestamp\">May 17, 2022  5:29:42 PM</span>\n<span class=\"sender\">Me</span></p>\n<hr><div class=\"message_part\">\n<div class=\"edited\"><table><tbody><tr><td><span class=\"timestamp\"></span></td><td>Test</td></tr></tbody><tfoot><tr><td><span class=\"timestamp\">Edited 10 seconds later</span></td><td><s>Test</s></td></tr></tfoot></table></div>\n</div>\n</div>\n</div>\n";
+
+        assert_eq!(actual, expected);
+    }
 
     #[test]
     fn can_format_html_conversion_final_unsent() {
