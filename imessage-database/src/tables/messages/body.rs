@@ -3,10 +3,7 @@ use crate::{
         edited::{EditStatus, EditedMessage},
         text_effects::{Animation, Style, TextEffect, Unit},
     },
-    tables::messages::{
-        models::{AttachmentMeta, BubbleComponent, TextAttributes},
-        Message,
-    },
+    tables::messages::models::{AttachmentMeta, BubbleComponent, TextAttributes},
     util::typedstream::models::{Archivable, OutputData},
 };
 
@@ -241,10 +238,10 @@ fn resolve_styles(components: &[Archivable]) -> Vec<Style> {
 }
 
 /// Fallback logic to parse the body from the message string content
-pub(crate) fn parse_body_legacy(message: &Message) -> Vec<BubbleComponent> {
+pub(crate) fn parse_body_legacy(text: &Option<String>) -> Vec<BubbleComponent> {
     let mut out_v = vec![];
     // Naive logic for when `typedstream` component parsing fails
-    match &message.text {
+    match text {
         Some(text) => {
             let mut start: usize = 0;
             let mut end: usize = 0;
@@ -521,10 +518,15 @@ mod typedstream_tests {
                 EditedMessagePart {
                     status: EditStatus::Edited,
                     edit_history: vec![
-                        EditedEvent::new(743907435000000000, "Second test".to_string(), None, None),
+                        EditedEvent::new(
+                            743907435000000000,
+                            Some("Second test".to_string()),
+                            None,
+                            None,
+                        ),
                         EditedEvent::new(
                             743907448000000000,
-                            "Second test was edited!".to_string(),
+                            Some("Second test was edited!".to_string()),
                             None,
                             None,
                         ),
@@ -1117,7 +1119,7 @@ mod legacy_tests {
         let mut m = Message::blank();
         m.text = Some("🙈".to_string());
         assert_eq!(
-            parse_body_legacy(&m),
+            parse_body_legacy(&m.text),
             vec![BubbleComponent::Text(vec![TextAttributes::new(
                 0,
                 4,
@@ -1131,7 +1133,7 @@ mod legacy_tests {
         let mut m = Message::blank();
         m.text = Some("🙈🙈🙈".to_string());
         assert_eq!(
-            parse_body_legacy(&m),
+            parse_body_legacy(&m.text),
             vec![BubbleComponent::Text(vec![TextAttributes::new(
                 0,
                 12,
@@ -1145,7 +1147,7 @@ mod legacy_tests {
         let mut m = Message::blank();
         m.text = Some("Hello world".to_string());
         assert_eq!(
-            parse_body_legacy(&m),
+            parse_body_legacy(&m.text),
             vec![BubbleComponent::Text(vec![TextAttributes::new(
                 0,
                 11,
@@ -1159,7 +1161,7 @@ mod legacy_tests {
         let mut m = Message::blank();
         m.text = Some("\u{FFFC}Hello world".to_string());
         assert_eq!(
-            parse_body_legacy(&m),
+            parse_body_legacy(&m.text),
             vec![
                 BubbleComponent::Attachment(AttachmentMeta::default()),
                 BubbleComponent::Text(vec![TextAttributes::new(3, 14, TextEffect::Default),])
@@ -1172,7 +1174,7 @@ mod legacy_tests {
         let mut m = Message::blank();
         m.text = Some("\u{FFFD}Hello world".to_string());
         assert_eq!(
-            parse_body_legacy(&m),
+            parse_body_legacy(&m.text),
             vec![
                 BubbleComponent::App,
                 BubbleComponent::Text(vec![TextAttributes::new(3, 14, TextEffect::Default),])
@@ -1185,7 +1187,7 @@ mod legacy_tests {
         let mut m = Message::blank();
         m.text = Some("One\u{FFFD}\u{FFFC}Two\u{FFFC}Three\u{FFFC}four".to_string());
         assert_eq!(
-            parse_body_legacy(&m),
+            parse_body_legacy(&m.text),
             vec![
                 BubbleComponent::Text(vec![TextAttributes::new(0, 3, TextEffect::Default),]),
                 BubbleComponent::App,
@@ -1204,7 +1206,7 @@ mod legacy_tests {
         let mut m = Message::blank();
         m.text = Some("\u{FFFD}\u{FFFC}Two\u{FFFC}Three\u{FFFC}".to_string());
         assert_eq!(
-            parse_body_legacy(&m),
+            parse_body_legacy(&m.text),
             vec![
                 BubbleComponent::App,
                 BubbleComponent::Attachment(AttachmentMeta::default()),

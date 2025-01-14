@@ -8,7 +8,13 @@ use plist::Value;
 use crate::{
     error::plist::PlistParseError,
     message_types::variants::BalloonProvider,
-    tables::messages::{body::parse_body_typedstream, models::BubbleComponent},
+    tables::{
+        messages::{
+            body::{parse_body_legacy, parse_body_typedstream},
+            models::BubbleComponent,
+        },
+        table::AttributedBody,
+    },
     util::{
         dates::TIMESTAMP_FACTOR,
         plist::{extract_array_key, extract_bytes_key, extract_dictionary, extract_int_key},
@@ -34,7 +40,7 @@ pub struct EditedEvent {
     /// The date the message part was edited
     pub date: i64,
     /// The content of the edited message part deserialized from the [`typedstream`](crate::util::typedstream) format
-    pub text: String,
+    pub text: Option<String>,
     /// The parsed [`typedstream`](crate::util::typedstream) component data used to add attributes to the message text
     components: Option<Vec<Archivable>>,
     /// A GUID reference to another message
@@ -44,7 +50,7 @@ pub struct EditedEvent {
 impl EditedEvent {
     pub(crate) fn new(
         date: i64,
-        text: String,
+        text: Option<String>,
         components: Option<Vec<Archivable>>,
         guid: Option<String>,
     ) -> Self {
@@ -57,14 +63,17 @@ impl EditedEvent {
     }
 }
 
-impl EditedEvent {
-    /// Generate message bubble components from the given component data
-    fn body(&self) -> Option<Vec<BubbleComponent>> {
-        if let Some(body) = parse_body_typedstream(self.components.as_ref(), Some(&self.text), None)
+impl AttributedBody for EditedEvent {
+    /// Get a vector of a message body's components. If the text has not been captured, the vector will be empty.
+    ///
+    /// For more detail see the trait documentation [here](crate::tables::table::AttributedBody).
+    fn body(&self) -> Vec<BubbleComponent> {
+        if let Some(body) =
+            parse_body_typedstream(self.components.as_ref(), self.text.as_deref(), None)
         {
-            return Some(body);
+            return body;
         }
-        None
+        parse_body_legacy(&self.text)
     }
 }
 
@@ -166,9 +175,10 @@ impl<'a> BalloonProvider<'a> for EditedMessage {
                         .and_then(|item| item.as_nsstring())
                         .map(String::from)
                     {
-                        Some(text) => text,
+                        Some(text) => Some(text),
                         None => parse(typedstream.to_vec())
-                            .map_err(PlistParseError::StreamTypedError)?,
+                            .map_err(PlistParseError::StreamTypedError)
+                            .ok(),
                     };
 
                     let guid = message_data
@@ -233,11 +243,9 @@ impl EditedMessage {
 }
 
 #[cfg(test)]
-mod tests {
+mod test_parser {
     use crate::message_types::edited::{EditStatus, EditedEvent, EditedMessagePart};
-    use crate::message_types::text_effects::TextEffect;
     use crate::message_types::{edited::EditedMessage, variants::BalloonProvider};
-    use crate::tables::messages::models::{BubbleComponent, TextAttributes};
     use crate::util::typedstream::models::{Archivable, Class, OutputData};
     use plist::Value;
     use std::env::current_dir;
@@ -259,7 +267,7 @@ mod tests {
                 edit_history: vec![
                     EditedEvent::new(
                         690513474000000000,
-                        "First message  ".to_string(),
+                        Some("First message  ".to_string()),
                         Some(vec![
                             Archivable::Object(
                                 Class {
@@ -300,7 +308,7 @@ mod tests {
                     ),
                     EditedEvent::new(
                         690513480000000000,
-                        "Edit 1".to_string(),
+                        Some("Edit 1".to_string()),
                         Some(vec![
                             Archivable::Object(
                                 Class {
@@ -357,7 +365,7 @@ mod tests {
                     ),
                     EditedEvent::new(
                         690513485000000000,
-                        "Edit 2".to_string(),
+                        Some("Edit 2".to_string()),
                         Some(vec![
                             Archivable::Object(
                                 Class {
@@ -414,7 +422,7 @@ mod tests {
                     ),
                     EditedEvent::new(
                         690513494000000000,
-                        "Edited message".to_string(),
+                        Some("Edited message".to_string()),
                         Some(vec![
                             Archivable::Object(
                                 Class {
@@ -477,35 +485,6 @@ mod tests {
 
         let expected_item = Some(expected.parts.first().unwrap());
         assert_eq!(parsed.part(0), expected_item);
-
-        let expected_attrs = [
-            vec![BubbleComponent::Text(vec![TextAttributes::new(
-                0,
-                15,
-                TextEffect::Default,
-            )])],
-            vec![BubbleComponent::Text(vec![TextAttributes::new(
-                0,
-                6,
-                TextEffect::Default,
-            )])],
-            vec![BubbleComponent::Text(vec![TextAttributes::new(
-                0,
-                6,
-                TextEffect::Default,
-            )])],
-            vec![BubbleComponent::Text(vec![TextAttributes::new(
-                0,
-                14,
-                TextEffect::Default,
-            )])],
-        ];
-
-        for event in parsed.parts {
-            for (idx, part) in event.edit_history.iter().enumerate() {
-                assert_eq!(part.body().unwrap(), expected_attrs[idx]);
-            }
-        }
     }
 
     #[test]
@@ -527,11 +506,92 @@ mod tests {
                 EditedMessagePart {
                     status: EditStatus::Edited,
                     edit_history: vec![
-                        EditedEvent::new(690514004000000000, "here we go!".to_string(), None, None),
+                        EditedEvent::new(
+                            690514004000000000,
+                            Some("here we go!".to_string()),
+                            Some(vec![
+                                Archivable::Object(
+                                    Class {
+                                        name: "NSString".to_string(),
+                                        version: 1,
+                                    },
+                                    vec![OutputData::String("here we go!".to_string())],
+                                ),
+                                Archivable::Data(vec![
+                                    OutputData::SignedInteger(1),
+                                    OutputData::UnsignedInteger(11),
+                                ]),
+                                Archivable::Object(
+                                    Class {
+                                        name: "NSDictionary".to_string(),
+                                        version: 0,
+                                    },
+                                    vec![OutputData::SignedInteger(1)],
+                                ),
+                                Archivable::Object(
+                                    Class {
+                                        name: "NSString".to_string(),
+                                        version: 1,
+                                    },
+                                    vec![OutputData::String(
+                                        "__kIMMessagePartAttributeName".to_string(),
+                                    )],
+                                ),
+                                Archivable::Object(
+                                    Class {
+                                        name: "NSNumber".to_string(),
+                                        version: 0,
+                                    },
+                                    vec![OutputData::SignedInteger(1)],
+                                ),
+                            ]),
+                            None,
+                        ),
                         EditedEvent::new(
                             690514772000000000,
-                            "https://github.com/ReagentX/imessage-exporter/issues/10".to_string(),
-                            None,
+                            Some(
+                                "https://github.com/ReagentX/imessage-exporter/issues/10"
+                                    .to_string(),
+                            ),
+                            Some(vec![
+                                Archivable::Object(
+                                    Class {
+                                        name: "NSString".to_string(),
+                                        version: 1,
+                                    },
+                                    vec![OutputData::String(
+                                        "https://github.com/ReagentX/imessage-exporter/issues/10"
+                                            .to_string(),
+                                    )],
+                                ),
+                                Archivable::Data(vec![
+                                    OutputData::SignedInteger(1),
+                                    OutputData::UnsignedInteger(55),
+                                ]),
+                                Archivable::Object(
+                                    Class {
+                                        name: "NSDictionary".to_string(),
+                                        version: 0,
+                                    },
+                                    vec![OutputData::SignedInteger(1)],
+                                ),
+                                Archivable::Object(
+                                    Class {
+                                        name: "NSString".to_string(),
+                                        version: 1,
+                                    },
+                                    vec![OutputData::String(
+                                        "__kIMMessagePartAttributeName".to_string(),
+                                    )],
+                                ),
+                                Archivable::Object(
+                                    Class {
+                                        name: "NSNumber".to_string(),
+                                        version: 0,
+                                    },
+                                    vec![OutputData::SignedInteger(1)],
+                                ),
+                            ]),
                             Some("292BF9C6-C9B8-4827-BE65-6EA1C9B5B384".to_string()),
                         ),
                     ],
@@ -558,21 +618,126 @@ mod tests {
                 edit_history: vec![
                     EditedEvent::new(
                         690514809000000000,
-                        "This is a normal message".to_string(),
-                        None,
+                        Some("This is a normal message".to_string()),
+                        Some(vec![
+                            Archivable::Object(
+                                Class {
+                                    name: "NSString".to_string(),
+                                    version: 1,
+                                },
+                                vec![OutputData::String("This is a normal message".to_string())],
+                            ),
+                            Archivable::Data(vec![
+                                OutputData::SignedInteger(1),
+                                OutputData::UnsignedInteger(24),
+                            ]),
+                            Archivable::Object(
+                                Class {
+                                    name: "NSDictionary".to_string(),
+                                    version: 0,
+                                },
+                                vec![OutputData::SignedInteger(1)],
+                            ),
+                            Archivable::Object(
+                                Class {
+                                    name: "NSString".to_string(),
+                                    version: 1,
+                                },
+                                vec![OutputData::String(
+                                    "__kIMMessagePartAttributeName".to_string(),
+                                )],
+                            ),
+                            Archivable::Object(
+                                Class {
+                                    name: "NSNumber".to_string(),
+                                    version: 0,
+                                },
+                                vec![OutputData::SignedInteger(0)],
+                            ),
+                        ]),
                         None,
                     ),
                     EditedEvent::new(
                         690514819000000000,
-                        "Edit to a url https://github.com/ReagentX/imessage-exporter/issues/10"
-                            .to_string(),
-                        None,
+                        Some("Edit to a url https://github.com/ReagentX/imessage-exporter/issues/10"
+                            .to_string()),
+                        Some(vec![
+                            Archivable::Object(
+                                Class {
+                                    name: "NSString".to_string(),
+                                    version: 1,
+                                },
+                                vec![OutputData::String("Edit to a url https://github.com/ReagentX/imessage-exporter/issues/10".to_string())],
+                            ),
+                            Archivable::Data(vec![
+                                OutputData::SignedInteger(1),
+                                OutputData::UnsignedInteger(69),
+                            ]),
+                            Archivable::Object(
+                                Class {
+                                    name: "NSDictionary".to_string(),
+                                    version: 0,
+                                },
+                                vec![OutputData::SignedInteger(1)],
+                            ),
+                            Archivable::Object(
+                                Class {
+                                    name: "NSString".to_string(),
+                                    version: 1,
+                                },
+                                vec![OutputData::String(
+                                    "__kIMMessagePartAttributeName".to_string(),
+                                )],
+                            ),
+                            Archivable::Object(
+                                Class {
+                                    name: "NSNumber".to_string(),
+                                    version: 0,
+                                },
+                                vec![OutputData::SignedInteger(0)],
+                            ),
+                        ]),
                         Some("0B9103FE-280C-4BD0-A66F-4EDEE3443247".to_string()),
                     ),
                     EditedEvent::new(
                         690514834000000000,
-                        "And edit it back to a normal message...".to_string(),
-                        None,
+                        Some("And edit it back to a normal message...".to_string()),
+                        Some(vec![
+                            Archivable::Object(
+                                Class {
+                                    name: "NSString".to_string(),
+                                    version: 1,
+                                },
+                                vec![OutputData::String("And edit it back to a normal message...".to_string())],
+                            ),
+                            Archivable::Data(vec![
+                                OutputData::SignedInteger(1),
+                                OutputData::UnsignedInteger(39),
+                            ]),
+                            Archivable::Object(
+                                Class {
+                                    name: "NSDictionary".to_string(),
+                                    version: 0,
+                                },
+                                vec![OutputData::SignedInteger(1)],
+                            ),
+                            Archivable::Object(
+                                Class {
+                                    name: "NSString".to_string(),
+                                    version: 1,
+                                },
+                                vec![OutputData::String(
+                                    "__kIMMessagePartAttributeName".to_string(),
+                                )],
+                            ),
+                            Archivable::Object(
+                                Class {
+                                    name: "NSNumber".to_string(),
+                                    version: 0,
+                                },
+                                vec![OutputData::SignedInteger(0)],
+                            ),
+                        ]),
                         Some("0D93DF88-05BA-4418-9B20-79918ADD9923".to_string()),
                     ),
                 ],
@@ -661,14 +826,86 @@ mod tests {
                     edit_history: vec![
                         EditedEvent::new(
                             743907180000000000,
-                            "Second message".to_string(),
-                            None,
+                            Some("Second message".to_string()),
+                            Some(vec![
+                                Archivable::Object(
+                                    Class {
+                                        name: "NSString".to_string(),
+                                        version: 1,
+                                    },
+                                    vec![OutputData::String("Second message".to_string())],
+                                ),
+                                Archivable::Data(vec![
+                                    OutputData::SignedInteger(1),
+                                    OutputData::UnsignedInteger(14),
+                                ]),
+                                Archivable::Object(
+                                    Class {
+                                        name: "NSDictionary".to_string(),
+                                        version: 0,
+                                    },
+                                    vec![OutputData::SignedInteger(1)],
+                                ),
+                                Archivable::Object(
+                                    Class {
+                                        name: "NSString".to_string(),
+                                        version: 1,
+                                    },
+                                    vec![OutputData::String(
+                                        "__kIMMessagePartAttributeName".to_string(),
+                                    )],
+                                ),
+                                Archivable::Object(
+                                    Class {
+                                        name: "NSNumber".to_string(),
+                                        version: 0,
+                                    },
+                                    vec![OutputData::SignedInteger(2)],
+                                ),
+                            ]),
                             None,
                         ),
                         EditedEvent::new(
                             743907190000000000,
-                            "Second message got edited!".to_string(),
-                            None,
+                            Some("Second message got edited!".to_string()),
+                            Some(vec![
+                                Archivable::Object(
+                                    Class {
+                                        name: "NSString".to_string(),
+                                        version: 1,
+                                    },
+                                    vec![OutputData::String(
+                                        "Second message got edited!".to_string(),
+                                    )],
+                                ),
+                                Archivable::Data(vec![
+                                    OutputData::SignedInteger(1),
+                                    OutputData::UnsignedInteger(26),
+                                ]),
+                                Archivable::Object(
+                                    Class {
+                                        name: "NSDictionary".to_string(),
+                                        version: 0,
+                                    },
+                                    vec![OutputData::SignedInteger(1)],
+                                ),
+                                Archivable::Object(
+                                    Class {
+                                        name: "NSString".to_string(),
+                                        version: 1,
+                                    },
+                                    vec![OutputData::String(
+                                        "__kIMMessagePartAttributeName".to_string(),
+                                    )],
+                                ),
+                                Archivable::Object(
+                                    Class {
+                                        name: "NSNumber".to_string(),
+                                        version: 0,
+                                    },
+                                    vec![OutputData::SignedInteger(2)],
+                                ),
+                            ]),
                             None,
                         ),
                     ],
@@ -702,11 +939,86 @@ mod tests {
                 EditedMessagePart {
                     status: EditStatus::Edited,
                     edit_history: vec![
-                        EditedEvent::new(743907435000000000, "Second test".to_string(), None, None),
+                        EditedEvent::new(
+                            743907435000000000,
+                            Some("Second test".to_string()),
+                            Some(vec![
+                                Archivable::Object(
+                                    Class {
+                                        name: "NSString".to_string(),
+                                        version: 1,
+                                    },
+                                    vec![OutputData::String("Second test".to_string())],
+                                ),
+                                Archivable::Data(vec![
+                                    OutputData::SignedInteger(1),
+                                    OutputData::UnsignedInteger(11),
+                                ]),
+                                Archivable::Object(
+                                    Class {
+                                        name: "NSDictionary".to_string(),
+                                        version: 0,
+                                    },
+                                    vec![OutputData::SignedInteger(1)],
+                                ),
+                                Archivable::Object(
+                                    Class {
+                                        name: "NSString".to_string(),
+                                        version: 1,
+                                    },
+                                    vec![OutputData::String(
+                                        "__kIMMessagePartAttributeName".to_string(),
+                                    )],
+                                ),
+                                Archivable::Object(
+                                    Class {
+                                        name: "NSNumber".to_string(),
+                                        version: 0,
+                                    },
+                                    vec![OutputData::SignedInteger(2)],
+                                ),
+                            ]),
+                            None,
+                        ),
                         EditedEvent::new(
                             743907448000000000,
-                            "Second test was edited!".to_string(),
-                            None,
+                            Some("Second test was edited!".to_string()),
+                            Some(vec![
+                                Archivable::Object(
+                                    Class {
+                                        name: "NSString".to_string(),
+                                        version: 1,
+                                    },
+                                    vec![OutputData::String("Second test was edited!".to_string())],
+                                ),
+                                Archivable::Data(vec![
+                                    OutputData::SignedInteger(1),
+                                    OutputData::UnsignedInteger(23),
+                                ]),
+                                Archivable::Object(
+                                    Class {
+                                        name: "NSDictionary".to_string(),
+                                        version: 0,
+                                    },
+                                    vec![OutputData::SignedInteger(1)],
+                                ),
+                                Archivable::Object(
+                                    Class {
+                                        name: "NSString".to_string(),
+                                        version: 1,
+                                    },
+                                    vec![OutputData::String(
+                                        "__kIMMessagePartAttributeName".to_string(),
+                                    )],
+                                ),
+                                Archivable::Object(
+                                    Class {
+                                        name: "NSNumber".to_string(),
+                                        version: 0,
+                                    },
+                                    vec![OutputData::SignedInteger(2)],
+                                ),
+                            ]),
                             None,
                         ),
                     ],
@@ -719,5 +1031,377 @@ mod tests {
         };
 
         assert_eq!(parsed, expected);
+    }
+
+    #[test]
+    fn test_parse_edited_with_formatting() {
+        let plist_path = current_dir()
+            .unwrap()
+            .as_path()
+            .join("test_data/edited_message/EditedWithFormatting.plist");
+        let plist_data = File::open(plist_path).unwrap();
+        let plist = Value::from_reader(plist_data).unwrap();
+        let parsed = EditedMessage::from_map(&plist).unwrap();
+
+        let expected = EditedMessage {
+            parts: vec![EditedMessagePart {
+                status: EditStatus::Edited,
+                edit_history: vec![
+                    EditedEvent::new(
+                        758573156000000000,
+                        Some("Test".to_string()),
+                        Some(vec![
+                            Archivable::Object(
+                                Class {
+                                    name: "NSString".to_string(),
+                                    version: 1,
+                                },
+                                vec![OutputData::String("Test".to_string())],
+                            ),
+                            Archivable::Data(vec![
+                                OutputData::SignedInteger(1),
+                                OutputData::UnsignedInteger(4),
+                            ]),
+                            Archivable::Object(
+                                Class {
+                                    name: "NSDictionary".to_string(),
+                                    version: 0,
+                                },
+                                vec![OutputData::SignedInteger(1)],
+                            ),
+                            Archivable::Object(
+                                Class {
+                                    name: "NSString".to_string(),
+                                    version: 1,
+                                },
+                                vec![OutputData::String(
+                                    "__kIMMessagePartAttributeName".to_string(),
+                                )],
+                            ),
+                            Archivable::Object(
+                                Class {
+                                    name: "NSNumber".to_string(),
+                                    version: 0,
+                                },
+                                vec![OutputData::SignedInteger(0)],
+                            ),
+                        ]),
+                        None,
+                    ),
+                    EditedEvent::new(
+                        758573166000000000,
+                        Some("Test".to_string()),
+                        Some(vec![
+                            Archivable::Object(
+                                Class {
+                                    name: "NSString".to_string(),
+                                    version: 1,
+                                },
+                                vec![OutputData::String("Test".to_string())],
+                            ),
+                            Archivable::Data(vec![
+                                OutputData::SignedInteger(1),
+                                OutputData::UnsignedInteger(4),
+                            ]),
+                            Archivable::Object(
+                                Class {
+                                    name: "NSDictionary".to_string(),
+                                    version: 0,
+                                },
+                                vec![OutputData::SignedInteger(2)],
+                            ),
+                            Archivable::Object(
+                                Class {
+                                    name: "NSString".to_string(),
+                                    version: 1,
+                                },
+                                vec![OutputData::String(
+                                    "__kIMTextStrikethroughAttributeName".to_string(),
+                                )],
+                            ),
+                            Archivable::Object(
+                                Class {
+                                    name: "NSNumber".to_string(),
+                                    version: 0,
+                                },
+                                vec![OutputData::SignedInteger(1)],
+                            ),
+                            Archivable::Object(
+                                Class {
+                                    name: "NSString".to_string(),
+                                    version: 1,
+                                },
+                                vec![OutputData::String(
+                                    "__kIMMessagePartAttributeName".to_string(),
+                                )],
+                            ),
+                            Archivable::Object(
+                                Class {
+                                    name: "NSNumber".to_string(),
+                                    version: 0,
+                                },
+                                vec![OutputData::SignedInteger(0)],
+                            ),
+                        ]),
+                        Some("76A466B8-D21E-4A20-AF62-FF2D3A20D31C".to_string()),
+                    ),
+                ],
+            }],
+        };
+
+        assert_eq!(parsed, expected);
+
+        let expected_item = Some(expected.parts.first().unwrap());
+        assert_eq!(parsed.part(0), expected_item);
+    }
+}
+
+#[cfg(test)]
+mod test_gen {
+    use crate::message_types::text_effects::{Style, TextEffect};
+    use crate::message_types::{edited::EditedMessage, variants::BalloonProvider};
+    use crate::tables::messages::models::{BubbleComponent, TextAttributes};
+    use crate::tables::table::AttributedBody;
+    use plist::Value;
+    use std::env::current_dir;
+    use std::fs::File;
+
+    #[test]
+    fn test_parse_edited() {
+        let plist_path = current_dir()
+            .unwrap()
+            .as_path()
+            .join("test_data/edited_message/Edited.plist");
+        let plist_data = File::open(plist_path).unwrap();
+        let plist = Value::from_reader(plist_data).unwrap();
+        let parsed = EditedMessage::from_map(&plist).unwrap();
+
+        let expected_attrs = [
+            vec![BubbleComponent::Text(vec![TextAttributes::new(
+                0,
+                15,
+                TextEffect::Default,
+            )])],
+            vec![BubbleComponent::Text(vec![TextAttributes::new(
+                0,
+                6,
+                TextEffect::Default,
+            )])],
+            vec![BubbleComponent::Text(vec![TextAttributes::new(
+                0,
+                6,
+                TextEffect::Default,
+            )])],
+            vec![BubbleComponent::Text(vec![TextAttributes::new(
+                0,
+                14,
+                TextEffect::Default,
+            )])],
+        ];
+
+        for event in parsed.parts {
+            for (idx, part) in event.edit_history.iter().enumerate() {
+                assert_eq!(part.body(), expected_attrs[idx]);
+            }
+        }
+    }
+
+    #[test]
+    fn test_parse_edited_to_link() {
+        let plist_path = current_dir()
+            .unwrap()
+            .as_path()
+            .join("test_data/edited_message/EditedToLink.plist");
+        let plist_data = File::open(plist_path).unwrap();
+        let plist = Value::from_reader(plist_data).unwrap();
+        let parsed = EditedMessage::from_map(&plist).unwrap();
+
+        let expected_attrs = [
+            vec![BubbleComponent::Text(vec![TextAttributes::new(
+                0,
+                11,
+                TextEffect::Default,
+            )])],
+            vec![BubbleComponent::Text(vec![TextAttributes::new(
+                0,
+                55,
+                TextEffect::Default,
+            )])],
+        ];
+
+        for event in parsed.parts {
+            for (idx, part) in event.edit_history.iter().enumerate() {
+                assert_eq!(part.body(), expected_attrs[idx]);
+            }
+        }
+    }
+
+    #[test]
+    fn test_parse_edited_to_link_and_back() {
+        let plist_path = current_dir()
+            .unwrap()
+            .as_path()
+            .join("test_data/edited_message/EditedToLinkAndBack.plist");
+        let plist_data = File::open(plist_path).unwrap();
+        let plist = Value::from_reader(plist_data).unwrap();
+        let parsed = EditedMessage::from_map(&plist).unwrap();
+
+        let expected_attrs = [
+            vec![BubbleComponent::Text(vec![TextAttributes::new(
+                0,
+                24,
+                TextEffect::Default,
+            )])],
+            vec![BubbleComponent::Text(vec![TextAttributes::new(
+                0,
+                69,
+                TextEffect::Default,
+            )])],
+            vec![BubbleComponent::Text(vec![TextAttributes::new(
+                0,
+                39,
+                TextEffect::Default,
+            )])],
+        ];
+
+        for event in parsed.parts {
+            for (idx, part) in event.edit_history.iter().enumerate() {
+                assert_eq!(part.body(), expected_attrs[idx]);
+            }
+        }
+    }
+
+    #[test]
+    fn test_parse_deleted() {
+        let plist_path = current_dir()
+            .unwrap()
+            .as_path()
+            .join("test_data/edited_message/Deleted.plist");
+        let plist_data = File::open(plist_path).unwrap();
+        let plist = Value::from_reader(plist_data).unwrap();
+        let parsed = EditedMessage::from_map(&plist).unwrap();
+
+        let expected_attrs: [Vec<BubbleComponent<'_>>; 0] = [];
+
+        for event in parsed.parts {
+            for (idx, part) in event.edit_history.iter().enumerate() {
+                assert_eq!(part.body(), expected_attrs[idx]);
+            }
+        }
+    }
+
+    #[test]
+    fn test_parse_multipart_deleted() {
+        let plist_path = current_dir()
+            .unwrap()
+            .as_path()
+            .join("test_data/edited_message/MutliPartOneDeleted.plist");
+        let plist_data = File::open(plist_path).unwrap();
+        let plist = Value::from_reader(plist_data).unwrap();
+        let parsed = EditedMessage::from_map(&plist).unwrap();
+
+        let expected_attrs: [Vec<BubbleComponent<'_>>; 0] = [];
+
+        for event in parsed.parts {
+            for (idx, part) in event.edit_history.iter().enumerate() {
+                assert_eq!(part.body(), expected_attrs[idx]);
+            }
+        }
+    }
+
+    #[test]
+    fn test_parse_multipart_edited_and_deleted() {
+        let plist_path = current_dir()
+            .unwrap()
+            .as_path()
+            .join("test_data/edited_message/EditedAndDeleted.plist");
+        let plist_data = File::open(plist_path).unwrap();
+        let plist = Value::from_reader(plist_data).unwrap();
+        let parsed = EditedMessage::from_map(&plist).unwrap();
+
+        let expected_attrs = [
+            vec![BubbleComponent::Text(vec![TextAttributes::new(
+                0,
+                14,
+                TextEffect::Default,
+            )])],
+            vec![BubbleComponent::Text(vec![TextAttributes::new(
+                0,
+                26,
+                TextEffect::Default,
+            )])],
+        ];
+
+        for event in parsed.parts {
+            for (idx, part) in event.edit_history.iter().enumerate() {
+                assert_eq!(part.body(), expected_attrs[idx]);
+            }
+        }
+    }
+
+    #[test]
+    fn test_parse_multipart_edited_and_unsent() {
+        let plist_path = current_dir()
+            .unwrap()
+            .as_path()
+            .join("test_data/edited_message/EditedAndUnsent.plist");
+        let plist_data = File::open(plist_path).unwrap();
+        let plist = Value::from_reader(plist_data).unwrap();
+        let parsed = EditedMessage::from_map(&plist).unwrap();
+
+        for parts in &parsed.parts {
+            for part in &parts.edit_history {
+                println!("{:#?}", part.body());
+            }
+        }
+
+        let expected_attrs: [Vec<BubbleComponent<'_>>; 2] = [
+            vec![BubbleComponent::Text(vec![TextAttributes::new(
+                0,
+                11,
+                TextEffect::Default,
+            )])],
+            vec![BubbleComponent::Text(vec![TextAttributes::new(
+                0,
+                23,
+                TextEffect::Default,
+            )])],
+        ];
+
+        for event in parsed.parts {
+            for (idx, part) in event.edit_history.iter().enumerate() {
+                assert_eq!(part.body(), expected_attrs[idx]);
+            }
+        }
+    }
+
+    #[test]
+    fn test_parse_edited_with_formatting() {
+        let plist_path = current_dir()
+            .unwrap()
+            .as_path()
+            .join("test_data/edited_message/EditedWithFormatting.plist");
+        let plist_data = File::open(plist_path).unwrap();
+        let plist = Value::from_reader(plist_data).unwrap();
+        let parsed = EditedMessage::from_map(&plist).unwrap();
+
+        let expected_attrs: [Vec<BubbleComponent<'_>>; 2] = [
+            vec![BubbleComponent::Text(vec![TextAttributes::new(
+                0,
+                4,
+                TextEffect::Default,
+            )])],
+            vec![BubbleComponent::Text(vec![TextAttributes::new(
+                0,
+                4,
+                TextEffect::Styles(vec![Style::Strikethrough]),
+            )])],
+        ];
+
+        for event in parsed.parts {
+            for (idx, part) in event.edit_history.iter().enumerate() {
+                assert_eq!(part.body(), expected_attrs[idx]);
+            }
+        }
     }
 }
