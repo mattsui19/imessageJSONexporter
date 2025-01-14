@@ -40,7 +40,7 @@ use imessage_database::{
             models::{AttachmentMeta, BubbleComponent},
             Message,
         },
-        table::{Table, FITNESS_RECEIVER, ME, ORPHANED, YOU},
+        table::{AttributedBody, Table, FITNESS_RECEIVER, ME, ORPHANED, YOU},
     },
     util::{
         dates::{format, get_local_time, readable_diff, TIMESTAMP_FACTOR},
@@ -667,7 +667,9 @@ impl<'a> Writer<'a> for TXT<'a> {
                         previous_timestamp = Some(&event.date);
 
                         // Render the message text
-                        self.add_line(&mut out_s, &event.text, indent);
+                        if let Some(text) = &event.text {
+                            self.add_line(&mut out_s, text, indent);
+                        }
                     }
                 }
                 EditStatus::Unsent => {

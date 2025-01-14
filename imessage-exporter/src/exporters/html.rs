@@ -39,7 +39,7 @@ use imessage_database::{
             models::{AttachmentMeta, BubbleComponent},
             Message,
         },
-        table::{Table, FITNESS_RECEIVER, ME, ORPHANED, YOU},
+        table::{AttributedBody, Table, FITNESS_RECEIVER, ME, ORPHANED, YOU},
     },
     util::{
         dates::{format, get_local_time, readable_diff, TIMESTAMP_FACTOR},
@@ -859,19 +859,22 @@ impl<'a> Writer<'a> for HTML<'a> {
 
                     for (idx, event) in edited_message_part.edit_history.iter().enumerate() {
                         let last = idx == edited_message_part.edit_history.len() - 1;
-                        let clean_text = sanitize_html(&event.text);
-                        match previous_timestamp {
-                            None => out_s.push_str(&self.edited_to_html("", &clean_text, last)),
-                            Some(prev_timestamp) => {
-                                let end = get_local_time(&event.date, &self.config.offset);
-                                let start = get_local_time(prev_timestamp, &self.config.offset);
+                        if let Some(text) = &event.text {
+                            let clean_text = sanitize_html(text);
 
-                                let diff = readable_diff(start, end).unwrap_or_default();
-                                out_s.push_str(&self.edited_to_html(
-                                    &format!("Edited {diff} later"),
-                                    &clean_text,
-                                    last,
-                                ));
+                            match previous_timestamp {
+                                None => out_s.push_str(&self.edited_to_html("", &clean_text, last)),
+                                Some(prev_timestamp) => {
+                                    let end = get_local_time(&event.date, &self.config.offset);
+                                    let start = get_local_time(prev_timestamp, &self.config.offset);
+
+                                    let diff = readable_diff(start, end).unwrap_or_default();
+                                    out_s.push_str(&self.edited_to_html(
+                                        &format!("Edited {diff} later"),
+                                        &clean_text,
+                                        last,
+                                    ));
+                                }
                             }
                         }
 
