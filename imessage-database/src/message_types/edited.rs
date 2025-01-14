@@ -42,7 +42,7 @@ pub struct EditedEvent {
     /// The content of the edited message part deserialized from the [`typedstream`](crate::util::typedstream) format
     pub text: Option<String>,
     /// The parsed [`typedstream`](crate::util::typedstream) component data used to add attributes to the message text
-    components: Option<Vec<Archivable>>,
+    pub components: Option<Vec<Archivable>>,
     /// A GUID reference to another message
     pub guid: Option<String>,
 }
