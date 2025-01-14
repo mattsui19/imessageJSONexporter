@@ -472,7 +472,11 @@ impl Message {
             return vec![BubbleComponent::App];
         }
 
-        if let Some(body) = parse_body_typedstream(self) {
+        if let Some(body) = parse_body_typedstream(
+            self.components.as_ref(),
+            self.text.as_deref(),
+            self.edited_parts.as_ref(),
+        ) {
             return body;
         }
 
