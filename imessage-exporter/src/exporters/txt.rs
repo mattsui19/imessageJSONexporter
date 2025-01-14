@@ -1,5 +1,4 @@
 use std::{
-    borrow::Cow,
     collections::{
         hash_map::Entry::{Occupied, Vacant},
         HashMap,
@@ -30,14 +29,13 @@ use imessage_database::{
         music::MusicMessage,
         placemark::PlacemarkMessage,
         sticker::StickerSource,
-        text_effects::TextEffect,
         url::URLMessage,
         variants::{Announcement, BalloonProvider, CustomBalloon, URLOverride, Variant},
     },
     tables::{
         attachment::Attachment,
         messages::{
-            models::{AttachmentMeta, BubbleComponent},
+            models::{AttachmentMeta, BubbleComponent, TextAttributes},
             Message,
         },
         table::{AttributedBody, Table, FITNESS_RECEIVER, ME, ORPHANED, YOU},
@@ -239,17 +237,7 @@ impl<'a> Writer<'a> for TXT<'a> {
                                 };
                             }
                         } else {
-                            let mut formatted_text = String::with_capacity(text.len());
-
-                            for text_attr in text_attrs {
-                                if let Some(message_content) =
-                                    text.get(text_attr.start..text_attr.end)
-                                {
-                                    formatted_text.push_str(
-                                        &self.format_attributed(message_content, &text_attr.effect),
-                                    )
-                                }
-                            }
+                            let mut formatted_text = self.format_attributes(text, text_attrs);
 
                             // If we failed to parse any text above, use the original text
                             if formatted_text.is_empty() {
@@ -705,9 +693,15 @@ impl<'a> Writer<'a> for TXT<'a> {
         None
     }
 
-    fn format_attributed(&'a self, msg: &'a str, _: &'a TextEffect) -> Cow<'a, str> {
-        // There isn't really a way to represent formatted text in a plain text export
-        Cow::Borrowed(msg)
+    fn format_attributes(&'a self, text: &'a str, effects: &'a [TextAttributes]) -> String {
+        let mut formatted_text: String = String::with_capacity(text.len());
+        effects.iter().for_each(|effect| {
+            if let Some(message_content) = text.get(effect.start..effect.end) {
+                // There isn't really a way to represent formatted text in a plain text export
+                formatted_text.push_str(message_content);
+            }
+        });
+        formatted_text
     }
 
     fn write_to_file(file: &mut BufWriter<File>, text: &str) -> Result<(), RuntimeError> {
