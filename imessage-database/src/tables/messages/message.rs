@@ -67,11 +67,11 @@ pub struct Message {
     /// Intermediate data for determining the [`Variant`] of a message
     pub item_type: i32,
     /// Optional handle for the recipient of a message that includes shared content
-    pub other_handle: i32,
+    pub other_handle: Option<i32>,
     /// Boolean determining whether some shared data is active or inactive, i.e. shared location being enabled or disabled
     pub share_status: bool,
     /// Boolean determining the direction shared data was sent; `false` indicates it was sent from the database owner, `true` indicates it was sent to the database owner
-    pub share_direction: bool,
+    pub share_direction: Option<bool>,
     /// If the message updates the [`display_name`](crate::tables::chat::Chat::display_name) of the chat, this field will be populated
     pub group_title: Option<String>,
     /// If the message modified for a group, this will be nonzero
@@ -122,9 +122,9 @@ impl Table for Message {
             is_from_me: row.get("is_from_me")?,
             is_read: row.get("is_read").unwrap_or(false),
             item_type: row.get("item_type").unwrap_or_default(),
-            other_handle: row.get("other_handle").unwrap_or_default(),
+            other_handle: row.get("other_handle").unwrap_or(None),
             share_status: row.get("share_status").unwrap_or(false),
-            share_direction: row.get("share_direction").unwrap_or(false),
+            share_direction: row.get("share_direction").unwrap_or(None),
             group_title: row.get("group_title").unwrap_or(None),
             group_action_type: row.get("group_action_type").unwrap_or(0),
             associated_message_guid: row.get("associated_message_guid").unwrap_or(None),
@@ -311,7 +311,7 @@ impl Cacheable for Message {
         // Create cache for user IDs
         let mut map: HashMap<Self::K, Self::V> = HashMap::new();
 
-        // Create query, independent of table schema
+        // Create query
         let statement = db.prepare(&format!(
             "SELECT 
                  {COLS}, 
@@ -392,7 +392,7 @@ impl GetBlob for Message {
 
 impl AttributedBody for Message {
     /// Get a vector of a message body's components. If the text has not been captured with [`Self::generate_text()`], the vector will be empty.
-    /// 
+    ///
     /// For more detail see the trait documentation [here](crate::tables::table::AttributedBody).
     fn body(&self) -> Vec<BubbleComponent> {
         // If the message is an app, it will be rendered differently, so just escape there
@@ -585,7 +585,13 @@ impl Message {
 
     /// `true` if the message was sent by the database owner, else `false`
     pub fn is_from_me(&self) -> bool {
-        self.is_from_me || self.other_handle != 0 && !self.share_direction
+        if let (Some(other_handle), Some(share_direction)) =
+            (self.other_handle, self.share_direction)
+        {
+            self.is_from_me || other_handle != 0 && !share_direction
+        } else {
+            self.is_from_me
+        }
     }
 
     /// `true` if the message indicates a user started sharing their location, else `false`
@@ -698,7 +704,7 @@ impl Message {
         let mut statement = if context.has_filters() {
             db.prepare(&format!(
                 "SELECT 
-                    COUNT(*) 
+                     COUNT(*) 
                  FROM {MESSAGE} as m
                  LEFT JOIN {CHAT_MESSAGE_JOIN} as c ON m.ROWID = c.message_id
                  LEFT JOIN {RECENTLY_DELETED} as d ON m.ROWID = d.message_id
@@ -708,10 +714,10 @@ impl Message {
             .or_else(|_| {
                 db.prepare(&format!(
                     "SELECT 
-                    COUNT(*) 
-                 FROM {MESSAGE} as m
-                 LEFT JOIN {CHAT_MESSAGE_JOIN} as c ON m.ROWID = c.message_id
-                 {}",
+                         COUNT(*) 
+                     FROM {MESSAGE} as m
+                     LEFT JOIN {CHAT_MESSAGE_JOIN} as c ON m.ROWID = c.message_id
+                    {}",
                     Self::generate_filter_statement(context, false)
                 ))
             })
@@ -751,6 +757,7 @@ impl Message {
 
         // If database has `thread_originator_guid`, we can parse replies, otherwise default to 0
         db.prepare(&format!(
+                // macOS Ventura+ and i0S 16+ schema, interpolated with required columns for performance
                 "SELECT
                      {COLS},
                      c.chat_id,
@@ -769,6 +776,26 @@ impl Message {
             ))
             .or_else( |_|
                 db.prepare(&format!(
+                    // macOS Big Sur to Monterey, iOS 14 to iOS 15 schema
+                    "SELECT
+                        *,
+                        c.chat_id,
+                        (SELECT COUNT(*) FROM {MESSAGE_ATTACHMENT_JOIN} a WHERE m.ROWID = a.message_id) as num_attachments,
+                        (SELECT NULL) as deleted_from,
+                        (SELECT COUNT(*) FROM {MESSAGE} m2 WHERE m2.thread_originator_guid = m.guid) as num_replies
+                    FROM
+                        {MESSAGE} as m
+                    LEFT JOIN {CHAT_MESSAGE_JOIN} as c ON m.ROWID = c.message_id
+                    {}
+                    ORDER BY
+                        m.date;
+                    ",
+                    Self::generate_filter_statement(context, false)
+                )
+            ))
+            .or_else( |_|
+                db.prepare(&format!(
+                    // macOS Catalina, iOS 13 and older 
                     "SELECT
                         *,
                         c.chat_id,
@@ -784,8 +811,7 @@ impl Message {
                     ",
                     Self::generate_filter_statement(context, false)
                 )
-            )
-        ).map_err(TableError::Messages)
+            )).map_err(TableError::Messages)
     }
 
     /// See [`Tapback`] for details on this data.
@@ -1131,9 +1157,9 @@ impl Message {
             is_from_me: false,
             is_read: false,
             item_type: 0,
-            other_handle: 0,
+            other_handle: None,
             share_status: false,
-            share_direction: false,
+            share_direction: None,
             group_title: None,
             group_action_type: 0,
             associated_message_guid: None,
