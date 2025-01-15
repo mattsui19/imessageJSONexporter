@@ -168,18 +168,17 @@ impl<'a> BalloonProvider<'a> for EditedMessage {
 
                     let components = parser.parse();
 
-                    let text = match components
+                    let text = components
                         .as_ref()
                         .ok()
                         .and_then(|items| items.first())
                         .and_then(|item| item.as_nsstring())
                         .map(String::from)
-                    {
-                        Some(text) => Some(text),
-                        None => parse(typedstream.to_vec())
-                            .map_err(PlistParseError::StreamTypedError)
-                            .ok(),
-                    };
+                        .or_else(|| {
+                            parse(typedstream.to_vec())
+                                .map_err(PlistParseError::StreamTypedError)
+                                .ok()
+                        });
 
                     let guid = message_data
                         .get("bcg")
