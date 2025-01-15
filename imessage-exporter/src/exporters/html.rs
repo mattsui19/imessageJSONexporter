@@ -848,39 +848,27 @@ impl<'a> Writer<'a> for HTML<'a> {
                     for (idx, event) in edited_message_part.edit_history.iter().enumerate() {
                         let last = idx == edited_message_part.edit_history.len() - 1;
                         if let Some(text) = &event.text {
-                            let clean_text = sanitize_html(text);
-
-                            let formatted_text = match event.body().first() {
-                                Some(BubbleComponent::Text(attributes)) => {
-                                    Some(self.format_attributes(&clean_text, attributes))
-                                }
-                                _ => None,
+                            let sanitized = sanitize_html(text);
+                            let clean_text = if let Some(BubbleComponent::Text(attributes)) =
+                                event.body().first()
+                            {
+                                Cow::Owned(self.format_attributes(&sanitized, attributes))
+                            } else {
+                                sanitized
                             };
 
                             match previous_timestamp {
-                                None => out_s.push_str(
-                                    &self.edited_to_html(
-                                        "",
-                                        formatted_text
-                                            .as_ref()
-                                            .map_or_else(|| clean_text.as_ref(), |v| v),
-                                        last,
-                                    ),
-                                ),
+                                None => out_s.push_str(&self.edited_to_html("", &clean_text, last)),
                                 Some(prev_timestamp) => {
                                     let end = get_local_time(&event.date, &self.config.offset);
                                     let start = get_local_time(prev_timestamp, &self.config.offset);
-
                                     let diff = readable_diff(start, end).unwrap_or_default();
-                                    out_s.push_str(
-                                        &self.edited_to_html(
-                                            &format!("Edited {diff} later"),
-                                            formatted_text
-                                                .as_ref()
-                                                .map_or_else(|| clean_text.as_ref(), |v| v),
-                                            last,
-                                        ),
-                                    );
+
+                                    out_s.push_str(&self.edited_to_html(
+                                        &format!("Edited {diff} later"),
+                                        &clean_text,
+                                        last,
+                                    ));
                                 }
                             }
                         }
