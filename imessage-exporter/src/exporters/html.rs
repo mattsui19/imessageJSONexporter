@@ -858,21 +858,29 @@ impl<'a> Writer<'a> for HTML<'a> {
                             };
 
                             match previous_timestamp {
-                                None => out_s.push_str(&self.edited_to_html(
-                                    "",
-                                    formatted_text.as_ref().map_or(clean_text.as_ref(), |v| v),
-                                    last,
-                                )),
+                                None => out_s.push_str(
+                                    &self.edited_to_html(
+                                        "",
+                                        formatted_text
+                                            .as_ref()
+                                            .map_or_else(|| clean_text.as_ref(), |v| v),
+                                        last,
+                                    ),
+                                ),
                                 Some(prev_timestamp) => {
                                     let end = get_local_time(&event.date, &self.config.offset);
                                     let start = get_local_time(prev_timestamp, &self.config.offset);
 
                                     let diff = readable_diff(start, end).unwrap_or_default();
-                                    out_s.push_str(&self.edited_to_html(
-                                        &format!("Edited {diff} later"),
-                                        formatted_text.as_ref().map_or(clean_text.as_ref(), |v| v),
-                                        last,
-                                    ));
+                                    out_s.push_str(
+                                        &self.edited_to_html(
+                                            &format!("Edited {diff} later"),
+                                            formatted_text
+                                                .as_ref()
+                                                .map_or_else(|| clean_text.as_ref(), |v| v),
+                                            last,
+                                        ),
+                                    );
                                 }
                             }
                         }
@@ -920,6 +928,7 @@ impl<'a> Writer<'a> for HTML<'a> {
         let mut formatted_text: String = String::with_capacity(text.len());
         effects.iter().for_each(|effect| {
             if let Some(message_content) = text.get(effect.start..effect.end) {
+                // We cannot sanitize the html beforehand because it may change the length of the text
                 formatted_text
                     .push_str(&self.format_effect(&sanitize_html(message_content), &effect.effect));
             }
