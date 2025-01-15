@@ -349,22 +349,11 @@ impl Cacheable for Message {
                 let message = Self::extract(message)?;
                 if message.is_tapback() {
                     if let Some((idx, tapback_target_guid)) = message.clean_associated_guid() {
-                        match map.get_mut(tapback_target_guid) {
-                            Some(tapbacks) => match tapbacks.get_mut(&idx) {
-                                Some(tapbacks_vec) => {
-                                    tapbacks_vec.push(message);
-                                }
-                                None => {
-                                    tapbacks.insert(idx, vec![message]);
-                                }
-                            },
-                            None => {
-                                map.insert(
-                                    tapback_target_guid.to_string(),
-                                    HashMap::from([(idx, vec![message])]),
-                                );
-                            }
-                        }
+                        map.entry(tapback_target_guid.to_string())
+                            .or_insert_with(HashMap::new)
+                            .entry(idx)
+                            .or_insert_with(Vec::new)
+                            .push(message);
                     }
                 }
             }

@@ -174,11 +174,7 @@ impl<'a> BalloonProvider<'a> for EditedMessage {
                         .and_then(|items| items.first())
                         .and_then(|item| item.as_nsstring())
                         .map(String::from)
-                        .or_else(|| {
-                            parse(typedstream.to_vec())
-                                .map_err(PlistParseError::StreamTypedError)
-                                .ok()
-                        });
+                        .or_else(|| parse(typedstream.to_vec()).ok());
 
                     let guid = message_data
                         .get("bcg")
