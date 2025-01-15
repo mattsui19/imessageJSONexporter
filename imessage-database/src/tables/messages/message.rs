@@ -751,6 +751,7 @@ impl Message {
 
         // If database has `thread_originator_guid`, we can parse replies, otherwise default to 0
         db.prepare(&format!(
+                // macOS Ventura+ and i0S 16+ schema, interpolated with required columns for performance
                 "SELECT
                      {COLS},
                      c.chat_id,
@@ -769,6 +770,26 @@ impl Message {
             ))
             .or_else( |_|
                 db.prepare(&format!(
+                    // macOS Big Sur to Monterey, iOS 14 to iOS 15 schema
+                    "SELECT
+                        *,
+                        c.chat_id,
+                        (SELECT COUNT(*) FROM {MESSAGE_ATTACHMENT_JOIN} a WHERE m.ROWID = a.message_id) as num_attachments,
+                        (SELECT NULL) as deleted_from,
+                        (SELECT COUNT(*) FROM {MESSAGE} m2 WHERE m2.thread_originator_guid = m.guid) as num_replies
+                    FROM
+                        {MESSAGE} as m
+                    LEFT JOIN {CHAT_MESSAGE_JOIN} as c ON m.ROWID = c.message_id
+                    {}
+                    ORDER BY
+                        m.date;
+                    ",
+                    Self::generate_filter_statement(context, false)
+                )
+            ))
+            .or_else( |_|
+                db.prepare(&format!(
+                    // macOS Catalina, iOS 13 and older 
                     "SELECT
                         *,
                         c.chat_id,
@@ -784,8 +805,7 @@ impl Message {
                     ",
                     Self::generate_filter_statement(context, false)
                 )
-            )
-        ).map_err(TableError::Messages)
+            )).map_err(TableError::Messages)
     }
 
     /// See [`Tapback`] for details on this data.
