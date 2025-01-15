@@ -311,7 +311,7 @@ impl Cacheable for Message {
         // Create cache for user IDs
         let mut map: HashMap<Self::K, Self::V> = HashMap::new();
 
-        // Create query, independent of table schema
+        // Create query
         let statement = db.prepare(&format!(
             "SELECT 
                  {COLS}, 
