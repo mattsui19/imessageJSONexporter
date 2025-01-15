@@ -912,9 +912,9 @@ impl<'a> Writer<'a> for HTML<'a> {
         None
     }
 
-    fn format_attributes(&'a self, text: &'a str, effects: &'a [TextAttributes]) -> String {
+    fn format_attributes(&'a self, text: &'a str, attributes: &'a [TextAttributes]) -> String {
         let mut formatted_text: String = String::with_capacity(text.len());
-        effects.iter().for_each(|effect| {
+        attributes.iter().for_each(|effect| {
             if let Some(message_content) = text.get(effect.start..effect.end) {
                 // We cannot sanitize the html beforehand because it may change the length of the text
                 formatted_text
