@@ -392,7 +392,7 @@ impl GetBlob for Message {
 
 impl AttributedBody for Message {
     /// Get a vector of a message body's components. If the text has not been captured with [`Self::generate_text()`], the vector will be empty.
-    /// 
+    ///
     /// For more detail see the trait documentation [here](crate::tables::table::AttributedBody).
     fn body(&self) -> Vec<BubbleComponent> {
         // If the message is an app, it will be rendered differently, so just escape there
@@ -698,7 +698,7 @@ impl Message {
         let mut statement = if context.has_filters() {
             db.prepare(&format!(
                 "SELECT 
-                    COUNT(*) 
+                     COUNT(*) 
                  FROM {MESSAGE} as m
                  LEFT JOIN {CHAT_MESSAGE_JOIN} as c ON m.ROWID = c.message_id
                  LEFT JOIN {RECENTLY_DELETED} as d ON m.ROWID = d.message_id
@@ -708,10 +708,10 @@ impl Message {
             .or_else(|_| {
                 db.prepare(&format!(
                     "SELECT 
-                    COUNT(*) 
-                 FROM {MESSAGE} as m
-                 LEFT JOIN {CHAT_MESSAGE_JOIN} as c ON m.ROWID = c.message_id
-                 {}",
+                         COUNT(*) 
+                     FROM {MESSAGE} as m
+                     LEFT JOIN {CHAT_MESSAGE_JOIN} as c ON m.ROWID = c.message_id
+                    {}",
                     Self::generate_filter_statement(context, false)
                 ))
             })
