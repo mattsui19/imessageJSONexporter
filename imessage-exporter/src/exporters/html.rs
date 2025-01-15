@@ -848,13 +848,12 @@ impl<'a> Writer<'a> for HTML<'a> {
                     for (idx, event) in edited_message_part.edit_history.iter().enumerate() {
                         let last = idx == edited_message_part.edit_history.len() - 1;
                         if let Some(text) = &event.text {
-                            let sanitized = sanitize_html(text);
                             let clean_text = if let Some(BubbleComponent::Text(attributes)) =
                                 event.body().first()
                             {
-                                Cow::Owned(self.format_attributes(&sanitized, attributes))
+                                Cow::Owned(self.format_attributes(text, attributes))
                             } else {
-                                sanitized
+                                sanitize_html(text)
                             };
 
                             match previous_timestamp {
