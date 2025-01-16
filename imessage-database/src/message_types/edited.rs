@@ -767,7 +767,7 @@ mod test_parser {
         let plist_path = current_dir()
             .unwrap()
             .as_path()
-            .join("test_data/edited_message/MutliPartOneDeleted.plist");
+            .join("test_data/edited_message/MultiPartOneDeleted.plist");
         let plist_data = File::open(plist_path).unwrap();
         let plist = Value::from_reader(plist_data).unwrap();
         let parsed = EditedMessage::from_map(&plist).unwrap();
@@ -1290,7 +1290,7 @@ mod test_gen {
         let plist_path = current_dir()
             .unwrap()
             .as_path()
-            .join("test_data/edited_message/MutliPartOneDeleted.plist");
+            .join("test_data/edited_message/MultiPartOneDeleted.plist");
         let plist_data = File::open(plist_path).unwrap();
         let plist = Value::from_reader(plist_data).unwrap();
         let parsed = EditedMessage::from_map(&plist).unwrap();
