@@ -1101,6 +1101,47 @@ mod typedstream_tests {
             }),]
         );
     }
+
+    #[test]
+    fn can_get_message_body_apple_music_lyrics() {
+        let mut m = Message::blank();
+        m.text = Some("\u{FFFC}".to_string());
+
+        let typedstream_path = current_dir()
+            .unwrap()
+            .as_path()
+            .join("test_data/typedstream/AppleMusicLyrics");
+        let mut file = File::open(typedstream_path).unwrap();
+        let mut bytes = vec![];
+        file.read_to_end(&mut bytes).unwrap();
+
+        let mut parser = TypedStreamReader::from(&bytes);
+        m.components = parser.parse().ok();
+
+        parse_body_typedstream(
+            m.components.as_ref(),
+            m.text.as_deref(),
+            m.edited_parts.as_ref(),
+        )
+        .unwrap()
+        .iter()
+        .enumerate()
+        .for_each(|(idx, item)| println!("\t{idx}: {item:#?}"));
+
+        assert_eq!(
+            parse_body_typedstream(
+                m.components.as_ref(),
+                m.text.as_deref(),
+                m.edited_parts.as_ref()
+            )
+            .unwrap(),
+            vec![BubbleComponent::Text(vec![TextAttributes::new(
+                0,
+                3,
+                TextEffect::Link("https://music.apple.com/us/lyrics/1329891623?ts=11.108&te=16.031&l=en&tk=2.v1.VsuX9f%2BaT1PyrgMgIT7ANQ%3D%3D&itsct=sharing_msg_lyrics&itscg=50401")
+            ),])]
+        );
+    }
 }
 
 #[cfg(test)]
