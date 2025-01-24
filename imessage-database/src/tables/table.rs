@@ -109,7 +109,7 @@ pub fn get_connection(path: &Path) -> Result<Connection, TableError> {
             Ok(res) => Ok(res),
             Err(why) => Err(
                 TableError::CannotConnect(
-                    format!("Unable to read from chat database: {why}\nEnsure full disk access is enabled for your terminal emulator in System Settings > Security and Privacy > Full Disk Access")
+                    format!("Unable to read from chat database: {why}\nEnsure full disk access is enabled for your terminal emulator in System Settings > Privacy & Security > Full Disk Access")
                 )),
             };
     };
