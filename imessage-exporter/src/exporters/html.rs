@@ -1029,6 +1029,17 @@ impl<'a> BalloonFormatter<&'a Message> for HTML<'a> {
             out_s.push_str("\" </audio>");
         }
 
+        // Add lyrics, if any
+        if let Some(lyrics) = &balloon.lyrics {
+            out_s.push_str("<div class=\"ldtext\">");
+            for line in lyrics {
+                out_s.push_str("<p>");
+                out_s.push_str(line);
+                out_s.push_str("</p>");
+            }
+            out_s.push_str("</div>");
+        }
+
         // Header end
         out_s.push_str("</div>");
 
@@ -2461,10 +2472,33 @@ mod balloon_format_tests {
             artist: Some("artist"),
             album: Some("album"),
             track_name: Some("track_name"),
+            lyrics: None,
         };
 
         let expected = exporter.format_music(&balloon, &Config::fake_message());
         let actual = "<div class=\"app_header\"><div class=\"name\">track_name</div><audio controls src=\"preview\" </audio></div><a href=\"url\"><div class=\"app_footer\"><div class=\"caption\">artist</div><div class=\"subcaption\">album</div></div></a>";
+
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn can_format_html_music_lyrics() {
+        // Create exporter
+        let options = Options::fake_options(crate::app::export_type::ExportType::Html);
+        let config = Config::fake_app(options);
+        let exporter = HTML::new(&config).unwrap();
+
+        let balloon = MusicMessage {
+            url: Some("url"),
+            preview: None,
+            artist: Some("artist"),
+            album: Some("album"),
+            track_name: Some("track_name"),
+            lyrics: Some(vec!["a", "b"]),
+        };
+
+        let expected = exporter.format_music(&balloon, &Config::fake_message());
+        let actual = "<div class=\"app_header\"><div class=\"name\">track_name</div><div class=\"ldtext\"><p>a</p><p>b</p></div></div><a href=\"url\"><div class=\"app_footer\"><div class=\"caption\">artist</div><div class=\"subcaption\">album</div></div></a>";
 
         assert_eq!(expected, actual);
     }
