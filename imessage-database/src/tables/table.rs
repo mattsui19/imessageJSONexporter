@@ -105,7 +105,7 @@ pub trait AttributedBody {
 /// ```
 pub fn get_connection(path: &Path) -> Result<Connection, TableError> {
     if path.exists() && path.is_file() {
-        return match Connection::open_with_flags(path, OpenFlags::SQLITE_OPEN_READ_ONLY) {
+        return match Connection::open_with_flags(path, OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX) {
             Ok(res) => Ok(res),
             Err(why) => Err(
                 TableError::CannotConnect(
