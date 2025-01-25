@@ -232,6 +232,11 @@ pub fn get_string_from_dict<'a>(payload: &'a Value, key: &'a str) -> Option<&'a 
         .filter(|s| !s.is_empty())
 }
 
+/// Extract an inner dict from a key-value pair that looks like `{key: {key2: val}}`
+pub fn get_value_from_dict<'a>(payload: &'a Value, key: &'a str) -> Option<&'a Value> {
+    payload.as_dictionary()?.get(key)
+}
+
 /// Extract a bool from a key-value pair that looks like `{key: true}`
 pub fn get_bool_from_dict<'a>(payload: &'a Value, key: &'a str) -> Option<bool> {
     payload.as_dictionary()?.get(key)?.as_boolean()

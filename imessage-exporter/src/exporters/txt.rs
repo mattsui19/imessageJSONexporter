@@ -735,6 +735,14 @@ impl<'a> BalloonFormatter<&'a str> for TXT<'a> {
     fn format_music(&self, balloon: &MusicMessage, indent: &str) -> String {
         let mut out_s = String::new();
 
+        if let Some(lyrics) = &balloon.lyrics {
+            self.add_line(&mut out_s, "Lyrics:", indent);
+            for line in lyrics {
+                self.add_line(&mut out_s, line, indent);
+            }
+            self.add_line(&mut out_s, "\n", indent);
+        }
+
         if let Some(track_name) = balloon.track_name {
             self.add_line(&mut out_s, track_name, indent);
         }
@@ -1869,10 +1877,33 @@ mod balloon_format_tests {
             artist: Some("artist"),
             album: Some("album"),
             track_name: Some("track_name"),
+            lyrics: None,
         };
 
         let expected = exporter.format_music(&balloon, "");
         let actual = "track_name\nalbum\nartist\nurl\n";
+
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn can_format_txt_music_lyrics() {
+        // Create exporter
+        let options = Options::fake_options(crate::app::export_type::ExportType::Txt);
+        let config = Config::fake_app(options);
+        let exporter = TXT::new(&config).unwrap();
+
+        let balloon = MusicMessage {
+            url: Some("url"),
+            preview: None,
+            artist: Some("artist"),
+            album: Some("album"),
+            track_name: Some("track_name"),
+            lyrics: Some(vec!["a", "b"]),
+        };
+
+        let expected = exporter.format_music(&balloon, "");
+        let actual = "Lyrics:\na\nb\n\n\ntrack_name\nalbum\nartist\nurl\n";
 
         assert_eq!(expected, actual);
     }
