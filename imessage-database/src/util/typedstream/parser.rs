@@ -1,10 +1,10 @@
 /*!
- Logic used to deserialize data from a `typedstream`, focussing specifically on [NSAttributedString](https://developer.apple.com/documentation/foundation/nsattributedstring).
+ Logic used to deserialize data from a `typedstream`, focussing specifically on [`NSAttributedString`](https://developer.apple.com/documentation/foundation/nsattributedstring).
 
  Logic reverse engineered from `typedstream` source located at:
-   - [`typedstream.h`](https://opensource.apple.com/source/gcc/gcc-1493/libobjc/objc/typedstream.h.auto.html)
-   - [`archive.c`](https://opensource.apple.com/source/gcc/gcc-5484/libobjc/archive.c.auto.html)
-   - [`objc/typedstream.m`](https://archive.org/details/darwin_0.1)
+   - [`typedstream.h`](https://github.com/gnustep/libobjc/blob/master/objc/typedstream.h)
+   - [`archive.c`](https://github.com/gnustep/libobjc/blob/master/archive.c)
+   - [`objc/typedstream.m`](https://securitronlinux.com/news/html/d4/d6c/typedstream_8m.html)
 */
 use std::collections::HashSet;
 
@@ -497,6 +497,9 @@ impl<'a> TypedStreamReader<'a> {
     }
 
     /// Attempt to get the data from the `typedstream`.
+    ///
+    /// Yields a new [`Archivable`] as they occur in the stream, but does not retain the object's inheritance heirarchy.
+    /// Callers are responsible for assembling the stream into a useful data structure.
     ///
     /// Given a stream, construct a reader object to parse it. `typedstream` data doesn't include property
     /// names, so data is stored on [`Object`](crate::util::typedstream::models::Archivable::Object)s in order of appearance.
