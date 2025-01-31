@@ -171,6 +171,8 @@ impl Archivable {
 }
 
 /// Represents primitive types of data that can be stored in a `typedstream`
+/// 
+/// These type encodings are partially documented [here](https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/ObjCRuntimeGuide/Articles/ocrtTypeEncodings.html#//apple_ref/doc/uid/TP40008048-CH100-SW1) by Apple.
 // TODO: Remove clone
 #[derive(Debug, Clone, PartialEq)]
 pub enum Type {

@@ -32,6 +32,7 @@ use crate::{
 
 /// The default root directory for iMessage attachment data
 pub const DEFAULT_ATTACHMENT_ROOT: &str = "~/Library/Messages/Attachments";
+const COLS: &str = "a.rowid, a.filename, a.uti, a.mime_type, a.transfer_name, a.total_bytes, a.is_sticker, a.hide_attachment, a.emoji_image_short_description";
 
 /// Represents the [MIME type](https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_Types) of a message's attachment data
 ///
@@ -146,12 +147,24 @@ impl Attachment {
             let mut statement = db
                 .prepare(&format!(
                     "
-                    SELECT * FROM message_attachment_join j 
-                        LEFT JOIN attachment AS a ON j.attachment_id = a.ROWID
-                    WHERE j.message_id = {}
+                        SELECT {COLS}
+                        FROM message_attachment_join j 
+                        LEFT JOIN {ATTACHMENT} a ON j.attachment_id = a.ROWID
+                        WHERE j.message_id = {}
                     ",
                     msg.rowid
                 ))
+                .or_else(|_| {
+                    db.prepare(&format!(
+                        "
+                            SELECT *
+                            FROM message_attachment_join j 
+                            LEFT JOIN {ATTACHMENT} a ON j.attachment_id = a.ROWID
+                            WHERE j.message_id = {}
+                        ",
+                        msg.rowid
+                    ))
+                })
                 .map_err(TableError::Attachment)?;
 
             let iter = statement
