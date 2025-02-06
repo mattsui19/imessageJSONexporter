@@ -1148,7 +1148,26 @@ impl Message {
         }
     }
 
-    /// Create a message from a given GUID
+    /// Create a message from a given GUID; useful for debugging
+    ///
+    /// # Example
+    /// ```rust
+    /// use imessage_database::{
+    ///     tables::{
+    ///         messages::Message,
+    ///         table::get_connection,
+    ///     },
+    ///     util::dirs::default_db_path,
+    /// };
+    ///
+    /// let db_path = default_db_path();
+    /// let conn = get_connection(&db_path).unwrap();
+    ///
+    /// if let Ok(mut message) = Message::from_guid("example-guid", &conn) {
+    ///     let _ = message.generate_text(&conn);
+    ///     println!("{:#?}", message)
+    /// }
+    ///```
     pub fn from_guid(guid: &str, db: &Connection) -> Result<Self, TableError> {
         // If the database has `chat_recoverable_message_join`, we can restore some deleted messages.
         // If database has `thread_originator_guid`, we can parse replies, otherwise default to 0
