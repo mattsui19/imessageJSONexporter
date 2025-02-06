@@ -209,3 +209,40 @@ mod include_recoverable_tests {
         assert_eq!(statement, "");
     }
 }
+
+#[cfg(test)]
+mod guid_query_tests {
+    use std::env::current_dir;
+
+    use crate::tables::{messages::Message, table::get_connection};
+
+    #[test]
+    fn test_cant_query_bad_guid() {
+        let db_path = current_dir()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("imessage-database/test_data/db/test.db");
+        let conn = get_connection(&db_path).unwrap();
+
+        let message = Message::from_guid("fake-guid", &conn);
+
+        assert!(message.is_err());
+    }
+
+    #[test]
+    fn test_can_query_guid() {
+        let db_path = current_dir()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("imessage-database/test_data/db/test.db");
+        let conn = get_connection(&db_path).unwrap();
+
+        let mut message =
+            Message::from_guid("0355C6E1-D0C8-4212-AA87-DD8AE4FD1203", &conn).unwrap();
+        let _ = message.generate_text(&conn);
+        println!("{:#?}", message);
+        assert!(message.components.is_some())
+    }
+}
