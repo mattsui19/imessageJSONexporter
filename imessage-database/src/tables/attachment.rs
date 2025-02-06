@@ -293,7 +293,7 @@ impl Attachment {
         "Attachment missing name metadata!"
     }
 
-    /// Get a human readable file size for an attachment
+    /// Get a human readable file size for an attachment using [`format_file_size`]
     pub fn file_size(&self) -> String {
         format_file_size(self.total_bytes.try_into().unwrap_or(0))
     }
@@ -338,7 +338,7 @@ impl Attachment {
     /// For macOS, `db_path` is unused. For iOS, `db_path` is the path to the root of the backup directory.
     /// This is the same path used by [`get_connection()`](crate::tables::table::get_connection).
     ///
-    /// On iOS, file names are derived from SHA-1 hash of: `MediaDomain-` concatenated with the relative [`self.filename()`](Self::filename)
+    /// On iOS, file names are derived from SHA-1 hash of `MediaDomain-` concatenated with the relative [`self.filename()`](Self::filename).
     /// Between the domain and the path there is a dash. Read more [here](https://theapplewiki.com/index.php?title=ITunes_Backup).
     ///
     /// Use the optional `custom_attachment_root` parameter when the attachments are not stored in
@@ -367,11 +367,8 @@ impl Attachment {
     ///
     /// This is defined outside of [`Diagnostic`](crate::tables::table::Diagnostic) because it requires additional data.
     ///
-    /// Get the number of attachments that are missing from the filesystem
-    /// or are missing one of the following columns:
-    ///
-    /// - `ck_server_change_token_blob`
-    /// - `sr_ck_server_change_token_blob`
+    /// Get the number of attachments that are missing, either because the path is missing from the 
+    /// table or the path does not point to a file.
     ///
     /// # Example:
     ///
@@ -491,7 +488,7 @@ impl Attachment {
         Some(format!("{}/{directory}/{filename}", db_path.display()))
     }
 
-    /// Get an attachment's plist from the [STICKER_USER_INFO] BLOB column
+    /// Get an attachment's plist from the [`STICKER_USER_INFO`] BLOB column
     ///
     /// Calling this hits the database, so it is expensive and should
     /// only get invoked when needed.
@@ -501,7 +498,7 @@ impl Attachment {
         Value::from_reader(self.get_blob(db, STICKER_USER_INFO)?).ok()
     }
 
-    /// Get an attachment's plist from the [ATTRIBUTION_INFO] BLOB column
+    /// Get an attachment's plist from the [`ATTRIBUTION_INFO`] BLOB column
     ///
     /// Calling this hits the database, so it is expensive and should
     /// only get invoked when needed.
@@ -511,7 +508,7 @@ impl Attachment {
         Value::from_reader(self.get_blob(db, ATTRIBUTION_INFO)?).ok()
     }
 
-    /// Parse a sticker's source from the Bundle ID stored in [STICKER_USER_INFO] `plist` data
+    /// Parse a sticker's source from the Bundle ID stored in [`STICKER_USER_INFO`] `plist` data
     ///
     /// Calling this hits the database, so it is expensive and should
     /// only get invoked when needed.
@@ -524,7 +521,7 @@ impl Attachment {
         None
     }
 
-    /// Parse a sticker's application name stored in [ATTRIBUTION_INFO] `plist` data
+    /// Parse a sticker's application name stored in [`ATTRIBUTION_INFO`] `plist` data
     ///
     /// Calling this hits the database, so it is expensive and should
     /// only get invoked when needed.
