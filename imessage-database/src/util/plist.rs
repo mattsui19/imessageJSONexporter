@@ -59,28 +59,26 @@ use crate::error::plist::PlistParseError;
 /// > storing an object table array called `$objects` in the dictionary. Everything else,
 /// > including class information, is referenced by a UID pointer. A `$top` entry under
 /// > the dict points to the top-level object the programmer was meaning to encode.
-/// 
+///
 /// # Data Source
-/// 
+///
 /// The source plist data generally comes from [`Message::payload_data()`](crate::tables::messages::message::Message::payload_data).
 pub fn parse_ns_keyed_archiver(plist: &Value) -> Result<Value, PlistParseError> {
-    let body = plist.as_dictionary().ok_or_else(|| {
-        PlistParseError::InvalidType("body".to_string(), "dictionary".to_string())
-    })?;
+    let body = plist_as_dictionary(plist)?;
     let objects = extract_array_key(body, "$objects")?;
 
     // Index of root object
     let root = extract_uid_key(extract_dictionary(body, "$top")?, "root")?;
 
-    follow_uid(objects, root, &None, None)
+    follow_uid(objects, root, None, None)
 }
 
 /// Recursively follows pointers in an `NSKeyedArchiver` format, promoting the values
 /// to the positions where the pointers live
 fn follow_uid<'a>(
-    objects: &'a Vec<Value>,
+    objects: &'a [Value],
     root: usize,
-    parent: &Option<String>,
+    parent: Option<&str>,
     item: Option<&'a Value>,
 ) -> Result<Value, PlistParseError> {
     let item = match item {
@@ -95,12 +93,7 @@ fn follow_uid<'a>(
             let mut array = vec![];
             for item in arr {
                 if let Some(idx) = item.as_uid() {
-                    array.push(follow_uid(
-                        objects,
-                        idx.get() as usize,
-                        &parent.to_owned(),
-                        None,
-                    )?);
+                    array.push(follow_uid(objects, idx.get() as usize, parent, None)?);
                 }
             }
             Ok(plist::Value::Array(array))
@@ -113,7 +106,7 @@ fn follow_uid<'a>(
                     if let Some(p) = &parent {
                         dictionary.insert(
                             p.to_string(),
-                            follow_uid(objects, idx.get() as usize, &Some(p.to_string()), None)?,
+                            follow_uid(objects, idx.get() as usize, Some(p), None)?,
                         );
                     }
                 }
@@ -137,37 +130,34 @@ fn follow_uid<'a>(
                     let key = extract_string_idx(objects, key_index)?;
 
                     dictionary.insert(
-                        key.to_string(),
-                        follow_uid(objects, value_index, &Some(key.to_string()), None)?,
+                        key.into(),
+                        follow_uid(objects, value_index, Some(key), None)?,
                     );
                 }
             }
             // Handle a normal `{key: value}` style dictionary
             else {
                 for (key, val) in dict {
-                    // Handle skips
+                    // Skip class names; we don't need them
                     if key == "$class" {
                         continue;
                     }
                     // If the value is a pointer, follow it
                     if let Some(idx) = val.as_uid() {
                         dictionary.insert(
-                            key.to_owned(),
-                            follow_uid(objects, idx.get() as usize, &Some(key.to_string()), None)?,
+                            key.into(),
+                            follow_uid(objects, idx.get() as usize, Some(key), None)?,
                         );
                     }
                     // If the value is not a pointer, try and follow the data itself
-                    else if let Some(p) = &parent {
-                        dictionary.insert(
-                            p.to_owned(),
-                            follow_uid(objects, root, &Some(p.to_string()), Some(val))?,
-                        );
+                    else if let Some(p) = parent {
+                        dictionary.insert(p.into(), follow_uid(objects, root, Some(p), Some(val))?);
                     }
                 }
             }
             Ok(plist::Value::Dictionary(dictionary))
         }
-        Value::Uid(uid) => follow_uid(objects, uid.get() as usize, &None, None),
+        Value::Uid(uid) => follow_uid(objects, uid.get() as usize, None, None),
         _ => Ok(item.to_owned()),
     }
 }
