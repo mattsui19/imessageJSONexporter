@@ -5,6 +5,8 @@
    - [`typedstream.h`](https://github.com/gnustep/libobjc/blob/master/objc/typedstream.h)
    - [`archive.c`](https://github.com/gnustep/libobjc/blob/master/archive.c)
    - [`objc/typedstream.m`](https://securitronlinux.com/news/html/d4/d6c/typedstream_8m.html)
+
+ A writeup about the reverse engineering of `typedstream` can be found [here](https://chrissardegna.com/blog/reverse-engineering-apples-typedstream-format/).
 */
 use std::collections::HashSet;
 
