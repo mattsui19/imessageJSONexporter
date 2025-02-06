@@ -1,12 +1,32 @@
 /*!
- Contains logic to parse text from plist payload data.
+ Contains logic and data structures used to parse and deserialize [`NSKeyedArchiver`](https://developer.apple.com/documentation/foundation/nskeyedarchiver) property list files into native Rust data structures.
+
+ The main entry point is [`parse_ns_keyed_archiver()`]. For normal property lists, use [`plist_as_dictionary()`].
+
+ ## Overview
+
+ The `NSKeyedArchiver` format is a property list-based serialization protocol used by Apple's Foundation framework.
+ It stores object graphs in a keyed format, allowing for more flexible deserialization and better handling of
+ object references compared to the older typedstream format.
+
+ ## Origin
+
+ Introduced in Mac OS X 10.2 as part of the Foundation framework, `NSKeyedArchiver` replaced `NSArchiver`
+ ([`typedstream`](crate::util::typedstream)) system as Apple's primary object serialization mechanism.
+
+ ## Features
+
+ - Pure Rust implementation for efficient and safe deserialization
+ - Support for both XML and binary property list formats
+ - No dependencies on Apple frameworks
+ - Robust error handling for malformed or invalid archives
 */
 
 use plist::{Dictionary, Value};
 
 use crate::error::plist::PlistParseError;
 
-/// Serialize a message's `payload_data` BLOB from the `NSKeyedArchiver` format to a [`Dictionary`]
+/// Serialize a message's `payload_data` BLOB in the [`NSKeyedArchiver`](https://developer.apple.com/documentation/foundation/nskeyedarchiver) format to a [`Dictionary`]
 /// that follows the references in the XML document's UID pointers. First, we find the root of the
 /// document, then walk the structure, promoting values to the places where their pointers are stored.
 ///
@@ -39,6 +59,10 @@ use crate::error::plist::PlistParseError;
 /// > storing an object table array called `$objects` in the dictionary. Everything else,
 /// > including class information, is referenced by a UID pointer. A `$top` entry under
 /// > the dict points to the top-level object the programmer was meaning to encode.
+/// 
+/// # Data Source
+/// 
+/// The source plist data generally comes from [`Message::payload_data()`](crate::tables::messages::message::Message::payload_data).
 pub fn parse_ns_keyed_archiver(plist: &Value) -> Result<Value, PlistParseError> {
     let body = plist.as_dictionary().ok_or_else(|| {
         PlistParseError::InvalidType("body".to_string(), "dictionary".to_string())
