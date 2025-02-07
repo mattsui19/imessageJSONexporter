@@ -13,7 +13,7 @@ use crate::tables::{
 };
 
 /// macOS Ventura+ and i0S 16+ schema, interpolated with required columns for performance
-pub static IOS_16_NEWER_HEAD: LazyLock<String> = LazyLock::new(|| {
+static IOS_16_NEWER_HEAD: LazyLock<String> = LazyLock::new(|| {
     format!("
 SELECT
     {COLS},
@@ -29,7 +29,7 @@ LEFT JOIN {RECENTLY_DELETED} as d ON m.ROWID = d.message_id
 });
 
 /// macOS Big Sur to Monterey, iOS 14 to iOS 15 schema
-pub static IOS_14_15_HEAD: LazyLock<String> = LazyLock::new(|| {
+static IOS_14_15_HEAD: LazyLock<String> = LazyLock::new(|| {
     format!("
 SELECT
     *,
@@ -44,7 +44,7 @@ LEFT JOIN {CHAT_MESSAGE_JOIN} as c ON m.ROWID = c.message_id
 });
 
 /// macOS Catalina, iOS 13 and older schema
-pub static IOS_13_OLDER_HEAD: LazyLock<String> = LazyLock::new(|| {
+static IOS_13_OLDER_HEAD: LazyLock<String> = LazyLock::new(|| {
     format!("
 SELECT
     *,
@@ -58,7 +58,37 @@ LEFT JOIN {CHAT_MESSAGE_JOIN} as c ON m.ROWID = c.message_id
 ")
 });
 
-pub const ORDER_BY: &str = "
+const ORDER_BY: &str = "
 ORDER BY
     m.date;
 ";
+
+/// Generate a SQL Query compatible with the macOS Ventura+ and i0S 16+ schema
+pub(crate) fn ios_16_newer_query(filters: Option<&str>) -> String {
+    format!(
+        "{}{}{}",
+        *IOS_16_NEWER_HEAD,
+        filters.unwrap_or_default(),
+        ORDER_BY
+    )
+}
+
+/// Generate a SQL Query compatible with the macOS Big Sur to Monterey, iOS 14 to iOS 15 schema
+pub(crate) fn ios_14_15_query(filters: Option<&str>) -> String {
+    format!(
+        "{}{}{}",
+        *IOS_14_15_HEAD,
+        filters.unwrap_or_default(),
+        ORDER_BY
+    )
+}
+
+/// Generate a SQL Query compatible with the macOS Catalina, iOS 13 and older schema
+pub(crate) fn ios_13_older_query(filters: Option<&str>) -> String {
+    format!(
+        "{}{}{}",
+        *IOS_13_OLDER_HEAD,
+        filters.unwrap_or_default(),
+        ORDER_BY
+    )
+}
