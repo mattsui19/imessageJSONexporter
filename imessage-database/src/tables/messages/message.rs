@@ -126,7 +126,7 @@ use crate::{
         messages::{
             body::{parse_body_legacy, parse_body_typedstream},
             models::{BubbleComponent, Service},
-            query_parts,
+            query_parts::{ios_13_older_query, ios_14_15_query, ios_16_newer_query},
         },
         table::{
             AttributedBody, Cacheable, Diagnostic, GetBlob, Table, ATTRIBUTED_BODY,
@@ -258,31 +258,10 @@ impl Table for Message {
     /// Convert data from the messages table to native Rust data structures, falling back to
     /// more compatible queries to ensure compatibility with older database schemas
     fn get(db: &Connection) -> Result<Statement, TableError> {
-        // If the database has `chat_recoverable_message_join`, we can restore some deleted messages.
-        // If database has `thread_originator_guid`, we can parse replies, otherwise default to 0
-        db.prepare(&format!(
-            // macOS Ventura+ and i0S 16+ schema, interpolated with required columns for performance
-            "{}{}",
-            *query_parts::IOS_16_NEWER_HEAD,
-            query_parts::ORDER_BY
-        ))
-        .or_else(|_| {
-            db.prepare(&format!(
-                // macOS Big Sur to Monterey, iOS 14 to iOS 15 schema
-                "{}{}",
-                *query_parts::IOS_14_15_HEAD,
-                query_parts::ORDER_BY
-            ))
-        })
-        .or_else(|_| {
-            db.prepare(&format!(
-                // macOS Catalina, iOS 13 and older
-                "{}{}",
-                *query_parts::IOS_13_OLDER_HEAD,
-                query_parts::ORDER_BY
-            ))
-        })
-        .map_err(TableError::Messages)
+        db.prepare(&ios_16_newer_query(None))
+            .or_else(|_| db.prepare(&ios_14_15_query(None)))
+            .or_else(|_| db.prepare(&ios_13_older_query(None)))
+            .map_err(TableError::Messages)
     }
 
     fn extract(message: Result<Result<Self, Error>, Error>) -> Result<Self, TableError> {
@@ -731,7 +710,7 @@ impl Message {
 
         // Start date filter
         if let Some(start) = context.start {
-            filters.push_str(&format!("    m.date >= {start}"));
+            filters.push_str(&format!(" m.date >= {start}"));
         }
 
         // End date filter
@@ -739,7 +718,7 @@ impl Message {
             if !filters.is_empty() {
                 filters.push_str(" AND ");
             }
-            filters.push_str(&format!("    m.date <= {end}"));
+            filters.push_str(&format!(" m.date <= {end}"));
         }
 
         // Chat ID filter, optionally including recoverable messages
@@ -757,17 +736,16 @@ impl Message {
 
             if include_recoverable {
                 filters.push_str(&format!(
-                    "    (c.chat_id IN ({ids}) OR d.chat_id IN ({ids}))"
+                    " (c.chat_id IN ({ids}) OR d.chat_id IN ({ids}))"
                 ));
             } else {
-                filters.push_str(&format!("    c.chat_id IN ({ids})"));
+                filters.push_str(&format!(" c.chat_id IN ({ids})"));
             }
         }
 
         if !filters.is_empty() {
             return format!(
-                " WHERE
-                 {filters}"
+                "WHERE {filters}"
             );
         }
         filters
@@ -847,32 +825,18 @@ impl Message {
         if !context.has_filters() {
             return Self::get(db);
         }
-
-        // If database has `thread_originator_guid`, we can parse replies, otherwise default to 0
-        db.prepare(&format!(
-            // macOS Ventura+ and i0S 16+ schema, interpolated with required columns for performance
-            "{}{}{}",
-            *query_parts::IOS_16_NEWER_HEAD,
-            Self::generate_filter_statement(context, true),
-            query_parts::ORDER_BY
-        ))
+        db.prepare(&ios_16_newer_query(Some(&Self::generate_filter_statement(
+            context, true,
+        ))))
         .or_else(|_| {
-            db.prepare(&format!(
-                // macOS Big Sur to Monterey, iOS 14 to iOS 15 schema
-                "{}{}{}",
-                *query_parts::IOS_14_15_HEAD,
-                Self::generate_filter_statement(context, false),
-                query_parts::ORDER_BY
-            ))
+            db.prepare(&ios_14_15_query(Some(&Self::generate_filter_statement(
+                context, false,
+            ))))
         })
         .or_else(|_| {
-            db.prepare(&format!(
-                // macOS Catalina, iOS 13 and older
-                "{}{}{}",
-                *query_parts::IOS_13_OLDER_HEAD,
-                Self::generate_filter_statement(context, false),
-                query_parts::ORDER_BY
-            ))
+            db.prepare(&ios_13_older_query(Some(&Self::generate_filter_statement(
+                context, false,
+            ))))
         })
         .map_err(TableError::Messages)
     }
@@ -909,27 +873,12 @@ impl Message {
 
         // No need to hit the DB if we know we don't have replies
         if self.has_replies() {
+            let filters = format!("WHERE m.thread_originator_guid = \"{}\"", self.guid);
+
+            // No iOS 13 and prior used here because `thread_originator_guid` is not present in that schema
             let mut statement = db
-                .prepare(&format!(
-                    "{}
-                    WHERE m.thread_originator_guid = \"{}\"
-                    {}
-                    ",
-                    *query_parts::IOS_16_NEWER_HEAD,
-                    self.guid,
-                    query_parts::ORDER_BY
-                ))
-                .or_else(|_| {
-                    db.prepare(&format!(
-                        "{}
-                        WHERE m.thread_originator_guid = \"{}\"
-                        {}
-                        ",
-                        *query_parts::IOS_14_15_HEAD,
-                        self.guid,
-                        query_parts::ORDER_BY
-                    ))
-                })
+                .prepare(&ios_16_newer_query(Some(&filters)))
+                .or_else(|_| db.prepare(&ios_14_15_query(Some(&filters))))
                 .map_err(TableError::Messages)?;
 
             let iter = statement
@@ -1171,38 +1120,12 @@ impl Message {
     pub fn from_guid(guid: &str, db: &Connection) -> Result<Self, TableError> {
         // If the database has `chat_recoverable_message_join`, we can restore some deleted messages.
         // If database has `thread_originator_guid`, we can parse replies, otherwise default to 0
+        let filters = format!("WHERE m.guid = \"{guid}\"");
+
         let mut statement = db
-            .prepare(&format!(
-                // macOS Ventura+ and i0S 16+ schema, interpolated with required columns for performance
-                "{}
-                WHERE m.guid == \"{guid}\"
-                {}
-                ",
-                *query_parts::IOS_16_NEWER_HEAD,
-                query_parts::ORDER_BY
-            ))
-            .or_else(|_| {
-                db.prepare(&format!(
-                    // macOS Big Sur to Monterey, iOS 14 to iOS 15 schema
-                    "{}
-                    WHERE m.guid == \"{guid}\"
-                    {}
-                    ",
-                    *query_parts::IOS_14_15_HEAD,
-                    query_parts::ORDER_BY
-                ))
-            })
-            .or_else(|_| {
-                db.prepare(&format!(
-                    // macOS Catalina, iOS 13 and older
-                    "{}
-                    WHERE m.guid == \"{guid}\"
-                    {}
-                    ",
-                    *query_parts::IOS_13_OLDER_HEAD,
-                    query_parts::ORDER_BY
-                ))
-            })
+            .prepare(&ios_16_newer_query(Some(&filters)))
+            .or_else(|_| db.prepare(&ios_14_15_query(Some(&filters))))
+            .or_else(|_| db.prepare(&ios_13_older_query(Some(&filters))))
             .map_err(TableError::Messages)?;
 
         Message::extract(statement.query_row([], |row| Ok(Message::from_row(row))))
