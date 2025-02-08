@@ -24,7 +24,7 @@ Yes. See [here](features.md) for more detail on supported features.
 
 ***
 
-### Can I force iCloud to download attachments that were offloaded?
+## Can I force iCloud to download attachments that were offloaded?
 
 In the Messages app, if you click the info (`ⓘ`) button for a conversation and scroll to the bottom, there is a button that downloads all of the attachments for that conversation. This works on both macOS and iOS.
 
