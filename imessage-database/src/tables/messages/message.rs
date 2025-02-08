@@ -1,5 +1,112 @@
 /*!
  This module represents common (but not all) columns in the `message` table.
+
+ # Iterating over Message Data
+
+ Generally, use [`Message::get()`] or [`Message::stream_rows()`] to iterate over message rows.
+
+ ## Example
+ ```rust
+ use imessage_database::{
+     tables::{
+         messages::Message,
+         table::{get_connection, Diagnostic, Table},
+     },
+     util::dirs::default_db_path,
+ };
+
+ let db_path = default_db_path();
+ let conn = get_connection(&db_path).unwrap();
+
+ let mut statement = Message::get(&conn).unwrap();
+
+ let messages = statement.query_map([], |row| Ok(Message::from_row(row))).unwrap();
+
+ messages.map(|msg| println!("{:#?}", Message::extract(msg)));
+ ```
+
+ # Making Custom Message Queries
+
+ In addition columns from the `messages` table, there are several additional fields represented
+ by [`Message`]  that are not present in the database:
+
+ - [`Message::chat_id`]
+ - [`Message::num_attachments`]
+ - [`Message::deleted_from`]
+ - [`Message::num_replies`]
+
+ ## Sample Queries
+
+ To provide a custom query, ensure inclusion of the foregoing columns:
+
+ ```sql
+ SELECT
+     *,
+     c.chat_id,
+     (SELECT COUNT(*) FROM message_attachment_join a WHERE m.ROWID = a.message_id) as num_attachments,
+     d.chat_id as deleted_from,
+     (SELECT COUNT(*) FROM message m2 WHERE m2.thread_originator_guid = m.guid) as num_replies
+ FROM
+     message as m
+ LEFT JOIN chat_message_join as c ON m.ROWID = c.message_id
+ LEFT JOIN chat_recoverable_message_join as d ON m.ROWID = d.message_id
+ ORDER BY
+     m.date;
+ ```
+
+ If the source database does not include these required columns, include them as so:
+
+ ```sql
+ SELECT
+     *,
+     c.chat_id,
+     (SELECT COUNT(*) FROM message_attachment_join a WHERE m.ROWID = a.message_id) as num_attachments,
+     NULL as deleted_from,
+     0 as num_replies
+ FROM
+     message as m
+ LEFT JOIN chat_message_join as c ON m.ROWID = c.message_id
+ ORDER BY
+     m.date;
+ ```
+
+ ## Custom Query Example
+
+ The following will return an iterator over messages that have an associated emoji:
+
+
+ ```rust
+ use imessage_database::{
+     tables::{
+         messages::Message,
+         table::{get_connection, Diagnostic, Table},
+     },
+     util::dirs::default_db_path
+ };
+
+ let db_path = default_db_path();
+ let db = get_connection(&db_path).unwrap();
+
+ let mut statement = db.prepare("
+ SELECT
+     *,
+     c.chat_id,
+     (SELECT COUNT(*) FROM message_attachment_join a WHERE m.ROWID = a.message_id) as num_attachments,
+     d.chat_id as deleted_from,
+     (SELECT COUNT(*) FROM message m2 WHERE m2.thread_originator_guid = m.guid) as num_replies
+ FROM
+     message as m
+ LEFT JOIN chat_message_join as c ON m.ROWID = c.message_id
+ LEFT JOIN chat_recoverable_message_join as d ON m.ROWID = d.message_id
+ WHERE m.associated_message_emoji IS NOT NULL
+ ORDER BY
+     m.date;
+ ").unwrap();
+
+ let messages = statement.query_map([], |row| Ok(Message::from_row(row))).unwrap();
+
+ messages.map(|msg| println!("{:#?}", Message::extract(msg)));
+ ```
 */
 
 use std::{collections::HashMap, io::Read};
@@ -19,6 +126,7 @@ use crate::{
         messages::{
             body::{parse_body_legacy, parse_body_typedstream},
             models::{BubbleComponent, Service},
+            query_parts::{ios_13_older_query, ios_14_15_query, ios_16_newer_query},
         },
         table::{
             AttributedBody, Cacheable, Diagnostic, GetBlob, Table, ATTRIBUTED_BODY,
@@ -37,9 +145,11 @@ use crate::{
 };
 
 /// The required columns, interpolated into the most recent schema due to performance considerations
-const COLS: &str = "rowid, guid, text, service, handle_id, destination_caller_id, subject, date, date_read, date_delivered, is_from_me, is_read, item_type, other_handle, share_status, share_direction, group_title, group_action_type, associated_message_guid, associated_message_type, balloon_bundle_id, expressive_send_style_id, thread_originator_guid, thread_originator_part, date_edited, associated_message_emoji";
+pub(crate) const COLS: &str = "rowid, guid, text, service, handle_id, destination_caller_id, subject, date, date_read, date_delivered, is_from_me, is_read, item_type, other_handle, share_status, share_direction, group_title, group_action_type, associated_message_guid, associated_message_type, balloon_bundle_id, expressive_send_style_id, thread_originator_guid, thread_originator_part, date_edited, associated_message_emoji";
 
 /// Represents a single row in the `message` table.
+///
+/// Additional information is available in the [parent](crate::tables::messages::message) module.
 #[derive(Debug)]
 #[allow(non_snake_case)]
 pub struct Message {
@@ -51,6 +161,7 @@ pub struct Message {
     pub service: Option<String>,
     /// The ID of the person who sent the message
     pub handle_id: Option<i32>,
+    /// The address the database owner received the message at, i.e. a phone number or email
     pub destination_caller_id: Option<String>,
     /// The content of the Subject field
     pub subject: Option<String>,
@@ -147,53 +258,10 @@ impl Table for Message {
     /// Convert data from the messages table to native Rust data structures, falling back to
     /// more compatible queries to ensure compatibility with older database schemas
     fn get(db: &Connection) -> Result<Statement, TableError> {
-        // If the database has `chat_recoverable_message_join`, we can restore some deleted messages.
-        // If database has `thread_originator_guid`, we can parse replies, otherwise default to 0
-        db.prepare(&format!(
-            // macOS Ventura+ and i0S 16+ schema, interpolated with required columns for performance
-            "SELECT
-                 {COLS},
-                 c.chat_id,
-                 (SELECT COUNT(*) FROM {MESSAGE_ATTACHMENT_JOIN} a WHERE m.ROWID = a.message_id) as num_attachments,
-                 d.chat_id as deleted_from,
-                 (SELECT COUNT(*) FROM {MESSAGE} m2 WHERE m2.thread_originator_guid = m.guid) as num_replies
-             FROM
-                 {MESSAGE} as m
-             LEFT JOIN {CHAT_MESSAGE_JOIN} as c ON m.ROWID = c.message_id
-             LEFT JOIN {RECENTLY_DELETED} as d ON m.ROWID = d.message_id
-             ORDER BY
-                 m.date;
-            "
-        )).or_else( |_| db.prepare(&format!(
-            // macOS Big Sur to Monterey, iOS 14 to iOS 15 schema
-            "SELECT
-                 *,
-                 c.chat_id,
-                 (SELECT COUNT(*) FROM {MESSAGE_ATTACHMENT_JOIN} a WHERE m.ROWID = a.message_id) as num_attachments,
-                 NULL as deleted_from,
-                 (SELECT COUNT(*) FROM {MESSAGE} m2 WHERE m2.thread_originator_guid = m.guid) as num_replies
-             FROM
-                 {MESSAGE} as m
-             LEFT JOIN {CHAT_MESSAGE_JOIN} as c ON m.ROWID = c.message_id
-             ORDER BY
-                 m.date;
-            "
-        )))
-        .or_else( |_| db.prepare(&format!(
-            // macOS Catalina, iOS 13 and older 
-            "SELECT
-                 *,
-                 c.chat_id,
-                 (SELECT COUNT(*) FROM {MESSAGE_ATTACHMENT_JOIN} a WHERE m.ROWID = a.message_id) as num_attachments,
-                 NULL as deleted_from,
-                 0 as num_replies
-             FROM
-                 {MESSAGE} as m
-             LEFT JOIN {CHAT_MESSAGE_JOIN} as c ON m.ROWID = c.message_id
-             ORDER BY
-                 m.date;
-            "
-        ))).map_err(TableError::Messages)
+        db.prepare(&ios_16_newer_query(None))
+            .or_else(|_| db.prepare(&ios_14_15_query(None)))
+            .or_else(|_| db.prepare(&ios_13_older_query(None)))
+            .map_err(TableError::Messages)
     }
 
     fn extract(message: Result<Result<Self, Error>, Error>) -> Result<Self, TableError> {
@@ -444,6 +512,8 @@ impl Message {
     /// Calculates the date a message was written to the database.
     ///
     /// This field is stored as a unix timestamp with an epoch of `2001-01-01 00:00:00` in the local time zone
+    ///
+    /// `offset` can be provided by [`get_offset`](crate::util::dates::get_offset) or manually.
     pub fn date(&self, offset: &i64) -> Result<DateTime<Local>, MessageError> {
         get_local_time(&self.date, offset)
     }
@@ -451,6 +521,8 @@ impl Message {
     /// Calculates the date a message was marked as delivered.
     ///
     /// This field is stored as a unix timestamp with an epoch of `2001-01-01 00:00:00` in the local time zone
+    ///
+    /// `offset` can be provided by [`get_offset`](crate::util::dates::get_offset) or manually.
     pub fn date_delivered(&self, offset: &i64) -> Result<DateTime<Local>, MessageError> {
         get_local_time(&self.date_delivered, offset)
     }
@@ -458,6 +530,8 @@ impl Message {
     /// Calculates the date a message was marked as read.
     ///
     /// This field is stored as a unix timestamp with an epoch of `2001-01-01 00:00:00` in the local time zone
+    ///
+    /// `offset` can be provided by [`get_offset`](crate::util::dates::get_offset) or manually.
     pub fn date_read(&self, offset: &i64) -> Result<DateTime<Local>, MessageError> {
         get_local_time(&self.date_read, offset)
     }
@@ -465,6 +539,8 @@ impl Message {
     /// Calculates the date a message was most recently edited.
     ///
     /// This field is stored as a unix timestamp with an epoch of `2001-01-01 00:00:00` in the local time zone
+    ///
+    /// `offset` can be provided by [`get_offset`](crate::util::dates::get_offset) or manually.
     pub fn date_edited(&self, offset: &i64) -> Result<DateTime<Local>, MessageError> {
         get_local_time(&self.date_edited, offset)
     }
@@ -480,6 +556,8 @@ impl Message {
     /// Not all messages get tagged with the read properties.
     /// If more than one message has been sent in a thread before getting read,
     /// only the most recent message will get the tag.
+    ///
+    /// `offset` can be provided by [`get_offset`](crate::util::dates::get_offset) or manually.
     pub fn time_until_read(&self, offset: &i64) -> Option<String> {
         // Message we received
         if !self.is_from_me && self.date_read != 0 && self.date != 0 {
@@ -508,7 +586,7 @@ impl Message {
             | (self.is_sticker() && self.associated_message_guid.is_some())
     }
 
-    /// `true` if the message is a sticker, else `false`
+    /// `true` if the message is a [`sticker`](crate::message_types::sticker), else `false`
     pub fn is_sticker(&self) -> bool {
         matches!(self.variant(), Variant::Sticker(_))
     }
@@ -518,7 +596,7 @@ impl Message {
         self.expressive_send_style_id.is_some()
     }
 
-    /// `true` if the message has a URL preview, else `false`
+    /// `true` if the message has a [URL preview](crate::message_types::url), else `false`
     pub fn is_url(&self) -> bool {
         matches!(self.variant(), Variant::App(CustomBalloon::URL))
     }
@@ -538,7 +616,7 @@ impl Message {
         self.date_edited != 0
     }
 
-    /// `true` if the specified message component was edited, else `false`
+    /// `true` if the specified message component was [edited](crate::message_types::edited::EditStatus::Edited), else `false`
     pub fn is_part_edited(&self, index: usize) -> bool {
         if let Some(edited_parts) = &self.edited_parts {
             if let Some(part) = edited_parts.part(index) {
@@ -548,7 +626,7 @@ impl Message {
         false
     }
 
-    /// `true` if all message components were unsent, else `false`
+    /// `true` if all message components were [unsent](crate::message_types::edited::EditStatus::Unsent), else `false`
     pub fn is_fully_unsent(&self) -> bool {
         self.edited_parts.as_ref().is_some_and(|ep| {
             ep.parts
@@ -557,7 +635,7 @@ impl Message {
         })
     }
 
-    /// `true` if the message has attachments, else `false`
+    /// `true` if the message contains [`Attachment`](crate::tables::attachment::Attachment)s, else `false`
     pub fn has_attachments(&self) -> bool {
         self.num_attachments > 0
     }
@@ -567,7 +645,7 @@ impl Message {
         self.num_replies > 0
     }
 
-    /// `true` if the message is a SharePlay/FaceTime message, else `false`
+    /// `true` if the message is a [SharePlay/FaceTime](crate::message_types::variants::Variant::SharePlay) message, else `false`
     pub fn is_shareplay(&self) -> bool {
         self.item_type == 6
     }
@@ -632,7 +710,7 @@ impl Message {
 
         // Start date filter
         if let Some(start) = context.start {
-            filters.push_str(&format!("    m.date >= {start}"));
+            filters.push_str(&format!(" m.date >= {start}"));
         }
 
         // End date filter
@@ -640,7 +718,7 @@ impl Message {
             if !filters.is_empty() {
                 filters.push_str(" AND ");
             }
-            filters.push_str(&format!("    m.date <= {end}"));
+            filters.push_str(&format!(" m.date <= {end}"));
         }
 
         // Chat ID filter, optionally including recoverable messages
@@ -658,17 +736,16 @@ impl Message {
 
             if include_recoverable {
                 filters.push_str(&format!(
-                    "    (c.chat_id IN ({ids}) OR d.chat_id IN ({ids}))"
+                    " (c.chat_id IN ({ids}) OR d.chat_id IN ({ids}))"
                 ));
             } else {
-                filters.push_str(&format!("    c.chat_id IN ({ids})"));
+                filters.push_str(&format!(" c.chat_id IN ({ids})"));
             }
         }
 
         if !filters.is_empty() {
             return format!(
-                " WHERE
-                 {filters}"
+                "WHERE {filters}"
             );
         }
         filters
@@ -721,20 +798,25 @@ impl Message {
         Ok(count)
     }
 
-    /// Stream messages from the database with optional filters
+    /// Stream messages from the database with optional filters.
     ///
     /// # Example:
     ///
     /// ```
     /// use imessage_database::util::dirs::default_db_path;
     /// use imessage_database::tables::table::{Diagnostic, get_connection};
-    /// use imessage_database::tables::messages::Message;
+    /// use imessage_database::tables::{messages::Message, table::Table};
     /// use imessage_database::util::query_context::QueryContext;
     ///
     /// let db_path = default_db_path();
     /// let conn = get_connection(&db_path).unwrap();
     /// let context = QueryContext::default();
-    /// Message::stream_rows(&conn, &context).unwrap();
+    ///
+    /// let mut statement = Message::stream_rows(&conn, &context).unwrap();
+    ///
+    /// let messages = statement.query_map([], |row| Ok(Message::from_row(row))).unwrap();
+    ///
+    /// messages.map(|msg| println!("{:#?}", Message::extract(msg)));
     /// ```
     pub fn stream_rows<'a>(
         db: &'a Connection,
@@ -743,64 +825,20 @@ impl Message {
         if !context.has_filters() {
             return Self::get(db);
         }
-
-        // If database has `thread_originator_guid`, we can parse replies, otherwise default to 0
-        db.prepare(&format!(
-                // macOS Ventura+ and i0S 16+ schema, interpolated with required columns for performance
-                "SELECT
-                     {COLS},
-                     c.chat_id,
-                     (SELECT COUNT(*) FROM {MESSAGE_ATTACHMENT_JOIN} a WHERE m.ROWID = a.message_id) as num_attachments,
-                     d.chat_id as deleted_from,
-                     (SELECT COUNT(*) FROM {MESSAGE} m2 WHERE m2.thread_originator_guid = m.guid) as num_replies
-                 FROM
-                     {MESSAGE} as m
-                 LEFT JOIN {CHAT_MESSAGE_JOIN} as c ON m.ROWID = c.message_id
-                 LEFT JOIN {RECENTLY_DELETED} as d ON m.ROWID = d.message_id
-                 {}
-                 ORDER BY
-                     m.date;
-                ",
-                Self::generate_filter_statement(context, true)
-            ))
-            .or_else( |_|
-                db.prepare(&format!(
-                    // macOS Big Sur to Monterey, iOS 14 to iOS 15 schema
-                    "SELECT
-                        *,
-                        c.chat_id,
-                        (SELECT COUNT(*) FROM {MESSAGE_ATTACHMENT_JOIN} a WHERE m.ROWID = a.message_id) as num_attachments,
-                        (SELECT NULL) as deleted_from,
-                        (SELECT COUNT(*) FROM {MESSAGE} m2 WHERE m2.thread_originator_guid = m.guid) as num_replies
-                    FROM
-                        {MESSAGE} as m
-                    LEFT JOIN {CHAT_MESSAGE_JOIN} as c ON m.ROWID = c.message_id
-                    {}
-                    ORDER BY
-                        m.date;
-                    ",
-                    Self::generate_filter_statement(context, false)
-                )
-            ))
-            .or_else( |_|
-                db.prepare(&format!(
-                    // macOS Catalina, iOS 13 and older 
-                    "SELECT
-                        *,
-                        c.chat_id,
-                        (SELECT COUNT(*) FROM {MESSAGE_ATTACHMENT_JOIN} a WHERE m.ROWID = a.message_id) as num_attachments,
-                        (SELECT NULL) as deleted_from,
-                        (SELECT 0) as num_replies
-                    FROM
-                        {MESSAGE} as m
-                    LEFT JOIN {CHAT_MESSAGE_JOIN} as c ON m.ROWID = c.message_id
-                    {}
-                    ORDER BY
-                        m.date;
-                    ",
-                    Self::generate_filter_statement(context, false)
-                )
-            )).map_err(TableError::Messages)
+        db.prepare(&ios_16_newer_query(Some(&Self::generate_filter_statement(
+            context, true,
+        ))))
+        .or_else(|_| {
+            db.prepare(&ios_14_15_query(Some(&Self::generate_filter_statement(
+                context, false,
+            ))))
+        })
+        .or_else(|_| {
+            db.prepare(&ios_13_older_query(Some(&Self::generate_filter_statement(
+                context, false,
+            ))))
+        })
+        .map_err(TableError::Messages)
     }
 
     /// See [`Tapback`] for details on this data.
@@ -829,89 +867,19 @@ impl Message {
         }
     }
 
-    /// Build a `HashMap` of message component index to tapbacks that map to that component
-    pub fn get_tapbacks(
-        &self,
-        db: &Connection,
-        tapbacks: &HashMap<String, Vec<String>>,
-    ) -> Result<HashMap<usize, Vec<Self>>, TableError> {
-        let mut out_h: HashMap<usize, Vec<Self>> = HashMap::new();
-        if let Some(rxs) = tapbacks.get(&self.guid) {
-            let filter: Vec<String> = rxs.iter().map(|guid| format!("\"{guid}\"")).collect();
-            // Create query
-            let mut statement = db.prepare(&format!(
-                "SELECT 
-                        *, 
-                        c.chat_id, 
-                        (SELECT COUNT(*) FROM {MESSAGE_ATTACHMENT_JOIN} a WHERE m.ROWID = a.message_id) as num_attachments,
-                        (SELECT COUNT(*) FROM {MESSAGE} m2 WHERE m2.thread_originator_guid = m.guid) as num_replies
-                    FROM 
-                        {MESSAGE} as m 
-                    LEFT JOIN {CHAT_MESSAGE_JOIN} as c ON m.ROWID = c.message_id
-                    WHERE m.guid IN ({})
-                    ORDER BY 
-                        m.date;
-                    ",
-                filter.join(",")
-            )).map_err(TableError::Messages)?;
-
-            // Execute query to build the tapbacks
-            let messages = statement
-                .query_map([], |row| Ok(Message::from_row(row)))
-                .map_err(TableError::Messages)?;
-
-            for message in messages {
-                let msg = Message::extract(message)?;
-                if let Variant::Tapback(idx, _, _) | Variant::Sticker(idx) = msg.variant() {
-                    match out_h.get_mut(&idx) {
-                        Some(body_part) => body_part.push(msg),
-                        None => {
-                            out_h.insert(idx, vec![msg]);
-                        }
-                    }
-                }
-            }
-        }
-        Ok(out_h)
-    }
-
     /// Build a `HashMap` of message component index to messages that reply to that component
     pub fn get_replies(&self, db: &Connection) -> Result<HashMap<usize, Vec<Self>>, TableError> {
         let mut out_h: HashMap<usize, Vec<Self>> = HashMap::new();
 
         // No need to hit the DB if we know we don't have replies
         if self.has_replies() {
-            let mut statement = db.prepare(&format!(
-                "SELECT 
-                     {COLS},
-                     c.chat_id,
-                     (SELECT COUNT(*) FROM {MESSAGE_ATTACHMENT_JOIN} a WHERE m.ROWID = a.message_id) as num_attachments,
-                     d.chat_id as deleted_from,
-                     (SELECT COUNT(*) FROM {MESSAGE} m2 WHERE m2.thread_originator_guid = m.guid) as num_replies
-                 FROM
-                     {MESSAGE} as m
-                 LEFT JOIN {CHAT_MESSAGE_JOIN} as c ON m.ROWID = c.message_id
-                 LEFT JOIN {RECENTLY_DELETED} as d ON m.ROWID = d.message_id
-                 WHERE m.thread_originator_guid = \"{}\"
-                 ORDER BY
-                     m.date;
-                ", self.guid
-            )).or_else(|_| db.prepare(&format!(
-                "SELECT 
-                     *,
-                     c.chat_id,
-                     (SELECT COUNT(*) FROM {MESSAGE_ATTACHMENT_JOIN} a WHERE m.ROWID = a.message_id) as num_attachments,
-                     NULL as deleted_from,
-                     (SELECT COUNT(*) FROM {MESSAGE} m2 WHERE m2.thread_originator_guid = m.guid) as num_replies
-                 FROM
-                     {MESSAGE} as m
-                 LEFT JOIN {CHAT_MESSAGE_JOIN} as c ON m.ROWID = c.message_id
-                 WHERE m.thread_originator_guid = \"{}\"
-                 ORDER BY
-                     m.date;
-                ", self.guid
-            )))
-            .map_err(TableError::Messages)?;
+            let filters = format!("WHERE m.thread_originator_guid = \"{}\"", self.guid);
+
+            // No iOS 13 and prior used here because `thread_originator_guid` is not present in that schema
+            let mut statement = db
+                .prepare(&ios_16_newer_query(Some(&filters)))
+                .or_else(|_| db.prepare(&ios_14_15_query(Some(&filters))))
+                .map_err(TableError::Messages)?;
 
             let iter = statement
                 .query_map([], |row| Ok(Message::from_row(row)))
@@ -1040,7 +1008,8 @@ impl Message {
     /// Calling this hits the database, so it is expensive and should
     /// only get invoked when needed.
     ///
-    /// This column contains data used by iMessage app balloons.
+    /// This column contains data used by iMessage app balloons and can be parsed with
+    /// [`parse_ns_keyed_archiver()`](crate::util::plist::parse_ns_keyed_archiver).
     pub fn payload_data(&self, db: &Connection) -> Option<Value> {
         Value::from_reader(self.get_blob(db, MESSAGE_PAYLOAD)?).ok()
     }
@@ -1064,7 +1033,7 @@ impl Message {
     /// Calling this hits the database, so it is expensive and should
     /// only get invoked when needed.
     ///
-    /// This column contains data used by edited iMessages.
+    /// This column contains data used by [`edited`](crate::message_types::edited) iMessages.
     pub fn message_summary_info(&self, db: &Connection) -> Option<Value> {
         Value::from_reader(self.get_blob(db, MESSAGE_SUMMARY_INFO)?).ok()
     }
@@ -1083,7 +1052,7 @@ impl Message {
         Some(body)
     }
 
-    /// Determine which expressive the message was sent with
+    /// Determine which [`Expressive`] the message was sent with
     pub fn get_expressive(&self) -> Expressive {
         match &self.expressive_send_style_id {
             Some(content) => match content.as_str() {
@@ -1126,6 +1095,40 @@ impl Message {
             },
             None => Expressive::None,
         }
+    }
+
+    /// Create a message from a given GUID; useful for debugging
+    ///
+    /// # Example
+    /// ```rust
+    /// use imessage_database::{
+    ///     tables::{
+    ///         messages::Message,
+    ///         table::get_connection,
+    ///     },
+    ///     util::dirs::default_db_path,
+    /// };
+    ///
+    /// let db_path = default_db_path();
+    /// let conn = get_connection(&db_path).unwrap();
+    ///
+    /// if let Ok(mut message) = Message::from_guid("example-guid", &conn) {
+    ///     let _ = message.generate_text(&conn);
+    ///     println!("{:#?}", message)
+    /// }
+    ///```
+    pub fn from_guid(guid: &str, db: &Connection) -> Result<Self, TableError> {
+        // If the database has `chat_recoverable_message_join`, we can restore some deleted messages.
+        // If database has `thread_originator_guid`, we can parse replies, otherwise default to 0
+        let filters = format!("WHERE m.guid = \"{guid}\"");
+
+        let mut statement = db
+            .prepare(&ios_16_newer_query(Some(&filters)))
+            .or_else(|_| db.prepare(&ios_14_15_query(Some(&filters))))
+            .or_else(|_| db.prepare(&ios_13_older_query(Some(&filters))))
+            .map_err(TableError::Messages)?;
+
+        Message::extract(statement.query_row([], |row| Ok(Message::from_row(row))))
     }
 }
 

@@ -5,6 +5,8 @@
    - [`typedstream.h`](https://github.com/gnustep/libobjc/blob/master/objc/typedstream.h)
    - [`archive.c`](https://github.com/gnustep/libobjc/blob/master/archive.c)
    - [`objc/typedstream.m`](https://securitronlinux.com/news/html/d4/d6c/typedstream_8m.html)
+
+ A writeup about the reverse engineering of `typedstream` can be found [here](https://chrissardegna.com/blog/reverse-engineering-apples-typedstream-format/).
 */
 use std::collections::HashSet;
 
@@ -498,11 +500,11 @@ impl<'a> TypedStreamReader<'a> {
 
     /// Attempt to get the data from the `typedstream`.
     ///
-    /// Yields a new [`Archivable`] as they occur in the stream, but does not retain the object's inheritance heirarchy.
-    /// Callers are responsible for assembling the stream into a useful data structure.
-    ///
     /// Given a stream, construct a reader object to parse it. `typedstream` data doesn't include property
     /// names, so data is stored on [`Object`](crate::util::typedstream::models::Archivable::Object)s in order of appearance.
+    ///
+    /// Yields a new [`Archivable`] as they occur in the stream, but does not retain the object's inheritance heirarchy.
+    /// Callers are responsible for assembling the deserialized stream into a useful data structure.
     ///
     /// # Example:
     ///
@@ -516,11 +518,13 @@ impl<'a> TypedStreamReader<'a> {
     ///
     /// # Sample output:
     /// ```txt
-    /// Object(Class { name: "NSMutableString", version: 1 }, [String("Example")]) // The message text
-    /// Data([Integer(1), Integer(7)])  // The next object describes properties for the range of chars 1 through 7
-    /// Object(Class { name: "NSDictionary", version: 0 }, [Integer(1)])  // The first property is a `NSDictionary` with 1 item
-    /// Object(Class { name: "NSString", version: 1 }, [String("__kIMMessagePartAttributeName")])  // The first key in the `NSDictionary`
-    /// Object(Class { name: "NSNumber", version: 0 }, [Integer(0)])  // The first value in the `NSDictionary`
+    /// [
+    ///     Object(Class { name: "NSMutableString", version: 1 }, [String("Example")]) // The message text
+    ///     Data([Integer(1), Integer(7)])  // The next object describes properties for the range of chars 1 through 7
+    ///     Object(Class { name: "NSDictionary", version: 0 }, [Integer(1)])  // The first property is a `NSDictionary` with 1 item
+    ///     Object(Class { name: "NSString", version: 1 }, [String("__kIMMessagePartAttributeName")])  // The first key in the `NSDictionary`
+    ///     Object(Class { name: "NSNumber", version: 0 }, [Integer(0)])  // The first value in the `NSDictionary`
+    /// ]
     /// ```
     pub fn parse(&mut self) -> Result<Vec<Archivable>, TypedStreamError> {
         let mut out_v = vec![];

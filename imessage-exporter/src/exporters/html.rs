@@ -657,8 +657,9 @@ impl<'a> Writer<'a> for HTML<'a> {
             }
 
             if let Some(payload) = message.payload_data(&self.config.db) {
+                let parsed = parse_ns_keyed_archiver(&payload)?;
+
                 let res = if message.is_url() {
-                    let parsed = parse_ns_keyed_archiver(&payload)?;
                     let bubble = URLMessage::get_url_message_override(&parsed)?;
                     match bubble {
                         URLOverride::Normal(balloon) => self.format_url(message, &balloon, message),
@@ -672,7 +673,6 @@ impl<'a> Writer<'a> for HTML<'a> {
                         }
                     }
                 } else {
-                    let parsed = parse_ns_keyed_archiver(&payload)?;
                     match AppMessage::from_map(&parsed) {
                         Ok(bubble) => match balloon {
                             CustomBalloon::Application(bundle_id) => {

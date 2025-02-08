@@ -1,3 +1,7 @@
+/*!
+ Contains logic for parsing [Apple Bundle IDs](https://developer.apple.com/documentation/appstoreconnectapi/bundle-ids).
+*/
+
 /// Parse an App's Bundle ID out of a Balloon's Bundle ID
 ///
 /// For example, a Bundle ID like `com.apple.messages.MSMessageExtensionBalloonPlugin:0000000000:com.apple.SafetyMonitorApp.SafetyMonitorMessages`

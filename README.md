@@ -2,7 +2,7 @@
 
 This crate provides both a library to interact with iMessage data as well as a binary that can perform some useful read-only operations using that data. The aim of this project is to provide the most comprehensive and accurate representation of iMessage data available.
 
-This software can:
+This free and open-source software can:
 
 - Save, export, backup, and archive iMessage data to open, portable formats
 - Preserve multimedia content (images, videos, audio) from conversations
