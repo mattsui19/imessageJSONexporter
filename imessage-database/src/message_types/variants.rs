@@ -58,6 +58,8 @@ pub enum Tapback<'a> {
     Questioned,
     /// Custom emoji tapbacks
     Emoji(Option<&'a str>),
+    /// Custom sticker tapbacks
+    Sticker,
 }
 
 impl Display for Tapback<'_> {
@@ -132,34 +134,37 @@ pub enum Announcement<'a> {
     Unknown(&'a i32),
 }
 
+/// Tapback Action Container
+///
+/// Tapbacks can either be added or removed; this enum represents those states
+#[derive(Debug)]
+pub enum TapbackAction {
+    /// Tapback was added to the message
+    Added,
+    /// Tapback was removed from the message
+    Removed,
+}
+
 /// Message variant container
 ///
 /// Messages can exist as one of many different variants, this encapsulates
 /// all of the possibilities.
 #[derive(Debug)]
 pub enum Variant<'a> {
+    /// An iMessage with a standard text body that may include attachments
+    Normal,
+    /// A message that has been [edited](crate::message_types::edited::EditStatus::Edited) or [unsent](crate::message_types::edited::EditStatus::Unsent)
+    Edited,
     /// A [tapback](https://support.apple.com/guide/messages/react-with-tapbacks-icht504f698a/mac)
     ///
     /// The `usize` indicates the index of the message's [`body()`](crate::tables::messages::Message#method.body) the tapback is applied to.
-    ///
-    /// The boolean indicates whether the tapback was applied (`true`) or removed (`false`).
-    Tapback(usize, bool, Tapback<'a>),
-    /// A sticker message, either placed on another message or by itself
-    ///
-    /// If the sticker is a tapback, the `usize` indicates the index of the message's [`body()`](crate::tables::messages::Message#method.body) the tapback is applied to.
-    ///
-    /// If the sticker is a normal message, it is treated like an attachment, and the message's [`body()`](crate::tables::messages::Message#method.body) indicates the location.
-    Sticker(usize),
-    /// Container for new or unknown messages
-    Unknown(i32),
+    Tapback(usize, TapbackAction, Tapback<'a>),
     /// An [iMessage app](https://support.apple.com/en-us/HT206906) generated message
     App(CustomBalloon<'a>),
-    /// An iMessage with a standard text body that may include attachments
-    Normal,
-    /// A message that has been edited or unsent
-    Edited,
     /// A SharePlay message
     SharePlay,
+    /// Container for new or unknown messages
+    Unknown(i32),
 }
 
 /// Defines behavior for different types of messages that have custom balloons

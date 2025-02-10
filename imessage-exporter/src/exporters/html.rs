@@ -31,7 +31,10 @@ use imessage_database::{
         sticker::StickerSource,
         text_effects::{Animation, Style, TextEffect, Unit},
         url::URLMessage,
-        variants::{Announcement, BalloonProvider, CustomBalloon, URLOverride, Variant},
+        variants::{
+            Announcement, BalloonProvider, CustomBalloon, Tapback, TapbackAction, URLOverride,
+            Variant,
+        },
     },
     tables::{
         attachment::{Attachment, MediaType},
@@ -721,32 +724,41 @@ impl<'a> Writer<'a> for HTML<'a> {
 
     fn format_tapback(&self, msg: &Message) -> Result<String, TableError> {
         match msg.variant() {
-            Variant::Tapback(_, added, tapback) => {
-                if !added {
+            Variant::Tapback(_, action, tapback) => {
+                if let TapbackAction::Removed = action {
                     return Ok(String::new());
                 }
-                Ok(format!(
-                    "<span class=\"tapback\"><b>{}</b> by {}</span>",
-                    tapback,
-                    self.config
-                        .who(msg.handle_id, msg.is_from_me(), &msg.destination_caller_id),
-                ))
-            }
-            Variant::Sticker(_) => {
-                let mut paths = Attachment::from_message(&self.config.db, msg)?;
-                let who =
-                    self.config
-                        .who(msg.handle_id, msg.is_from_me(), &msg.destination_caller_id);
-                // Sticker messages have only one attachment, the sticker image
-                Ok(match paths.get_mut(0) {
-                    Some(sticker) => format!(
-                        "{} <div class=\"sticker_tapback\">&nbsp;by {who}</div>",
-                        self.format_sticker(sticker, msg)
-                    ),
-                    None => {
-                        format!("<span class=\"tapback\">Sticker from {who} not found!</span>")
+                match tapback {
+                    Tapback::Sticker => {
+                        let mut paths = Attachment::from_message(&self.config.db, msg)?;
+                        let who = self.config.who(
+                            msg.handle_id,
+                            msg.is_from_me(),
+                            &msg.destination_caller_id,
+                        );
+                        // Sticker messages have only one attachment, the sticker image
+                        Ok(match paths.get_mut(0) {
+                            Some(sticker) => format!(
+                                "{} <div class=\"sticker_tapback\">&nbsp;by {who}</div>",
+                                self.format_sticker(sticker, msg)
+                            ),
+                            None => {
+                                format!(
+                                    "<span class=\"tapback\">Sticker from {who} not found!</span>"
+                                )
+                            }
+                        })
                     }
-                })
+                    _ => Ok(format!(
+                        "<span class=\"tapback\"><b>{}</b> by {}</span>",
+                        tapback,
+                        self.config.who(
+                            msg.handle_id,
+                            msg.is_from_me(),
+                            &msg.destination_caller_id
+                        ),
+                    )),
+                }
             }
             _ => unreachable!(),
         }
@@ -2083,10 +2095,66 @@ mod tests {
         message.associated_message_type = Some(2007);
         message.associated_message_guid = Some("fake_guid".to_string());
         message.handle_id = Some(999999);
-        message.associated_message_emoji = Some("☕️".to_string());
+        message.num_attachments = 1;
 
         let actual = exporter.format_tapback(&message).unwrap();
         let expected = "<span class=\"tapback\">Sticker from Sample Contact not found!</span>";
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn can_format_html_tapback_custom_sticker_exists() {
+        // Set timezone to PST for consistent Local time
+        set_var("TZ", "PST");
+
+        // Create exporter
+        let options = Options::fake_options(ExportType::Html);
+        let mut config = Config::fake_app(options);
+        config
+            .participants
+            .insert(999999, "Sample Contact".to_string());
+        let exporter = HTML::new(&config).unwrap();
+
+        let mut message = Config::fake_message();
+        // May 17, 2022  8:29:42 PM
+        message.date = 674526582885055488;
+        message.associated_message_type = Some(2007);
+        message.associated_message_guid = Some("fake_guid".to_string());
+        message.handle_id = Some(999999);
+        message.num_attachments = 1;
+        message.rowid = 452567;
+
+        let actual = exporter.format_tapback(&message).unwrap();
+        let expected = "<img src=\"/Users/chris/Library/Messages/StickerCache/8e682c381ab52ec2-289D9E83-33EE-4153-AF13-43DB31792C6F/289D9E83-33EE-4153-AF13-43DB31792C6F.heic\" loading=\"lazy\">\n<div class=\"sticker_name\">App: Free People</div> <div class=\"sticker_tapback\">&nbsp;by Sample Contact</div>";
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn can_format_html_tapback_custom_sticker_removed() {
+        // Set timezone to PST for consistent Local time
+        set_var("TZ", "PST");
+
+        // Create exporter
+        let options = Options::fake_options(ExportType::Html);
+        let mut config = Config::fake_app(options);
+        config
+            .participants
+            .insert(999999, "Sample Contact".to_string());
+        let exporter = HTML::new(&config).unwrap();
+
+        let mut message = Config::fake_message();
+        // May 17, 2022  8:29:42 PM
+        message.date = 674526582885055488;
+        message.associated_message_type = Some(3007);
+        message.associated_message_guid = Some("fake_guid".to_string());
+        message.handle_id = Some(999999);
+        message.num_attachments = 1;
+        message.rowid = 452567;
+
+        let actual = exporter.format_tapback(&message).unwrap();
+        let expected = "";
 
         assert_eq!(actual, expected);
     }

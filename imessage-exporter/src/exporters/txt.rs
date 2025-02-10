@@ -30,7 +30,10 @@ use imessage_database::{
         placemark::PlacemarkMessage,
         sticker::StickerSource,
         url::URLMessage,
-        variants::{Announcement, BalloonProvider, CustomBalloon, URLOverride, Variant},
+        variants::{
+            Announcement, BalloonProvider, CustomBalloon, Tapback, TapbackAction, URLOverride,
+            Variant,
+        },
     },
     tables::{
         attachment::Attachment,
@@ -522,28 +525,36 @@ impl<'a> Writer<'a> for TXT<'a> {
 
     fn format_tapback(&self, msg: &Message) -> Result<String, TableError> {
         match msg.variant() {
-            Variant::Tapback(_, added, tapback) => {
-                if !added {
+            Variant::Tapback(_, action, tapback) => {
+                if let TapbackAction::Removed = action {
                     return Ok(String::new());
                 }
-                Ok(format!(
-                    "{} by {}",
-                    tapback,
-                    self.config
-                        .who(msg.handle_id, msg.is_from_me(), &msg.destination_caller_id),
-                ))
-            }
-            Variant::Sticker(_) => {
-                let mut paths = Attachment::from_message(&self.config.db, msg)?;
-                let who =
-                    self.config
-                        .who(msg.handle_id, msg.is_from_me(), &msg.destination_caller_id);
-                // Sticker messages have only one attachment, the sticker image
-                Ok(if let Some(sticker) = paths.get_mut(0) {
-                    format!("{} from {who}", self.format_sticker(sticker, msg))
-                } else {
-                    format!("Sticker from {who} not found!")
-                })
+
+                match tapback {
+                    Tapback::Sticker => {
+                        let mut paths = Attachment::from_message(&self.config.db, msg)?;
+                        let who = self.config.who(
+                            msg.handle_id,
+                            msg.is_from_me(),
+                            &msg.destination_caller_id,
+                        );
+                        // Sticker messages have only one attachment, the sticker image
+                        Ok(if let Some(sticker) = paths.get_mut(0) {
+                            format!("{} from {who}", self.format_sticker(sticker, msg))
+                        } else {
+                            format!("Sticker from {who} not found!")
+                        })
+                    }
+                    _ => Ok(format!(
+                        "{} by {}",
+                        tapback,
+                        self.config.who(
+                            msg.handle_id,
+                            msg.is_from_me(),
+                            &msg.destination_caller_id
+                        ),
+                    )),
+                }
             }
             _ => unreachable!(),
         }
@@ -1498,10 +1509,66 @@ mod tests {
         message.associated_message_type = Some(2007);
         message.associated_message_guid = Some("fake_guid".to_string());
         message.handle_id = Some(999999);
-        message.associated_message_emoji = Some("☕️".to_string());
+        message.num_attachments = 1;
 
         let actual = exporter.format_tapback(&message).unwrap();
         let expected = "Sticker from Sample Contact not found!";
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn can_format_txt_tapback_custom_sticker_exists() {
+        // Set timezone to PST for consistent Local time
+        set_var("TZ", "PST");
+
+        // Create exporter
+        let options = Options::fake_options(ExportType::Txt);
+        let mut config = Config::fake_app(options);
+        config
+            .participants
+            .insert(999999, "Sample Contact".to_string());
+        let exporter = TXT::new(&config).unwrap();
+
+        let mut message = Config::fake_message();
+        // May 17, 2022  8:29:42 PM
+        message.date = 674526582885055488;
+        message.associated_message_type = Some(2007);
+        message.associated_message_guid = Some("fake_guid".to_string());
+        message.handle_id = Some(999999);
+        message.num_attachments = 1;
+        message.rowid = 452567;
+
+        let actual = exporter.format_tapback(&message).unwrap();
+        let expected = "Sticker from Sample Contact: /Users/chris/Library/Messages/StickerCache/8e682c381ab52ec2-289D9E83-33EE-4153-AF13-43DB31792C6F/289D9E83-33EE-4153-AF13-43DB31792C6F.heic (App: Free People) from Sample Contact";
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn can_format_txt_tapback_custom_sticker_removed() {
+        // Set timezone to PST for consistent Local time
+        set_var("TZ", "PST");
+
+        // Create exporter
+        let options = Options::fake_options(ExportType::Txt);
+        let mut config = Config::fake_app(options);
+        config
+            .participants
+            .insert(999999, "Sample Contact".to_string());
+        let exporter = TXT::new(&config).unwrap();
+
+        let mut message = Config::fake_message();
+        // May 17, 2022  8:29:42 PM
+        message.date = 674526582885055488;
+        message.associated_message_type = Some(3007);
+        message.associated_message_guid = Some("fake_guid".to_string());
+        message.handle_id = Some(999999);
+        message.num_attachments = 1;
+        message.rowid = 452567;
+
+        let actual = exporter.format_tapback(&message).unwrap();
+        let expected = "";
 
         assert_eq!(actual, expected);
     }
