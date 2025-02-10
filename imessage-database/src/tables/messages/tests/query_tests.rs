@@ -96,6 +96,28 @@ mod exclude_recoverable_tests {
         let statement = Message::generate_filter_statement(&context, false);
         assert_eq!(statement, "");
     }
+
+    #[test]
+    fn can_generate_filter_statement_with_empty_chat_ids() {
+        let mut context = QueryContext::default();
+        context.set_selected_chat_ids(BTreeSet::new());
+
+        let statement = Message::generate_filter_statement(&context, false);
+        assert_eq!(statement, "")
+    }
+
+    #[test]
+    fn can_generate_filter_statement_boundary_dates() {
+        set_var("TZ", "PST");
+
+        let mut context = QueryContext::default();
+        context.set_start("1800-01-01").unwrap();
+        context.set_end("2200-01-01").unwrap();
+
+        let statement = Message::generate_filter_statement(&context, false);
+        assert!(statement.contains("m.date >= "));
+        assert!(statement.contains("m.date <= "));
+    }
 }
 
 #[cfg(test)]
@@ -235,6 +257,32 @@ mod guid_query_tests {
         let _ = message.generate_text(&conn);
         println!("{:#?}", message);
         assert!(message.components.is_some())
+    }
+
+    #[test]
+    fn test_empty_guid() {
+        let db_path = current_dir()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("imessage-database/test_data/db/test.db");
+        let conn = get_connection(&db_path).unwrap();
+
+        let message = Message::from_guid("", &conn);
+        assert!(message.is_err());
+    }
+
+    #[test]
+    fn test_malformed_guid() {
+        let db_path = current_dir()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("imessage-database/test_data/db/test.db");
+        let conn = get_connection(&db_path).unwrap();
+
+        let message = Message::from_guid("not-a-valid-guid-format", &conn);
+        assert!(message.is_err());
     }
 }
 
