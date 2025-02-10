@@ -120,7 +120,7 @@ use crate::{
     message_types::{
         edited::{EditStatus, EditedMessage},
         expressives::{BubbleEffect, Expressive, ScreenEffect},
-        variants::{Announcement, BalloonProvider, CustomBalloon, Tapback, Variant},
+        variants::{Announcement, BalloonProvider, CustomBalloon, Tapback, TapbackAction, Variant},
     },
     tables::{
         messages::{
@@ -583,12 +583,6 @@ impl Message {
     /// `true` if the message is a [`Tapback`] to another message, else `false`
     pub fn is_tapback(&self) -> bool {
         matches!(self.variant(), Variant::Tapback(..))
-            | (self.is_sticker() && self.associated_message_guid.is_some())
-    }
-
-    /// `true` if the message is a [`sticker`](crate::message_types::sticker), else `false`
-    pub fn is_sticker(&self) -> bool {
-        matches!(self.variant(), Variant::Sticker(_))
     }
 
     /// `true` if the message has an [`Expressive`], else `false`
@@ -735,18 +729,14 @@ impl Message {
                 .join(", ");
 
             if include_recoverable {
-                filters.push_str(&format!(
-                    " (c.chat_id IN ({ids}) OR d.chat_id IN ({ids}))"
-                ));
+                filters.push_str(&format!(" (c.chat_id IN ({ids}) OR d.chat_id IN ({ids}))"));
             } else {
                 filters.push_str(&format!(" c.chat_id IN ({ids})"));
             }
         }
 
         if !filters.is_empty() {
-            return format!(
-                "WHERE {filters}"
-            );
+            return format!("WHERE {filters}");
         }
         filters
     }
@@ -940,33 +930,79 @@ impl Message {
                 },
 
                 // Stickers overlaid on messages
-                1000 => Variant::Sticker(self.tapback_index()),
+                1000 => {
+                    Variant::Tapback(self.tapback_index(), TapbackAction::Added, Tapback::Sticker)
+                }
 
                 // Tapbacks
-                2000 => Variant::Tapback(self.tapback_index(), true, Tapback::Loved),
-                2001 => Variant::Tapback(self.tapback_index(), true, Tapback::Liked),
-                2002 => Variant::Tapback(self.tapback_index(), true, Tapback::Disliked),
-                2003 => Variant::Tapback(self.tapback_index(), true, Tapback::Laughed),
-                2004 => Variant::Tapback(self.tapback_index(), true, Tapback::Emphasized),
-                2005 => Variant::Tapback(self.tapback_index(), true, Tapback::Questioned),
+                2000 => {
+                    Variant::Tapback(self.tapback_index(), TapbackAction::Added, Tapback::Loved)
+                }
+                2001 => {
+                    Variant::Tapback(self.tapback_index(), TapbackAction::Added, Tapback::Liked)
+                }
+                2002 => Variant::Tapback(
+                    self.tapback_index(),
+                    TapbackAction::Added,
+                    Tapback::Disliked,
+                ),
+                2003 => {
+                    Variant::Tapback(self.tapback_index(), TapbackAction::Added, Tapback::Laughed)
+                }
+                2004 => Variant::Tapback(
+                    self.tapback_index(),
+                    TapbackAction::Added,
+                    Tapback::Emphasized,
+                ),
+                2005 => Variant::Tapback(
+                    self.tapback_index(),
+                    TapbackAction::Added,
+                    Tapback::Questioned,
+                ),
                 2006 => Variant::Tapback(
                     self.tapback_index(),
-                    true,
+                    TapbackAction::Added,
                     Tapback::Emoji(self.associated_message_emoji.as_deref()),
                 ),
-                2007 => Variant::Sticker(self.tapback_index()),
-                3000 => Variant::Tapback(self.tapback_index(), false, Tapback::Loved),
-                3001 => Variant::Tapback(self.tapback_index(), false, Tapback::Liked),
-                3002 => Variant::Tapback(self.tapback_index(), false, Tapback::Disliked),
-                3003 => Variant::Tapback(self.tapback_index(), false, Tapback::Laughed),
-                3004 => Variant::Tapback(self.tapback_index(), false, Tapback::Emphasized),
-                3005 => Variant::Tapback(self.tapback_index(), false, Tapback::Questioned),
+                2007 => {
+                    Variant::Tapback(self.tapback_index(), TapbackAction::Added, Tapback::Sticker)
+                }
+                3000 => {
+                    Variant::Tapback(self.tapback_index(), TapbackAction::Removed, Tapback::Loved)
+                }
+                3001 => {
+                    Variant::Tapback(self.tapback_index(), TapbackAction::Removed, Tapback::Liked)
+                }
+                3002 => Variant::Tapback(
+                    self.tapback_index(),
+                    TapbackAction::Removed,
+                    Tapback::Disliked,
+                ),
+                3003 => Variant::Tapback(
+                    self.tapback_index(),
+                    TapbackAction::Removed,
+                    Tapback::Laughed,
+                ),
+                3004 => Variant::Tapback(
+                    self.tapback_index(),
+                    TapbackAction::Removed,
+                    Tapback::Emphasized,
+                ),
+                3005 => Variant::Tapback(
+                    self.tapback_index(),
+                    TapbackAction::Removed,
+                    Tapback::Questioned,
+                ),
                 3006 => Variant::Tapback(
                     self.tapback_index(),
-                    false,
+                    TapbackAction::Removed,
                     Tapback::Emoji(self.associated_message_emoji.as_deref()),
                 ),
-                3007 => Variant::Sticker(self.tapback_index()),
+                3007 => Variant::Tapback(
+                    self.tapback_index(),
+                    TapbackAction::Removed,
+                    Tapback::Sticker,
+                ),
 
                 // Unknown
                 x => Variant::Unknown(x),
