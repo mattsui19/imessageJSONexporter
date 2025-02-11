@@ -143,7 +143,7 @@ fn get_n_dict_objects(components: &[Archivable], idx: usize, num_objects: usize)
 
 /// Determine the type of bubble the current range represents
 ///
-/// App messages are handled in [`Message::body()`]; they are detected by the presence of data in the `balloon_bundle_id` column.
+/// App messages are handled in [`body()`](crate::tables::table::AttributedBody); they are detected by the presence of data in the `balloon_bundle_id` column.
 fn get_bubble_type<'a>(
     components: &'a [Archivable],
     text: Option<&str>,

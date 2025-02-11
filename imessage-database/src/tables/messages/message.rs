@@ -630,6 +630,8 @@ impl Message {
     }
 
     /// `true` if the message contains [`Attachment`](crate::tables::attachment::Attachment)s, else `false`
+    ///
+    /// Attachments can be queried with [`Attachment::from_message()`](crate::tables::attachment::Attachment::from_message).
     pub fn has_attachments(&self) -> bool {
         self.num_attachments > 0
     }

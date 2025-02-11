@@ -48,7 +48,7 @@ pub trait GetBlob {
     fn get_blob<'a>(&self, db: &'a Connection, column: &str) -> Option<Blob<'a>>;
 }
 
-/// Defines behavior for getting [`typedstream`](crate::util::typedstream) data in native Rust
+/// Defines behavior for deserializing a message's [`typedstream`](crate::util::typedstream) body data in native Rust
 pub trait AttributedBody {
     /// Get a vector of a message body's components. If the text has not been captured, the vector will be empty.
     ///
@@ -60,7 +60,18 @@ pub trait AttributedBody {
     ///
     /// In most cases, the message body will be deserialized using the [`typedstream`](crate::util::typedstream) deserializer.
     ///
-    /// Note: message body text can be formatted with a [`Vec`] of [`TextAttributes`](crate::tables::messages::models::TextAttributes).
+    /// *Note*: message body text can be formatted with a [`Vec`] of [`TextAttributes`](crate::tables::messages::models::TextAttributes).
+    ///
+    /// ## Legacy parsing
+    ///
+    /// If the `typedstream` data cannot be deserialized, this method falls back to a legacy string parsing algorithm that
+    /// only supports unstyled text.
+    ///
+    /// If the message has attachments, there will be one [`U+FFFC`](https://www.compart.com/en/unicode/U+FFFC) character
+    /// for each attachment and one [`U+FFFD`](https://www.compart.com/en/unicode/U+FFFD) for app messages that we need
+    /// to format.
+    /// 
+    /// ## Sample
     ///
     /// An iMessage that contains body text like:
     ///
@@ -79,15 +90,6 @@ pub trait AttributedBody {
     ///     BubbleComponent::Text(vec![TextAttributes::new(3, 24, TextEffect::Default)]),
     /// ];
     /// ```
-    ///
-    /// ## Legacy parsing
-    ///
-    /// If the `typedstream` data cannot be deserialized, this method falls back to a legacy string parsing algorithm that
-    /// only supports unstyled text.
-    ///
-    /// If the message has attachments, there will be one [`U+FFFC`](https://www.compart.com/en/unicode/U+FFFC) character
-    /// for each attachment and one [`U+FFFD`](https://www.compart.com/en/unicode/U+FFFD) for app messages that we need
-    /// to format.
     fn body(&self) -> Vec<BubbleComponent>;
 }
 
