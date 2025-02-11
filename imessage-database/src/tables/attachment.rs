@@ -140,7 +140,9 @@ impl GetBlob for Attachment {
 }
 
 impl Attachment {
-    /// Gets a Vector of attachments for a single message
+    /// Gets a Vector of attachments associated with a single message
+    ///
+    /// The order of the attachments aligns with the order of the [`BubbleComponent::Attachment`](crate::tables::messages::models::BubbleComponent::Attachment)s in the message's [`body()`](crate::tables::table::AttributedBody).
     pub fn from_message(db: &Connection, msg: &Message) -> Result<Vec<Attachment>, TableError> {
         let mut out_l = vec![];
         if msg.has_attachments() {
@@ -367,7 +369,7 @@ impl Attachment {
     ///
     /// This is defined outside of [`Diagnostic`](crate::tables::table::Diagnostic) because it requires additional data.
     ///
-    /// Get the number of attachments that are missing, either because the path is missing from the 
+    /// Get the number of attachments that are missing, either because the path is missing from the
     /// table or the path does not point to a file.
     ///
     /// # Example:
