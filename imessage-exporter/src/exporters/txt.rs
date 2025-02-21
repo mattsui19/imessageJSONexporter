@@ -1,7 +1,7 @@
 use std::{
     collections::{
-        hash_map::Entry::{Occupied, Vacant},
         HashMap,
+        hash_map::Entry::{Occupied, Vacant},
     },
     fs::File,
     io::{BufWriter, Write},
@@ -38,13 +38,13 @@ use imessage_database::{
     tables::{
         attachment::Attachment,
         messages::{
-            models::{AttachmentMeta, BubbleComponent, TextAttributes},
             Message,
+            models::{AttachmentMeta, BubbleComponent, TextAttributes},
         },
-        table::{AttributedBody, Table, FITNESS_RECEIVER, ME, ORPHANED, YOU},
+        table::{AttributedBody, FITNESS_RECEIVER, ME, ORPHANED, Table, YOU},
     },
     util::{
-        dates::{format, get_local_time, readable_diff, TIMESTAMP_FACTOR},
+        dates::{TIMESTAMP_FACTOR, format, get_local_time, readable_diff},
         plist::parse_ns_keyed_archiver,
     },
 };
@@ -1089,13 +1089,10 @@ impl TXT<'_> {
 
 #[cfg(test)]
 mod tests {
-    use std::{
-        env::{current_dir, set_var},
-        path::PathBuf,
-    };
+    use std::{env::current_dir, path::PathBuf};
 
     use crate::{
-        app::export_type::ExportType, exporters::exporter::Writer, Config, Exporter, Options, TXT,
+        Config, Exporter, Options, TXT, app::export_type::ExportType, exporters::exporter::Writer,
     };
     use imessage_database::{
         tables::{messages::models::AttachmentMeta, table::ME},
@@ -1112,9 +1109,6 @@ mod tests {
 
     #[test]
     fn can_get_time_valid() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let options = Options::fake_options(ExportType::Txt);
         let config = Config::fake_app(options);
@@ -1137,9 +1131,6 @@ mod tests {
 
     #[test]
     fn can_get_time_invalid() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let options = Options::fake_options(ExportType::Txt);
         let config = Config::fake_app(options);
@@ -1186,9 +1177,6 @@ mod tests {
 
     #[test]
     fn can_format_txt_from_me_normal() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let options = Options::fake_options(ExportType::Txt);
         let config = Config::fake_app(options);
@@ -1209,9 +1197,6 @@ mod tests {
 
     #[test]
     fn can_format_txt_from_me_normal_deleted() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let options = Options::fake_options(ExportType::Txt);
         let config = Config::fake_app(options);
@@ -1225,17 +1210,13 @@ mod tests {
         message.deleted_from = Some(0);
 
         let actual = exporter.format_message(&message, 0).unwrap();
-        let expected =
-            "May 17, 2022  5:29:42 PM\nMe\nThis message was deleted from the conversation!\nHello world\n\n";
+        let expected = "May 17, 2022  5:29:42 PM\nMe\nThis message was deleted from the conversation!\nHello world\n\n";
 
         assert_eq!(actual, expected);
     }
 
     #[test]
     fn can_format_txt_from_me_normal_read() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let options = Options::fake_options(ExportType::Txt);
         let config = Config::fake_app(options);
@@ -1258,9 +1239,6 @@ mod tests {
 
     #[test]
     fn can_format_txt_from_them_normal() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let options = Options::fake_options(ExportType::Txt);
         let mut config = Config::fake_app(options);
@@ -1283,9 +1261,6 @@ mod tests {
 
     #[test]
     fn can_format_txt_from_them_normal_read() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let options = Options::fake_options(ExportType::Txt);
         let mut config = Config::fake_app(options);
@@ -1305,17 +1280,13 @@ mod tests {
         message.date_read = 674530231992568192;
 
         let actual = exporter.format_message(&message, 0).unwrap();
-        let expected =
-            "May 17, 2022  5:29:42 PM (Read by you after 1 hour, 49 seconds)\nSample Contact\nHello world\n\n";
+        let expected = "May 17, 2022  5:29:42 PM (Read by you after 1 hour, 49 seconds)\nSample Contact\nHello world\n\n";
 
         assert_eq!(actual, expected);
     }
 
     #[test]
     fn can_format_txt_from_them_custom_name_read() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let mut options = Options::fake_options(ExportType::Txt);
         options.custom_name = Some("Name".to_string());
@@ -1336,17 +1307,13 @@ mod tests {
         message.date_read = 674530231992568192;
 
         let actual = exporter.format_message(&message, 0).unwrap();
-        let expected =
-            "May 17, 2022  5:29:42 PM (Read by Name after 1 hour, 49 seconds)\nSample Contact\nHello world\n\n";
+        let expected = "May 17, 2022  5:29:42 PM (Read by Name after 1 hour, 49 seconds)\nSample Contact\nHello world\n\n";
 
         assert_eq!(actual, expected);
     }
 
     #[test]
     fn can_format_txt_shareplay() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let options = Options::fake_options(ExportType::Txt);
         let mut config = Config::fake_app(options);
@@ -1367,9 +1334,6 @@ mod tests {
 
     #[test]
     fn can_format_txt_announcement() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let options = Options::fake_options(ExportType::Txt);
         let mut config = Config::fake_app(options);
@@ -1391,9 +1355,6 @@ mod tests {
 
     #[test]
     fn can_format_txt_announcement_custom_name() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let mut options = Options::fake_options(ExportType::Txt);
         options.custom_name = Some("Name".to_string());
@@ -1415,9 +1376,6 @@ mod tests {
 
     #[test]
     fn can_format_txt_tapback_me() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let options = Options::fake_options(ExportType::Txt);
         let mut config = Config::fake_app(options);
@@ -1439,9 +1397,6 @@ mod tests {
 
     #[test]
     fn can_format_txt_tapback_them() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let options = Options::fake_options(ExportType::Txt);
         let mut config = Config::fake_app(options);
@@ -1465,9 +1420,6 @@ mod tests {
 
     #[test]
     fn can_format_txt_tapback_custom_emoji() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let options = Options::fake_options(ExportType::Txt);
         let mut config = Config::fake_app(options);
@@ -1492,9 +1444,6 @@ mod tests {
 
     #[test]
     fn can_format_txt_tapback_custom_sticker() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let options = Options::fake_options(ExportType::Txt);
         let mut config = Config::fake_app(options);
@@ -1519,9 +1468,6 @@ mod tests {
 
     #[test]
     fn can_format_txt_tapback_custom_sticker_exists() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let options = Options::fake_options(ExportType::Txt);
         let mut config = Config::fake_app(options);
@@ -1547,9 +1493,6 @@ mod tests {
 
     #[test]
     fn can_format_txt_tapback_custom_sticker_removed() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let options = Options::fake_options(ExportType::Txt);
         let mut config = Config::fake_app(options);
@@ -1575,9 +1518,6 @@ mod tests {
 
     #[test]
     fn can_format_txt_started_sharing_location_me() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let options = Options::fake_options(ExportType::Txt);
         let config = Config::fake_app(options);
@@ -1598,9 +1538,6 @@ mod tests {
 
     #[test]
     fn can_format_txt_stopped_sharing_location_me() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let options = Options::fake_options(ExportType::Txt);
         let config = Config::fake_app(options);
@@ -1621,9 +1558,6 @@ mod tests {
 
     #[test]
     fn can_format_txt_started_sharing_location_them() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let options = Options::fake_options(ExportType::Txt);
         let config = Config::fake_app(options);
@@ -1645,9 +1579,6 @@ mod tests {
 
     #[test]
     fn can_format_txt_stopped_sharing_location_them() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let options = Options::fake_options(ExportType::Txt);
         let config = Config::fake_app(options);
@@ -1893,9 +1824,7 @@ mod tests {
 
 #[cfg(test)]
 mod balloon_format_tests {
-    use std::env::set_var;
-
-    use crate::{exporters::exporter::BalloonFormatter, Config, Exporter, Options, TXT};
+    use crate::{Config, Exporter, Options, TXT, exporters::exporter::BalloonFormatter};
     use imessage_database::message_types::{
         app::AppMessage,
         app_store::AppStoreMessage,
@@ -2102,9 +2031,6 @@ mod balloon_format_tests {
 
     #[test]
     fn can_format_txt_check_in_timer() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let options = Options::fake_options(crate::app::export_type::ExportType::Txt);
         let config = Config::fake_app(options);
@@ -2131,9 +2057,6 @@ mod balloon_format_tests {
 
     #[test]
     fn can_format_txt_check_in_timer_late() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let options = Options::fake_options(crate::app::export_type::ExportType::Txt);
         let config = Config::fake_app(options);
@@ -2160,9 +2083,6 @@ mod balloon_format_tests {
 
     #[test]
     fn can_format_txt_accepted_check_in() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let options = Options::fake_options(crate::app::export_type::ExportType::Txt);
         let config = Config::fake_app(options);
@@ -2269,13 +2189,9 @@ mod balloon_format_tests {
 
 #[cfg(test)]
 mod edited_tests {
-    use std::{
-        env::{current_dir, set_var},
-        fs::File,
-        io::Read,
-    };
+    use std::{env::current_dir, fs::File, io::Read};
 
-    use crate::{exporters::exporter::Writer, Config, Exporter, Options, TXT};
+    use crate::{Config, Exporter, Options, TXT, exporters::exporter::Writer};
     use imessage_database::{
         message_types::edited::{EditStatus, EditedMessage, EditedMessagePart},
         util::typedstream::parser::TypedStreamReader,
@@ -2283,9 +2199,6 @@ mod edited_tests {
 
     #[test]
     fn can_format_txt_conversion_final_unsent() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let options = Options::fake_options(crate::app::export_type::ExportType::Txt);
         let config = Config::fake_app(options);
@@ -2341,9 +2254,6 @@ mod edited_tests {
 
     #[test]
     fn can_format_txt_conversion_no_edits() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let options = Options::fake_options(crate::app::export_type::ExportType::Txt);
         let config = Config::fake_app(options);
@@ -2378,9 +2288,6 @@ mod edited_tests {
 
     #[test]
     fn can_format_txt_conversion_fully_unsent() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let options = Options::fake_options(crate::app::export_type::ExportType::Txt);
         let config = Config::fake_app(options);

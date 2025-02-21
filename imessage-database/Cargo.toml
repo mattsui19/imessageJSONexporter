@@ -2,7 +2,7 @@
 authors = ["Christopher Sardegna <imessage@reagentx.net>"]
 categories = ["database"]
 description = "Parsers and tools to interact with iMessage SQLite data"
-edition = "2021"
+edition = "2024"
 exclude = [".github", "docs", "build.sh"]
 license = "GPL-3.0-or-later"
 name = "imessage-database"

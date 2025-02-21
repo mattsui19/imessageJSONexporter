@@ -2,7 +2,7 @@
 authors = ["Christopher Sardegna <imessage@reagentx.net>"]
 categories = ["command-line-utilities"]
 description = "Export iMessage data and run iMessage diagnostics"
-edition = "2021"
+edition = "2024"
 exclude = [".github", "docs", "build.sh"]
 license = "GPL-3.0-or-later"
 name = "imessage-exporter"
