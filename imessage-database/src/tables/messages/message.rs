@@ -111,9 +111,9 @@
 
 use std::{collections::HashMap, io::Read};
 
-use chrono::{offset::Local, DateTime};
+use chrono::{DateTime, offset::Local};
 use plist::Value;
-use rusqlite::{blob::Blob, Connection, Error, Result, Row, Statement};
+use rusqlite::{Connection, Error, Result, Row, Statement, blob::Blob};
 
 use crate::{
     error::{message::MessageError, table::TableError},
@@ -125,13 +125,13 @@ use crate::{
     tables::{
         messages::{
             body::{parse_body_legacy, parse_body_typedstream},
-            models::{BubbleComponent, Service},
+            models::{BubbleComponent, GroupAction, Service},
             query_parts::{ios_13_older_query, ios_14_15_query, ios_16_newer_query},
         },
         table::{
-            AttributedBody, Cacheable, Diagnostic, GetBlob, Table, ATTRIBUTED_BODY,
-            CHAT_MESSAGE_JOIN, MESSAGE, MESSAGE_ATTACHMENT_JOIN, MESSAGE_PAYLOAD,
-            MESSAGE_SUMMARY_INFO, RECENTLY_DELETED,
+            ATTRIBUTED_BODY, AttributedBody, CHAT_MESSAGE_JOIN, Cacheable, Diagnostic, GetBlob,
+            MESSAGE, MESSAGE_ATTACHMENT_JOIN, MESSAGE_PAYLOAD, MESSAGE_SUMMARY_INFO,
+            RECENTLY_DELETED, Table,
         },
     },
     util::{
@@ -577,7 +577,7 @@ impl Message {
 
     /// `true` if the message is an [`Announcement`], else `false`
     pub fn is_announcement(&self) -> bool {
-        self.group_title.is_some() || self.group_action_type != 0 || self.is_fully_unsent()
+        self.get_announcement().is_some()
     }
 
     /// `true` if the message is a [`Tapback`] to another message, else `false`
@@ -657,12 +657,17 @@ impl Message {
         }
     }
 
-    /// `true` if the message indicates a user started sharing their location, else `false`
+    /// Get the group action for the current message
+    pub fn group_action(&self) -> Option<GroupAction> {
+        GroupAction::from_message(self)
+    }
+
+    /// `true` if the message indicates a sender started sharing their location, else `false`
     pub fn started_sharing_location(&self) -> bool {
         self.item_type == 4 && self.group_action_type == 0 && !self.share_status
     }
 
-    /// `true` if the message indicates a user stopped sharing their location, else `false`
+    /// `true` if the message indicates a sender stopped sharing their location, else `false`
     pub fn stopped_sharing_location(&self) -> bool {
         self.item_type == 4 && self.group_action_type == 0 && self.share_status
     }
@@ -1021,19 +1026,15 @@ impl Message {
 
     /// Determine the type of announcement a message contains, if it contains one
     pub fn get_announcement(&self) -> Option<Announcement> {
-        if let Some(name) = &self.group_title {
-            return Some(Announcement::NameChange(name));
+        if let Some(action) = self.group_action() {
+            return Some(Announcement::GroupAction(action));
         }
 
         if self.is_fully_unsent() {
             return Some(Announcement::FullyUnsent);
         }
 
-        match &self.group_action_type {
-            0 => None,
-            1 => Some(Announcement::PhotoChange),
-            other => Some(Announcement::Unknown(other)),
-        }
+        None
     }
 
     /// Determine the service the message was sent from, i.e. iMessage, SMS, IRC, etc.

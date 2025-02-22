@@ -12,6 +12,7 @@ use crate::{
         app_store::AppStoreMessage, collaboration::CollaborationMessage, music::MusicMessage,
         placemark::PlacemarkMessage, url::URLMessage,
     },
+    tables::messages::models::GroupAction,
 };
 
 /// # Tapbacks
@@ -124,13 +125,11 @@ pub enum URLOverride<'a> {
 /// updating the name of the group or changing the group photo
 #[derive(Debug)]
 pub enum Announcement<'a> {
-    /// Someone changed the name of the group
-    NameChange(&'a str),
-    /// Someone updated the group photo
-    PhotoChange,
     /// All parts of the message were unsent
     FullyUnsent,
-    /// Types that may occur in the future, i.e. someone leaving or joining a group
+    /// A group action
+    GroupAction(GroupAction<'a>),
+    /// Types that may occur in the future
     Unknown(&'a i32),
 }
 
