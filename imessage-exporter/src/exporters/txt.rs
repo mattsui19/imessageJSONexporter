@@ -599,21 +599,19 @@ impl<'a> Writer<'a> for TXT<'a> {
             Some(announcement) => match announcement {
                 Announcement::GroupAction(action) => match action {
                     GroupAction::ParticipantAdded(person) => {
-                        let resolved_person = self.config.who(
-                            Some(person),
-                            msg.is_from_me(),
-                            &msg.destination_caller_id,
-                        );
+                        // We pass false for `is_from_me` because we want to render the name of the added participant, and we cannot add ourselves
+                        let resolved_person =
+                            self.config
+                                .who(Some(person), false, &msg.destination_caller_id);
                         format!(
                             "{timestamp} {who} added {resolved_person} to the conversation.\n\n"
                         )
                     }
                     GroupAction::ParticipantRemoved(person) => {
-                        let resolved_person = self.config.who(
-                            Some(person),
-                            msg.is_from_me(),
-                            &msg.destination_caller_id,
-                        );
+                        // We pass false for `is_from_me` because we want to render the name of the added participant, and we cannot add ourselves
+                        let resolved_person =
+                            self.config
+                                .who(Some(person), false, &msg.destination_caller_id);
                         format!(
                             "{timestamp} {who} removed {resolved_person} from the conversation.\n\n"
                         )
@@ -1400,6 +1398,124 @@ mod tests {
 
         let actual = exporter.format_announcement(&message);
         let expected = "May 17, 2022  5:29:42 PM Name renamed the conversation to Hello world\n\n";
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn can_format_txt_group_removed() {
+        // Create exporter
+        let options = Options::fake_options(ExportType::Txt);
+        let mut config = Config::fake_app(options);
+        config.participants.insert(0, ME.to_string());
+        config.participants.insert(1, "Other".to_string());
+
+        let exporter = TXT::new(&config).unwrap();
+
+        let mut message = Config::fake_message();
+        // May 17, 2022  8:29:42 PM
+        message.date = 674526582885055488;
+        message.group_title = Some("Hello world".to_string());
+        message.is_from_me = true;
+        message.item_type = 1;
+        message.group_action_type = 1;
+        message.other_handle = Some(1);
+
+        let actual = exporter.format_announcement(&message);
+        let expected = "May 17, 2022  5:29:42 PM You removed Other from the conversation.\n\n";
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn can_format_txt_group_added() {
+        // Create exporter
+        let options = Options::fake_options(ExportType::Txt);
+        let mut config = Config::fake_app(options);
+        config.participants.insert(0, ME.to_string());
+        config.participants.insert(1, "Other".to_string());
+
+        let exporter = TXT::new(&config).unwrap();
+
+        let mut message = Config::fake_message();
+        // May 17, 2022  8:29:42 PM
+        message.date = 674526582885055488;
+        message.group_title = Some("Hello world".to_string());
+        message.is_from_me = true;
+        message.item_type = 1;
+        message.group_action_type = 0;
+        message.other_handle = Some(1);
+
+        let actual = exporter.format_announcement(&message);
+        let expected = "May 17, 2022  5:29:42 PM You added Other to the conversation.\n\n";
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn can_format_txt_group_left() {
+        // Create exporter
+        let options = Options::fake_options(ExportType::Txt);
+        let mut config = Config::fake_app(options);
+        config.participants.insert(0, ME.to_string());
+
+        let exporter = TXT::new(&config).unwrap();
+
+        let mut message = Config::fake_message();
+        // May 17, 2022  8:29:42 PM
+        message.date = 674526582885055488;
+        message.group_title = Some("Hello world".to_string());
+        message.is_from_me = true;
+        message.item_type = 3;
+
+        let actual = exporter.format_announcement(&message);
+        let expected = "May 17, 2022  5:29:42 PM You left the conversation.\n\n";
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn can_format_txt_group_icon_removed() {
+        // Create exporter
+        let options = Options::fake_options(ExportType::Txt);
+        let mut config = Config::fake_app(options);
+        config.participants.insert(0, ME.to_string());
+
+        let exporter = TXT::new(&config).unwrap();
+
+        let mut message = Config::fake_message();
+        // May 17, 2022  8:29:42 PM
+        message.date = 674526582885055488;
+        message.group_title = Some("Hello world".to_string());
+        message.is_from_me = true;
+        message.item_type = 3;
+        message.group_action_type = 2;
+
+        let actual = exporter.format_announcement(&message);
+        let expected = "May 17, 2022  5:29:42 PM You removed the group photo.\n\n";
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn can_format_txt_group_icon_added() {
+        // Create exporter
+        let options = Options::fake_options(ExportType::Txt);
+        let mut config = Config::fake_app(options);
+        config.participants.insert(0, ME.to_string());
+
+        let exporter = TXT::new(&config).unwrap();
+
+        let mut message = Config::fake_message();
+        // May 17, 2022  8:29:42 PM
+        message.date = 674526582885055488;
+        message.group_title = Some("Hello world".to_string());
+        message.is_from_me = true;
+        message.item_type = 3;
+        message.group_action_type = 1;
+
+        let actual = exporter.format_announcement(&message);
+        let expected = "May 17, 2022  5:29:42 PM You changed the group photo.\n\n";
 
         assert_eq!(actual, expected);
     }
