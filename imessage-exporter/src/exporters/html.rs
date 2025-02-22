@@ -40,7 +40,7 @@ use imessage_database::{
         attachment::{Attachment, MediaType},
         messages::{
             Message,
-            models::{AttachmentMeta, BubbleComponent, TextAttributes},
+            models::{AttachmentMeta, BubbleComponent, GroupAction, TextAttributes},
         },
         table::{AttributedBody, FITNESS_RECEIVER, ME, ORPHANED, Table, YOU},
     },
@@ -228,6 +228,14 @@ impl<'a> Writer<'a> for HTML<'a> {
         self.add_line(
             &mut formatted_message,
             &self.get_time(message),
+            "<p><span class=\"timestamp\">",
+            "</span>",
+        );
+
+        // TODO: Remove
+        self.add_line(
+            &mut formatted_message,
+            &message.guid,
             "<p><span class=\"timestamp\">",
             "</span>",
         );
@@ -807,17 +815,49 @@ impl<'a> Writer<'a> for HTML<'a> {
 
         match msg.get_announcement() {
             Some(announcement) => match announcement {
-                Announcement::NameChange(name) => {
-                    let clean_name = sanitize_html(name);
-                    format!(
-                        "\n<div class =\"announcement\"><p><span class=\"timestamp\">{timestamp}</span> {who} named the conversation <b>{clean_name}</b></p></div>\n"
-                    )
-                }
-                Announcement::PhotoChange => {
-                    format!(
-                        "\n<div class =\"announcement\"><p><span class=\"timestamp\">{timestamp}</span> {who} changed the group photo.</p></div>\n"
-                    )
-                }
+                Announcement::GroupAction(action) => match action {
+                    GroupAction::ParticipantAdded(person) => {
+                        let resolved_person = self.config.who(
+                            Some(person),
+                            msg.is_from_me(),
+                            &msg.destination_caller_id,
+                        );
+                        format!(
+                            "\n<div class =\"announcement\"><p><span class=\"timestamp\">{timestamp}</span> {who} added {resolved_person} to the conversation.</p></div>\n"
+                        )
+                    }
+                    GroupAction::ParticipantRemoved(person) => {
+                        let resolved_person = self.config.who(
+                            Some(person),
+                            msg.is_from_me(),
+                            &msg.destination_caller_id,
+                        );
+                        format!(
+                            "\n<div class =\"announcement\"><p><span class=\"timestamp\">{timestamp}</span> {who} removed {resolved_person} from the conversation.</p></div>\n"
+                        )
+                    }
+                    GroupAction::NameChange(name) => {
+                        let clean_name = sanitize_html(name);
+                        format!(
+                            "\n<div class =\"announcement\"><p><span class=\"timestamp\">{timestamp}</span> {who} named the conversation <b>{clean_name}</b></p></div>\n"
+                        )
+                    }
+                    GroupAction::ParticipantLeft => {
+                        format!(
+                            "\n<div class =\"announcement\"><p><span class=\"timestamp\">{timestamp}</span> {who} left the conversation.</p></div>\n"
+                        )
+                    }
+                    GroupAction::GroupIconChanged => {
+                        format!(
+                            "\n<div class =\"announcement\"><p><span class=\"timestamp\">{timestamp}</span> {who} changed the group photo.</p></div>\n"
+                        )
+                    }
+                    GroupAction::GroupIconRemoved => {
+                        format!(
+                            "\n<div class =\"announcement\"><p><span class=\"timestamp\">{timestamp}</span> {who} removed the group photo.</p></div>\n"
+                        )
+                    }
+                },
                 Announcement::Unknown(num) => {
                     format!(
                         "\n<div class =\"announcement\"><p><span class=\"timestamp\">{timestamp}</span> {who} performed unknown action {num}</p></div>\n"
@@ -1937,6 +1977,7 @@ mod tests {
         message.date = 674526582885055488;
         message.group_title = Some("Hello world".to_string());
         message.is_from_me = true;
+        message.item_type = 2;
 
         let actual = exporter.format_announcement(&message);
         let expected = "\n<div class =\"announcement\"><p><span class=\"timestamp\">May 17, 2022  5:29:42 PM</span> You named the conversation <b>Hello world</b></p></div>\n";
@@ -1958,6 +1999,7 @@ mod tests {
         // May 17, 2022  8:29:42 PM
         message.date = 674526582885055488;
         message.group_title = Some("Hello world".to_string());
+        message.item_type = 2;
 
         let actual = exporter.format_announcement(&message);
         let expected = "\n<div class =\"announcement\"><p><span class=\"timestamp\">May 17, 2022  5:29:42 PM</span> Name named the conversation <b>Hello world</b></p></div>\n";
