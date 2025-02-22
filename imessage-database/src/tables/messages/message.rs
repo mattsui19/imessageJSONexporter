@@ -125,7 +125,7 @@ use crate::{
     tables::{
         messages::{
             body::{parse_body_legacy, parse_body_typedstream},
-            models::{BubbleComponent, Service},
+            models::{BubbleComponent, GroupAction, Service},
             query_parts::{ios_13_older_query, ios_14_15_query, ios_16_newer_query},
         },
         table::{
@@ -143,8 +143,6 @@ use crate::{
         typedstream::{models::Archivable, parser::TypedStreamReader},
     },
 };
-
-use super::models::GroupAction;
 
 /// The required columns, interpolated into the most recent schema due to performance considerations
 pub(crate) const COLS: &str = "rowid, guid, text, service, handle_id, destination_caller_id, subject, date, date_read, date_delivered, is_from_me, is_read, item_type, other_handle, share_status, share_direction, group_title, group_action_type, associated_message_guid, associated_message_type, balloon_bundle_id, expressive_send_style_id, thread_originator_guid, thread_originator_part, date_edited, associated_message_emoji";

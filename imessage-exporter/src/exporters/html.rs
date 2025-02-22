@@ -232,14 +232,6 @@ impl<'a> Writer<'a> for HTML<'a> {
             "</span>",
         );
 
-        // TODO: Remove
-        self.add_line(
-            &mut formatted_message,
-            &message.guid,
-            "<p><span class=\"timestamp\">",
-            "</span>",
-        );
-
         // Add reply anchor if necessary
         if message.is_reply() {
             if indent_size > 0 {
