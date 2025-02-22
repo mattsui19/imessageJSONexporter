@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod exclude_recoverable_tests {
-    use std::{collections::BTreeSet, env::set_var};
+    use std::collections::BTreeSet;
 
     use crate::{tables::messages::Message, util::query_context::QueryContext};
 
@@ -14,8 +14,6 @@ mod exclude_recoverable_tests {
 
     #[test]
     fn can_generate_filter_statement_start() {
-        set_var("TZ", "PST");
-
         let mut context = QueryContext::default();
         context.set_start("2020-01-01").unwrap();
 
@@ -25,8 +23,6 @@ mod exclude_recoverable_tests {
 
     #[test]
     fn can_generate_filter_statement_end() {
-        set_var("TZ", "PST");
-
         let mut context = QueryContext::default();
         context.set_end("2020-01-01").unwrap();
 
@@ -36,8 +32,6 @@ mod exclude_recoverable_tests {
 
     #[test]
     fn can_generate_filter_statement_start_end() {
-        set_var("TZ", "PST");
-
         let mut context = QueryContext::default();
         context.set_start("2020-01-01").unwrap();
         context.set_end("2020-02-02").unwrap();
@@ -51,8 +45,6 @@ mod exclude_recoverable_tests {
 
     #[test]
     fn can_generate_filter_statement_chat_ids() {
-        set_var("TZ", "PST");
-
         let mut context = QueryContext::default();
         context.set_selected_chat_ids(BTreeSet::from([1, 2, 3]));
 
@@ -62,21 +54,20 @@ mod exclude_recoverable_tests {
 
     #[test]
     fn can_generate_filter_statement_start_end_chat_ids() {
-        set_var("TZ", "PST");
-
         let mut context = QueryContext::default();
         context.set_start("2020-01-01").unwrap();
         context.set_end("2020-02-02").unwrap();
         context.set_selected_chat_ids(BTreeSet::from([1, 2, 3]));
 
         let statement = Message::generate_filter_statement(&context, false);
-        assert_eq!(statement, "WHERE  m.date >= 599558400000000000 AND  m.date <= 602323200000000000 AND  c.chat_id IN (1, 2, 3)")
+        assert_eq!(
+            statement,
+            "WHERE  m.date >= 599558400000000000 AND  m.date <= 602323200000000000 AND  c.chat_id IN (1, 2, 3)"
+        )
     }
 
     #[test]
     fn can_create_invalid_start() {
-        set_var("TZ", "PST");
-
         let mut context = QueryContext::default();
         assert!(context.set_start("2020-13-32").is_err());
         assert!(!context.has_filters());
@@ -87,8 +78,6 @@ mod exclude_recoverable_tests {
 
     #[test]
     fn can_create_invalid_end() {
-        set_var("TZ", "PST");
-
         let mut context = QueryContext::default();
         assert!(context.set_end("fake").is_err());
         assert!(!context.has_filters());
@@ -108,8 +97,6 @@ mod exclude_recoverable_tests {
 
     #[test]
     fn can_generate_filter_statement_boundary_dates() {
-        set_var("TZ", "PST");
-
         let mut context = QueryContext::default();
         context.set_start("1800-01-01").unwrap();
         context.set_end("2200-01-01").unwrap();
@@ -122,7 +109,7 @@ mod exclude_recoverable_tests {
 
 #[cfg(test)]
 mod include_recoverable_tests {
-    use std::{collections::BTreeSet, env::set_var};
+    use std::collections::BTreeSet;
 
     use crate::{tables::messages::Message, util::query_context::QueryContext};
 
@@ -136,8 +123,6 @@ mod include_recoverable_tests {
 
     #[test]
     fn can_generate_filter_statement_start() {
-        set_var("TZ", "PST");
-
         let mut context = QueryContext::default();
         context.set_start("2020-01-01").unwrap();
 
@@ -147,8 +132,6 @@ mod include_recoverable_tests {
 
     #[test]
     fn can_generate_filter_statement_end() {
-        set_var("TZ", "PST");
-
         let mut context = QueryContext::default();
         context.set_end("2020-01-01").unwrap();
 
@@ -158,8 +141,6 @@ mod include_recoverable_tests {
 
     #[test]
     fn can_generate_filter_statement_start_end() {
-        set_var("TZ", "PST");
-
         let mut context = QueryContext::default();
         context.set_start("2020-01-01").unwrap();
         context.set_end("2020-02-02").unwrap();
@@ -173,8 +154,6 @@ mod include_recoverable_tests {
 
     #[test]
     fn can_generate_filter_statement_chat_ids() {
-        set_var("TZ", "PST");
-
         let mut context = QueryContext::default();
         context.set_selected_chat_ids(BTreeSet::from([1, 2, 3]));
 
@@ -187,21 +166,20 @@ mod include_recoverable_tests {
 
     #[test]
     fn can_generate_filter_statement_start_end_chat_ids() {
-        set_var("TZ", "PST");
-
         let mut context = QueryContext::default();
         context.set_start("2020-01-01").unwrap();
         context.set_end("2020-02-02").unwrap();
         context.set_selected_chat_ids(BTreeSet::from([1, 2, 3]));
 
         let statement = Message::generate_filter_statement(&context, true);
-        assert_eq!(statement, "WHERE  m.date >= 599558400000000000 AND  m.date <= 602323200000000000 AND  (c.chat_id IN (1, 2, 3) OR d.chat_id IN (1, 2, 3))")
+        assert_eq!(
+            statement,
+            "WHERE  m.date >= 599558400000000000 AND  m.date <= 602323200000000000 AND  (c.chat_id IN (1, 2, 3) OR d.chat_id IN (1, 2, 3))"
+        )
     }
 
     #[test]
     fn can_create_invalid_start() {
-        set_var("TZ", "PST");
-
         let mut context = QueryContext::default();
         assert!(context.set_start("2020-13-32").is_err());
         assert!(!context.has_filters());
@@ -212,8 +190,6 @@ mod include_recoverable_tests {
 
     #[test]
     fn can_create_invalid_end() {
-        set_var("TZ", "PST");
-
         let mut context = QueryContext::default();
         assert!(context.set_end("fake").is_err());
         assert!(!context.has_filters());
@@ -288,10 +264,10 @@ mod guid_query_tests {
 
 #[cfg(test)]
 mod query_string_tests {
-    use std::{collections::BTreeSet, env::set_var};
+    use std::collections::BTreeSet;
 
     use crate::{
-        tables::messages::{query_parts, Message},
+        tables::messages::{Message, query_parts},
         util::query_context::QueryContext,
     };
 
@@ -335,8 +311,6 @@ ORDER BY
 
     #[test]
     fn can_generate_filters_16_context() {
-        set_var("TZ", "PST");
-
         let mut context = QueryContext::default();
         context.set_start("2020-01-01").unwrap();
         context.set_selected_chat_ids(BTreeSet::from([1, 2, 3]));
@@ -399,8 +373,6 @@ ORDER BY
 
     #[test]
     fn can_generate_filters_14_15_context() {
-        set_var("TZ", "PST");
-
         let mut context = QueryContext::default();
         context.set_start("2020-01-01").unwrap();
         context.set_selected_chat_ids(BTreeSet::from([1, 2, 3]));
@@ -462,8 +434,6 @@ ORDER BY
 
     #[test]
     fn can_generate_filters_13_context() {
-        set_var("TZ", "PST");
-
         let mut context = QueryContext::default();
         context.set_start("2020-01-01").unwrap();
         context.set_selected_chat_ids(BTreeSet::from([1, 2, 3]));

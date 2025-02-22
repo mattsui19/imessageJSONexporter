@@ -1,8 +1,8 @@
 use std::{
     borrow::Cow,
     collections::{
-        hash_map::Entry::{Occupied, Vacant},
         HashMap,
+        hash_map::Entry::{Occupied, Vacant},
     },
     fs::File,
     io::{BufWriter, Write},
@@ -39,13 +39,13 @@ use imessage_database::{
     tables::{
         attachment::{Attachment, MediaType},
         messages::{
-            models::{AttachmentMeta, BubbleComponent, TextAttributes},
             Message,
+            models::{AttachmentMeta, BubbleComponent, TextAttributes},
         },
-        table::{AttributedBody, Table, FITNESS_RECEIVER, ME, ORPHANED, YOU},
+        table::{AttributedBody, FITNESS_RECEIVER, ME, ORPHANED, Table, YOU},
     },
     util::{
-        dates::{format, get_local_time, readable_diff, TIMESTAMP_FACTOR},
+        dates::{TIMESTAMP_FACTOR, format, get_local_time, readable_diff},
         plist::parse_ns_keyed_archiver,
     },
 };
@@ -556,11 +556,15 @@ impl<'a> Writer<'a> for HTML<'a> {
             }
             MediaType::Video(media_type) => {
                 // See https://github.com/ReagentX/imessage-exporter/issues/73 for why duplicate the source tag
-                format!("<video controls> <source src=\"{embed_path}\" type=\"{media_type}\"> <source src=\"{embed_path}\"> </video>")
+                format!(
+                    "<video controls> <source src=\"{embed_path}\" type=\"{media_type}\"> <source src=\"{embed_path}\"> </video>"
+                )
             }
             MediaType::Audio(media_type) => {
                 if let Some(transcription) = metadata.transcription {
-                    return Ok(format!("<div><audio controls src=\"{embed_path}\" type=\"{media_type}\" </audio></div> <hr><span class=\"transcription\">Transcription: {transcription}</span>"));
+                    return Ok(format!(
+                        "<div><audio controls src=\"{embed_path}\" type=\"{media_type}\" </audio></div> <hr><span class=\"transcription\">Transcription: {transcription}</span>"
+                    ));
                 }
                 format!("<audio controls src=\"{embed_path}\" type=\"{media_type}\" </audio>")
             }
@@ -577,7 +581,10 @@ impl<'a> Writer<'a> for HTML<'a> {
                 attachment.file_size()
             ),
             MediaType::Unknown => {
-                format!("<p>Unknown attachment type: {embed_path}</p> <a href=\"{embed_path}\">Download ({})</a>", attachment.file_size())
+                format!(
+                    "<p>Unknown attachment type: {embed_path}</p> <a href=\"{embed_path}\">Download ({})</a>",
+                    attachment.file_size()
+                )
             }
             MediaType::Other(media_type) => {
                 format!("<p>Unable to embed {media_type} attachments: {embed_path}</p>")
@@ -1530,7 +1537,9 @@ impl HTML<'_> {
 
     fn edited_to_html(&self, timestamp: &str, text: &str, last: bool) -> String {
         let tag = if last { "tfoot" } else { "tbody" };
-        format!("<{tag}><tr><td><span class=\"timestamp\">{timestamp}</span></td><td>{text}</td></tr></{tag}>")
+        format!(
+            "<{tag}><tr><td><span class=\"timestamp\">{timestamp}</span></td><td>{text}</td></tr></{tag}>"
+        )
     }
 
     fn balloon_to_html(
@@ -1637,13 +1646,10 @@ impl HTML<'_> {
 
 #[cfg(test)]
 mod tests {
-    use std::{
-        env::{current_dir, set_var},
-        path::PathBuf,
-    };
+    use std::{env::current_dir, path::PathBuf};
 
     use crate::{
-        app::export_type::ExportType, exporters::exporter::Writer, Config, Exporter, Options, HTML,
+        Config, Exporter, HTML, Options, app::export_type::ExportType, exporters::exporter::Writer,
     };
     use imessage_database::{
         tables::{messages::models::AttachmentMeta, table::ME},
@@ -1660,9 +1666,6 @@ mod tests {
 
     #[test]
     fn can_get_time_valid() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let options = Options::fake_options(ExportType::Html);
         let config = Config::fake_app(options);
@@ -1686,9 +1689,6 @@ mod tests {
 
     #[test]
     fn can_get_time_invalid() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let options = Options::fake_options(ExportType::Html);
         let config = Config::fake_app(options);
@@ -1749,9 +1749,6 @@ mod tests {
 
     #[test]
     fn can_format_html_from_me_normal() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let options = Options::fake_options(ExportType::Html);
         let config = Config::fake_app(options);
@@ -1772,9 +1769,6 @@ mod tests {
 
     #[test]
     fn can_format_html_message_with_html() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let options = Options::fake_options(ExportType::Html);
         let config = Config::fake_app(options);
@@ -1795,9 +1789,6 @@ mod tests {
 
     #[test]
     fn can_format_html_from_me_normal_deleted() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let options = Options::fake_options(ExportType::Html);
         let config = Config::fake_app(options);
@@ -1818,9 +1809,6 @@ mod tests {
 
     #[test]
     fn can_format_html_from_me_normal_read() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let options = Options::fake_options(ExportType::Html);
         let config = Config::fake_app(options);
@@ -1835,17 +1823,13 @@ mod tests {
         message.is_from_me = true;
 
         let actual = exporter.format_message(&message, 0).unwrap();
-        let expected =
-            "<div class=\"message\">\n<div class=\"sent iMessage\">\n<p><span class=\"timestamp\">May 17, 2022  5:29:42 PM (Read by them after 1 hour, 49 seconds)</span>\n<span class=\"sender\">Me</span></p>\n<hr><div class=\"message_part\">\n<span class=\"bubble\">Hello world</span>\n</div>\n</div>\n</div>\n";
+        let expected = "<div class=\"message\">\n<div class=\"sent iMessage\">\n<p><span class=\"timestamp\">May 17, 2022  5:29:42 PM (Read by them after 1 hour, 49 seconds)</span>\n<span class=\"sender\">Me</span></p>\n<hr><div class=\"message_part\">\n<span class=\"bubble\">Hello world</span>\n</div>\n</div>\n</div>\n";
 
         assert_eq!(actual, expected);
     }
 
     #[test]
     fn can_format_html_from_them_normal() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let options = Options::fake_options(ExportType::Html);
         let mut config = Config::fake_app(options);
@@ -1868,9 +1852,6 @@ mod tests {
 
     #[test]
     fn can_format_html_from_them_normal_read() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let options = Options::fake_options(ExportType::Html);
         let mut config = Config::fake_app(options);
@@ -1890,17 +1871,13 @@ mod tests {
         message.date_read = 674530231992568192;
 
         let actual = exporter.format_message(&message, 0).unwrap();
-        let expected =
-            "<div class=\"message\">\n<div class=\"received\">\n<p><span class=\"timestamp\">May 17, 2022  5:29:42 PM (Read by you after 1 hour, 49 seconds)</span>\n<span class=\"sender\">Sample Contact</span></p>\n<hr><div class=\"message_part\">\n<span class=\"bubble\">Hello world</span>\n</div>\n</div>\n</div>\n";
+        let expected = "<div class=\"message\">\n<div class=\"received\">\n<p><span class=\"timestamp\">May 17, 2022  5:29:42 PM (Read by you after 1 hour, 49 seconds)</span>\n<span class=\"sender\">Sample Contact</span></p>\n<hr><div class=\"message_part\">\n<span class=\"bubble\">Hello world</span>\n</div>\n</div>\n</div>\n";
 
         assert_eq!(actual, expected);
     }
 
     #[test]
     fn can_format_html_from_them_custom_name_read() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let mut options = Options::fake_options(ExportType::Html);
         options.custom_name = Some("Name".to_string());
@@ -1921,17 +1898,13 @@ mod tests {
         message.date_read = 674530231992568192;
 
         let actual = exporter.format_message(&message, 0).unwrap();
-        let expected =
-            "<div class=\"message\">\n<div class=\"received\">\n<p><span class=\"timestamp\">May 17, 2022  5:29:42 PM (Read by Name after 1 hour, 49 seconds)</span>\n<span class=\"sender\">Sample Contact</span></p>\n<hr><div class=\"message_part\">\n<span class=\"bubble\">Hello world</span>\n</div>\n</div>\n</div>\n";
+        let expected = "<div class=\"message\">\n<div class=\"received\">\n<p><span class=\"timestamp\">May 17, 2022  5:29:42 PM (Read by Name after 1 hour, 49 seconds)</span>\n<span class=\"sender\">Sample Contact</span></p>\n<hr><div class=\"message_part\">\n<span class=\"bubble\">Hello world</span>\n</div>\n</div>\n</div>\n";
 
         assert_eq!(actual, expected);
     }
 
     #[test]
     fn can_format_html_shareplay() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let options = Options::fake_options(ExportType::Html);
         let mut config = Config::fake_app(options);
@@ -1952,9 +1925,6 @@ mod tests {
 
     #[test]
     fn can_format_html_announcement() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let options = Options::fake_options(ExportType::Html);
         let mut config = Config::fake_app(options);
@@ -1976,9 +1946,6 @@ mod tests {
 
     #[test]
     fn can_format_html_announcement_custom_name() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let mut options = Options::fake_options(ExportType::Html);
         options.custom_name = Some("Name".to_string());
@@ -2000,9 +1967,6 @@ mod tests {
 
     #[test]
     fn can_format_html_tapback_me() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let options = Options::fake_options(ExportType::Html);
         let mut config = Config::fake_app(options);
@@ -2024,9 +1988,6 @@ mod tests {
 
     #[test]
     fn can_format_html_tapback_them() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let options = Options::fake_options(ExportType::Html);
         let mut config = Config::fake_app(options);
@@ -2050,9 +2011,6 @@ mod tests {
 
     #[test]
     fn can_format_html_tapback_custom_emoji() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let options = Options::fake_options(ExportType::Html);
         let mut config = Config::fake_app(options);
@@ -2078,9 +2036,6 @@ mod tests {
 
     #[test]
     fn can_format_html_tapback_custom_sticker() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let options = Options::fake_options(ExportType::Html);
         let mut config = Config::fake_app(options);
@@ -2105,9 +2060,6 @@ mod tests {
 
     #[test]
     fn can_format_html_tapback_custom_sticker_exists() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let options = Options::fake_options(ExportType::Html);
         let mut config = Config::fake_app(options);
@@ -2133,9 +2085,6 @@ mod tests {
 
     #[test]
     fn can_format_html_tapback_custom_sticker_removed() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let options = Options::fake_options(ExportType::Html);
         let mut config = Config::fake_app(options);
@@ -2161,9 +2110,6 @@ mod tests {
 
     #[test]
     fn can_format_html_started_sharing_location_me() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let options = Options::fake_options(ExportType::Html);
         let config = Config::fake_app(options);
@@ -2184,9 +2130,6 @@ mod tests {
 
     #[test]
     fn can_format_html_stopped_sharing_location_me() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let options = Options::fake_options(ExportType::Html);
         let config = Config::fake_app(options);
@@ -2207,9 +2150,6 @@ mod tests {
 
     #[test]
     fn can_format_html_started_sharing_location_them() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let options = Options::fake_options(ExportType::Html);
         let config = Config::fake_app(options);
@@ -2231,9 +2171,6 @@ mod tests {
 
     #[test]
     fn can_format_html_stopped_sharing_location_them() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let options = Options::fake_options(ExportType::Html);
         let config = Config::fake_app(options);
@@ -2350,7 +2287,10 @@ mod tests {
 
         let actual = exporter.format_sticker(&mut attachment, &message);
 
-        assert_eq!(actual, "<img src=\"imessage-database/test_data/stickers/outline.heic\" loading=\"lazy\">\n<div class=\"sticker_effect\">Sent with Outline effect</div>");
+        assert_eq!(
+            actual,
+            "<img src=\"imessage-database/test_data/stickers/outline.heic\" loading=\"lazy\">\n<div class=\"sticker_effect\">Sent with Outline effect</div>"
+        );
 
         // Remove the file created by the constructor for this test
         let orphaned_path = current_dir()
@@ -2386,7 +2326,10 @@ mod tests {
 
         let actual = exporter.format_sticker(&mut attachment, &message);
 
-        assert_eq!(actual, "<img src=\"imessage-database/test_data/stickers/outline.heic\" loading=\"lazy\">\n<div class=\"genmoji_prompt\">Genmoji prompt: pink poodle</div>");
+        assert_eq!(
+            actual,
+            "<img src=\"imessage-database/test_data/stickers/outline.heic\" loading=\"lazy\">\n<div class=\"genmoji_prompt\">Genmoji prompt: pink poodle</div>"
+        );
 
         // Remove the file created by the constructor for this test
         let orphaned_path = current_dir()
@@ -2421,7 +2364,10 @@ mod tests {
 
         let actual = exporter.format_sticker(&mut attachment, &message);
 
-        assert_eq!(actual, "<img src=\"imessage-database/test_data/stickers/outline.heic\" loading=\"lazy\">\n<div class=\"sticker_name\">App: Free People</div>");
+        assert_eq!(
+            actual,
+            "<img src=\"imessage-database/test_data/stickers/outline.heic\" loading=\"lazy\">\n<div class=\"sticker_name\">App: Free People</div>"
+        );
 
         // Remove the file created by the constructor for this test
         let orphaned_path = current_dir()
@@ -2456,15 +2402,16 @@ mod tests {
             .format_attachment(&mut attachment, &message, &meta)
             .unwrap();
 
-        assert_eq!(actual, "<div><audio controls src=\"Audio Message.caf\" type=\"x-caf; codecs=opus\" </audio></div> <hr><span class=\"transcription\">Transcription: Test</span>");
+        assert_eq!(
+            actual,
+            "<div><audio controls src=\"Audio Message.caf\" type=\"x-caf; codecs=opus\" </audio></div> <hr><span class=\"transcription\">Transcription: Test</span>"
+        );
     }
 }
 
 #[cfg(test)]
 mod balloon_format_tests {
-    use std::env::set_var;
-
-    use crate::{exporters::exporter::BalloonFormatter, Config, Exporter, Options, HTML};
+    use crate::{Config, Exporter, HTML, Options, exporters::exporter::BalloonFormatter};
     use imessage_database::message_types::{
         app::AppMessage,
         app_store::AppStoreMessage,
@@ -2699,9 +2646,6 @@ mod balloon_format_tests {
 
     #[test]
     fn can_format_html_check_in_timer() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let options = Options::fake_options(crate::app::export_type::ExportType::Html);
         let config = Config::fake_app(options);
@@ -2728,9 +2672,6 @@ mod balloon_format_tests {
 
     #[test]
     fn can_format_html_check_in_timer_late() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let options = Options::fake_options(crate::app::export_type::ExportType::Html);
         let config = Config::fake_app(options);
@@ -2757,9 +2698,6 @@ mod balloon_format_tests {
 
     #[test]
     fn can_format_html_accepted_check_in() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let options = Options::fake_options(crate::app::export_type::ExportType::Html);
         let config = Config::fake_app(options);
@@ -2872,18 +2810,14 @@ mod balloon_format_tests {
 #[cfg(test)]
 mod text_effect_tests {
     use crate::{
+        Config, Exporter, HTML, Options,
         exporters::exporter::{TextEffectFormatter, Writer},
-        Config, Exporter, Options, HTML,
     };
     use imessage_database::{
         message_types::text_effects::{Style, TextEffect, Unit},
         util::typedstream::parser::TypedStreamReader,
     };
-    use std::{
-        env::{current_dir, set_var},
-        fs::File,
-        io::Read,
-    };
+    use std::{env::current_dir, fs::File, io::Read};
 
     #[test]
     fn can_format_html_default() {
@@ -2999,9 +2933,6 @@ mod text_effect_tests {
 
     #[test]
     fn can_format_html_mention_end_to_end() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let options = Options::fake_options(crate::app::export_type::ExportType::Html);
         let config = Config::fake_app(options);
@@ -3034,9 +2965,6 @@ mod text_effect_tests {
 
     #[test]
     fn can_format_html_otp_end_to_end() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let options = Options::fake_options(crate::app::export_type::ExportType::Html);
         let config = Config::fake_app(options);
@@ -3069,9 +2997,6 @@ mod text_effect_tests {
 
     #[test]
     fn can_format_html_link_end_to_end() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let options = Options::fake_options(crate::app::export_type::ExportType::Html);
         let config = Config::fake_app(options);
@@ -3104,9 +3029,6 @@ mod text_effect_tests {
 
     #[test]
     fn can_format_html_conversion_end_to_end() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let options = Options::fake_options(crate::app::export_type::ExportType::Html);
         let config = Config::fake_app(options);
@@ -3139,9 +3061,6 @@ mod text_effect_tests {
 
     #[test]
     fn can_format_html_text_effect_end_to_end() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let options = Options::fake_options(crate::app::export_type::ExportType::Html);
         let config = Config::fake_app(options);
@@ -3174,9 +3093,6 @@ mod text_effect_tests {
 
     #[test]
     fn can_format_html_text_styles_end_to_end() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let options = Options::fake_options(crate::app::export_type::ExportType::Html);
         let config = Config::fake_app(options);
@@ -3209,9 +3125,6 @@ mod text_effect_tests {
 
     #[test]
     fn can_format_html_text_styles_single_end_to_end() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let options = Options::fake_options(crate::app::export_type::ExportType::Html);
         let config = Config::fake_app(options);
@@ -3244,9 +3157,6 @@ mod text_effect_tests {
 
     #[test]
     fn can_format_html_text_styles_mixed_end_to_end() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let options = Options::fake_options(crate::app::export_type::ExportType::Html);
         let config = Config::fake_app(options);
@@ -3280,13 +3190,9 @@ mod text_effect_tests {
 
 #[cfg(test)]
 mod edited_tests {
-    use std::{
-        env::{current_dir, set_var},
-        fs::File,
-        io::Read,
-    };
+    use std::{env::current_dir, fs::File, io::Read};
 
-    use crate::{exporters::exporter::Writer, Config, Exporter, Options, HTML};
+    use crate::{Config, Exporter, HTML, Options, exporters::exporter::Writer};
     use imessage_database::{
         message_types::edited::{EditStatus, EditedEvent, EditedMessage, EditedMessagePart},
         util::typedstream::{
@@ -3297,9 +3203,6 @@ mod edited_tests {
 
     #[test]
     fn can_format_html_edited_with_formatting() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let options = Options::fake_options(crate::app::export_type::ExportType::Html);
         let config = Config::fake_app(options);
@@ -3441,9 +3344,6 @@ mod edited_tests {
 
     #[test]
     fn can_format_html_conversion_final_unsent() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let options = Options::fake_options(crate::app::export_type::ExportType::Html);
         let config = Config::fake_app(options);
@@ -3499,9 +3399,6 @@ mod edited_tests {
 
     #[test]
     fn can_format_html_conversion_no_edits() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let options = Options::fake_options(crate::app::export_type::ExportType::Html);
         let config = Config::fake_app(options);
@@ -3536,9 +3433,6 @@ mod edited_tests {
 
     #[test]
     fn can_format_html_conversion_fully_unsent() {
-        // Set timezone to PST for consistent Local time
-        set_var("TZ", "PST");
-
         // Create exporter
         let options = Options::fake_options(crate::app::export_type::ExportType::Html);
         let config = Config::fake_app(options);
