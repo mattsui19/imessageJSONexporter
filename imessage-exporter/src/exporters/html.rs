@@ -806,59 +806,51 @@ impl<'a> Writer<'a> for HTML<'a> {
         let timestamp = format(&msg.date(&self.config.offset));
 
         match msg.get_announcement() {
-            Some(announcement) => match announcement {
-                Announcement::GroupAction(action) => match action {
-                    GroupAction::ParticipantAdded(person) => {
-                        // We pass false for `is_from_me` because we want to render the name of the added participant, and we cannot add ourselves
-                        let resolved_person =
-                            self.config
-                                .who(Some(person), false, &msg.destination_caller_id);
-                        format!(
-                            "\n<div class =\"announcement\"><p><span class=\"timestamp\">{timestamp}</span> {who} added {resolved_person} to the conversation.</p></div>\n"
-                        )
-                    }
-                    GroupAction::ParticipantRemoved(person) => {
-                        // We pass false for `is_from_me` because we want to render the name of the added participant, and we cannot add ourselves
-                        let resolved_person =
-                            self.config
-                                .who(Some(person), false, &msg.destination_caller_id);
-                        format!(
-                            "\n<div class =\"announcement\"><p><span class=\"timestamp\">{timestamp}</span> {who} removed {resolved_person} from the conversation.</p></div>\n"
-                        )
-                    }
-                    GroupAction::NameChange(name) => {
-                        let clean_name = sanitize_html(name);
-                        format!(
-                            "\n<div class =\"announcement\"><p><span class=\"timestamp\">{timestamp}</span> {who} named the conversation <b>{clean_name}</b></p></div>\n"
-                        )
-                    }
-                    GroupAction::ParticipantLeft => {
-                        format!(
-                            "\n<div class =\"announcement\"><p><span class=\"timestamp\">{timestamp}</span> {who} left the conversation.</p></div>\n"
-                        )
-                    }
-                    GroupAction::GroupIconChanged => {
-                        format!(
-                            "\n<div class =\"announcement\"><p><span class=\"timestamp\">{timestamp}</span> {who} changed the group photo.</p></div>\n"
-                        )
-                    }
-                    GroupAction::GroupIconRemoved => {
-                        format!(
-                            "\n<div class =\"announcement\"><p><span class=\"timestamp\">{timestamp}</span> {who} removed the group photo.</p></div>\n"
-                        )
-                    }
-                },
-                Announcement::Unknown(num) => {
-                    format!(
-                        "\n<div class =\"announcement\"><p><span class=\"timestamp\">{timestamp}</span> {who} performed unknown action {num}</p></div>\n"
-                    )
-                }
-                Announcement::FullyUnsent => {
-                    format!(
-                        "<div class =\"announcement\"><p><span class=\"timestamp\">{timestamp}</span> {who} unsent a message.</p></div>"
-                    )
-                }
-            },
+            Some(announcement) => {
+                let action_text = match &announcement {
+                    Announcement::GroupAction(action) => match action {
+                        GroupAction::ParticipantAdded(person)
+                        | GroupAction::ParticipantRemoved(person) => {
+                            let resolved_person =
+                                self.config
+                                    .who(Some(*person), false, &msg.destination_caller_id);
+                            let action_word = if matches!(action, GroupAction::ParticipantAdded(_))
+                            {
+                                "added"
+                            } else {
+                                "removed"
+                            };
+                            format!(
+                                "{action_word} {resolved_person} {} the conversation.",
+                                if matches!(action, GroupAction::ParticipantAdded(_)) {
+                                    "to"
+                                } else {
+                                    "from"
+                                }
+                            )
+                        }
+                        GroupAction::NameChange(name) => {
+                            let clean_name = sanitize_html(name);
+                            format!("named the conversation <b>{clean_name}</b>")
+                        }
+                        GroupAction::ParticipantLeft => "left the conversation.".to_string(),
+                        GroupAction::GroupIconChanged => "changed the group photo.".to_string(),
+                        GroupAction::GroupIconRemoved => "removed the group photo.".to_string(),
+                    },
+                    Announcement::Unknown(num) => format!("performed unknown action {num}"),
+                    Announcement::FullyUnsent => "unsent a message.".to_string(),
+                };
+
+                let newlines = if matches!(announcement, Announcement::FullyUnsent) {
+                    ""
+                } else {
+                    "\n"
+                };
+
+                format!(
+                    "{newlines}<div class =\"announcement\"><p><span class=\"timestamp\">{timestamp}</span> {who} {action_text}</p></div>{newlines}"
+                )
+            }
             None => String::from(
                 "\n<div class =\"announcement\"><p>Unable to format announcement!</p></div>\n",
             ),
