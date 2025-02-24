@@ -1553,6 +1553,7 @@ impl HTML<'_> {
         HTML::write_to_file(file, "<style>\n")?;
         HTML::write_to_file(file, STYLE)?;
         HTML::write_to_file(file, "\n</style>")?;
+        HTML::write_to_file(file, "<link rel=\"stylesheet\" href=\"style.css\">")?;
         HTML::write_to_file(file, "\n</head>\n<body>\n")?;
         Ok(())
     }
