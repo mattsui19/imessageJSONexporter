@@ -191,6 +191,28 @@ Further, since the files are stored in `~/Library`, you will need to grant your 
 
 Note: This is not required when passing a valid `--copy-method`.
 
+#### Custom Styling for HTML Exports
+
+You can customize the appearance of HTML exports by creating your own CSS file:
+
+1. Create a file named `style.css` in the same directory as your exported files
+2. Add your custom styles to this file
+3. These styles will be automatically applied to your exported HTML files
+
+Since custom styles are loaded after the default styles, they should automatically override rules with the same specificity.
+
+##### Example Custom CSS
+
+For example, to prevent messages from breaking across pages when printing:
+
+```css
+.message {
+    break-inside: avoid;
+}
+```
+
+The default styles can be viewed [here](/imessage-exporter/src/exporters/resources/style.css).
+
 ### PDF Exports
 
 I could not get PDF export to work in a reasonable way. The best way for a user to do this is to follow the steps above for Safari and print to PDF.
