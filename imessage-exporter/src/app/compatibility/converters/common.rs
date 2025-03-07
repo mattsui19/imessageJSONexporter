@@ -86,6 +86,7 @@ pub(crate) fn copy_raw(from: &Path, to: &Path) {
             if !folder.exists() {
                 if let Err(why) = create_dir_all(folder) {
                     eprintln!("Unable to create {folder:?}: {why}");
+                    return;
                 }
             }
         }
