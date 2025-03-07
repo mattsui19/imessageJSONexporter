@@ -61,18 +61,21 @@ pub(crate) fn copy_raw(from: &Path, to: &Path) {
         }
 
         // Iterate over the directory entries and copy them recursively
-        if let Ok(entries) = read_dir(from) {
-            for entry_result in entries {
-                if let Ok(entry) = entry_result {
-                    let from_path = entry.path();
-                    let to_path = to.join(entry.file_name());
-                    copy_raw(&from_path, &to_path);
-                } else {
-                    eprintln!("Failed to read item in {:?}", from);
+        match read_dir(from) {
+            Ok(entries) => {
+                for entry_result in entries {
+                    if let Ok(entry) = entry_result {
+                        let from_path = entry.path();
+                        let to_path = to.join(entry.file_name());
+                        copy_raw(&from_path, &to_path);
+                    } else {
+                        eprintln!("Failed to read item in {:?}", from);
+                    }
                 }
             }
-        } else {
-            eprintln!("Failed to read directory {:?}", from);
+            Err(why) => {
+                eprintln!("Failed to read directory {:?}: {why}", from);
+            }
         }
     } else {
         // Ensure the directory tree exists
