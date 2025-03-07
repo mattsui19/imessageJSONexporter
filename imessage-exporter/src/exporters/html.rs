@@ -581,10 +581,22 @@ impl<'a> Writer<'a> for HTML<'a> {
                 attachment.file_size()
             ),
             MediaType::Unknown => {
-                format!(
-                    "<p>Unknown attachment type: {embed_path}</p> <a href=\"{embed_path}\">Download ({})</a>",
-                    attachment.file_size()
-                )
+                if attachment
+                    .copied_path
+                    .as_ref()
+                    .is_some_and(|path| path.is_dir())
+                {
+                    format!(
+                        "<p>Folder: <i>{}</i> ({}) <a href=\"{embed_path}\">Click to open</a></p>",
+                        attachment.filename(),
+                        attachment.file_size()
+                    )
+                } else {
+                    format!(
+                        "<p>Unknown attachment type: {embed_path}</p> <a href=\"{embed_path}\">Download ({})</a>",
+                        attachment.file_size()
+                    )
+                }
             }
             MediaType::Other(media_type) => {
                 format!("<p>Unable to embed {media_type} attachments: {embed_path}</p>")
@@ -2407,6 +2419,57 @@ mod tests {
     }
 
     #[test]
+    fn can_format_html_attachment_folder() {
+        // Create exporter
+        let options = Options::fake_options(ExportType::Html);
+        let config = Config::fake_app(options);
+        let exporter = HTML::new(&config).unwrap();
+
+        let message = Config::fake_message();
+
+        let mut attachment = Config::fake_attachment();
+        let folder_path = current_dir()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("imessage-database/test_data/");
+        attachment.mime_type = None;
+        attachment.transfer_name = Some("test_data".to_string());
+        attachment.copied_path = Some(folder_path);
+
+        let actual = exporter
+            .format_attachment(&mut attachment, &message, &AttachmentMeta::default())
+            .unwrap();
+
+        assert!(actual.starts_with("<p>Folder: <i>test_data</i> (100.00 B) <a href="));
+    }
+
+    #[test]
+    fn can_format_html_attachment_unknown() {
+        // Create exporter
+        let options = Options::fake_options(ExportType::Html);
+        let config = Config::fake_app(options);
+        let exporter = HTML::new(&config).unwrap();
+
+        let message = Config::fake_message();
+
+        let mut attachment = Config::fake_attachment();
+        let folder_path = "Fake";
+        attachment.mime_type = None;
+        attachment.transfer_name = Some("test_data".to_string());
+        attachment.copied_path = Some(PathBuf::from(folder_path));
+
+        let actual = exporter
+            .format_attachment(&mut attachment, &message, &AttachmentMeta::default())
+            .unwrap();
+
+        assert_eq!(
+            actual,
+            "<p>Unknown attachment type: Fake</p> <a href=\"Fake\">Download (100.00 B)</a>"
+        );
+    }
+
+    #[test]
     fn can_format_html_attachment_sticker() {
         // Create exporter
         let mut options = Options::fake_options(ExportType::Html);
@@ -2426,7 +2489,7 @@ mod tests {
             .unwrap()
             .join("imessage-database/test_data/stickers/outline.heic");
         attachment.filename = Some(sticker_path.to_string_lossy().to_string());
-        attachment.copied_path = Some(PathBuf::from(sticker_path.to_string_lossy().to_string()));
+        attachment.copied_path = Some(sticker_path);
 
         let actual = exporter.format_sticker(&mut attachment, &message);
 
@@ -2464,7 +2527,7 @@ mod tests {
             .unwrap()
             .join("imessage-database/test_data/stickers/outline.heic");
         attachment.filename = Some(sticker_path.to_string_lossy().to_string());
-        attachment.copied_path = Some(PathBuf::from(sticker_path.to_string_lossy().to_string()));
+        attachment.copied_path = Some(sticker_path);
         attachment.emoji_description = Some("pink poodle".to_string());
 
         let actual = exporter.format_sticker(&mut attachment, &message);
@@ -2503,7 +2566,7 @@ mod tests {
             .unwrap()
             .join("imessage-database/test_data/stickers/outline.heic");
         attachment.filename = Some(sticker_path.to_string_lossy().to_string());
-        attachment.copied_path = Some(PathBuf::from(sticker_path.to_string_lossy().to_string()));
+        attachment.copied_path = Some(sticker_path);
 
         let actual = exporter.format_sticker(&mut attachment, &message);
 
