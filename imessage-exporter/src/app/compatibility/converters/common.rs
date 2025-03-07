@@ -64,12 +64,15 @@ pub(crate) fn copy_raw(from: &Path, to: &Path) {
         match read_dir(from) {
             Ok(entries) => {
                 for entry_result in entries {
-                    if let Ok(entry) = entry_result {
-                        let from_path = entry.path();
-                        let to_path = to.join(entry.file_name());
-                        copy_raw(&from_path, &to_path);
-                    } else {
-                        eprintln!("Failed to read item in {:?}", from);
+                    match entry_result {
+                        Ok(entry) => {
+                            let from_path = entry.path();
+                            let to_path = to.join(entry.file_name());
+                            copy_raw(&from_path, &to_path);
+                        }
+                        Err(why) => {
+                            eprintln!("Failed to read item in {:?}: {why}", from);
+                        }
                     }
                 }
             }
