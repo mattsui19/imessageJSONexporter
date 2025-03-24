@@ -11,6 +11,7 @@ version = "0.0.0"
 
 [dependencies]
 chrono = "=0.4.40"
+deranged = "=0.4.0"
 plist = "=1.7.0"
 rusqlite = { version = "=0.34.0", features = ["blob", "bundled"] }
 sha1 = "=0.10.6"
