@@ -87,8 +87,7 @@ impl<'a> TypedStreamReader<'a> {
                 let size = 2;
                 self.idx += 1;
                 let value = i16::from_le_bytes(
-                    self.read_exact_bytes(size)?
-                        .try_into()
+                    <[u8; 2]>::try_from(self.read_exact_bytes(size)?)
                         .map_err(TypedStreamError::SliceError)?,
                 );
                 Ok(value as i64)
@@ -97,8 +96,7 @@ impl<'a> TypedStreamReader<'a> {
                 let size = 4;
                 self.idx += 1;
                 let value = i32::from_le_bytes(
-                    self.read_exact_bytes(size)?
-                        .try_into()
+                    <[u8; 4]>::try_from(self.read_exact_bytes(size)?)
                         .map_err(TypedStreamError::SliceError)?,
                 );
                 Ok(value as i64)
@@ -123,8 +121,7 @@ impl<'a> TypedStreamReader<'a> {
                 let size = 2;
                 self.idx += 1;
                 let value = u16::from_le_bytes(
-                    self.read_exact_bytes(size)?
-                        .try_into()
+                    <[u8; 2]>::try_from(self.read_exact_bytes(size)?)
                         .map_err(TypedStreamError::SliceError)?,
                 );
                 Ok(value as u64)
@@ -133,8 +130,7 @@ impl<'a> TypedStreamReader<'a> {
                 let size = 4;
                 self.idx += 1;
                 let value = u32::from_le_bytes(
-                    self.read_exact_bytes(size)?
-                        .try_into()
+                    <[u8; 4]>::try_from(self.read_exact_bytes(size)?)
                         .map_err(TypedStreamError::SliceError)?,
                 );
                 Ok(value as u64)
@@ -154,8 +150,7 @@ impl<'a> TypedStreamReader<'a> {
                 let size = 4;
                 self.idx += 1;
                 let value = f32::from_le_bytes(
-                    self.read_exact_bytes(size)?
-                        .try_into()
+                    <[u8; 4]>::try_from(self.read_exact_bytes(size)?)
                         .map_err(TypedStreamError::SliceError)?,
                 );
                 Ok(value)
@@ -175,8 +170,7 @@ impl<'a> TypedStreamReader<'a> {
                 let size = 8;
                 self.idx += 1;
                 let value = f64::from_le_bytes(
-                    self.read_exact_bytes(size)?
-                        .try_into()
+                    <[u8; 8]>::try_from(self.read_exact_bytes(size)?)
                         .map_err(TypedStreamError::SliceError)?,
                 );
                 Ok(value)
