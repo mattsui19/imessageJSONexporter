@@ -358,6 +358,8 @@ impl<'a> TypedStreamReader<'a> {
                 if embedded {
                     self.object_table
                         .push(Archivable::Type(object_types.clone()));
+                    self.seen_embedded_types
+                        .insert(self.object_table.len().saturating_sub(1) as u32);
                 }
                 self.types_table.push(object_types);
                 Ok(self.types_table.last().cloned())
