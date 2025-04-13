@@ -358,6 +358,7 @@ impl<'a> TypedStreamReader<'a> {
                 if embedded {
                     self.object_table
                         .push(Archivable::Type(object_types.clone()));
+                    // We only want to include the first embedded reference tag, not subsequent references to the same embed
                     self.seen_embedded_types
                         .insert(self.object_table.len().saturating_sub(1) as u32);
                 }
