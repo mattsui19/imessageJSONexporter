@@ -1148,7 +1148,7 @@ mod typedstream_tests {
     #[test]
     fn can_get_message_body_multiple_attachment() {
         let mut m = Message::blank();
-        m.text = Some("\u{FFFC}".to_string());
+        m.text = Some("\u{FFFC}\u{FFFC}\u{FFFC}\u{FFFC}\u{FFFC}\u{FFFC}\u{FFFC}\u{FFFC}\u{FFFC}\u{FFFC}\u{FFFC}\u{FFFC}\u{FFFC}\u{FFFC}\u{FFFC}\u{FFFC}\u{FFFC}\u{FFFC}\u{FFFC}".to_string());
 
         let typedstream_path = current_dir()
             .unwrap()
