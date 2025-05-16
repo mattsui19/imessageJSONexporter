@@ -8,7 +8,8 @@ use indicatif::{ProgressBar, ProgressDrawTarget, ProgressStyle};
 
 const TEMPLATE_DEFAULT: &str =
     "{spinner:.green} [{elapsed}] [{bar:.blue}] {human_pos}/{human_len} ({per_sec}, ETA: {eta})";
-const TEMPLATE_BUSY: &str = "{spinner:.green} [{elapsed}] [{bar:.blue}] {human_pos}/{human_len} (ETA: N/A) {msg}";
+const TEMPLATE_BUSY: &str =
+    "{spinner:.green} [{elapsed}] [{bar:.blue}] {human_pos}/{human_len} (ETA: N/A) {msg}";
 
 /// Wrapper around indicatif's ProgressBar with specialized functionality
 pub struct ExportProgress {

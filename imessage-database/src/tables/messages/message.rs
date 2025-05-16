@@ -381,25 +381,25 @@ impl Cacheable for Message {
 
         // Create query
         let statement = db.prepare(&format!(
-            "SELECT 
-                 {COLS}, 
-                 c.chat_id, 
+            "SELECT
+                 {COLS},
+                 c.chat_id,
                  (SELECT COUNT(*) FROM {MESSAGE_ATTACHMENT_JOIN} a WHERE m.ROWID = a.message_id) as num_attachments,
                  NULL as deleted_from,
                  0 as num_replies
-             FROM 
+             FROM
                  {MESSAGE} as m
              LEFT JOIN {CHAT_MESSAGE_JOIN} as c ON m.ROWID = c.message_id
              WHERE m.associated_message_guid IS NOT NULL
             "
         )).or_else(|_| db.prepare(&format!(
-            "SELECT 
-                 *, 
-                 c.chat_id, 
+            "SELECT
+                 *,
+                 c.chat_id,
                  (SELECT COUNT(*) FROM {MESSAGE_ATTACHMENT_JOIN} a WHERE m.ROWID = a.message_id) as num_attachments,
                  NULL as deleted_from,
                  0 as num_replies
-             FROM 
+             FROM
                  {MESSAGE} as m
              LEFT JOIN {CHAT_MESSAGE_JOIN} as c ON m.ROWID = c.message_id
              WHERE m.associated_message_guid IS NOT NULL
@@ -769,8 +769,8 @@ impl Message {
     pub fn get_count(db: &Connection, context: &QueryContext) -> Result<u64, TableError> {
         let mut statement = if context.has_filters() {
             db.prepare(&format!(
-                "SELECT 
-                     COUNT(*) 
+                "SELECT
+                     COUNT(*)
                  FROM {MESSAGE} as m
                  LEFT JOIN {CHAT_MESSAGE_JOIN} as c ON m.ROWID = c.message_id
                  LEFT JOIN {RECENTLY_DELETED} as d ON m.ROWID = d.message_id
@@ -779,8 +779,8 @@ impl Message {
             ))
             .or_else(|_| {
                 db.prepare(&format!(
-                    "SELECT 
-                         COUNT(*) 
+                    "SELECT
+                         COUNT(*)
                      FROM {MESSAGE} as m
                      LEFT JOIN {CHAT_MESSAGE_JOIN} as c ON m.ROWID = c.message_id
                     {}",
