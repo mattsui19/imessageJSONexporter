@@ -8,6 +8,7 @@ use std::{
     path::PathBuf,
 };
 
+use crabapple::error::BackupError;
 use imessage_database::{error::table::TableError, util::size::format_file_size};
 
 use crate::app::options::OPTION_BYPASS_FREE_SPACE_CHECK;
@@ -19,6 +20,7 @@ pub enum RuntimeError {
     CreateError(IoError, PathBuf),
     DiskError(IoError),
     DatabaseError(TableError),
+    BackupError(BackupError),
     NotEnoughAvailableSpace(u64, u64),
 }
 
@@ -38,6 +40,13 @@ impl Display for RuntimeError {
                     OPTION_BYPASS_FREE_SPACE_CHECK
                 )
             }
+            RuntimeError::BackupError(why) => write!(fmt, "{why}"),
         }
+    }
+}
+
+impl From<BackupError> for RuntimeError {
+    fn from(err: BackupError) -> Self {
+        RuntimeError::BackupError(err)
     }
 }
