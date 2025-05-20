@@ -12,7 +12,7 @@ version = "0.0.0"
 [dependencies]
 chrono = "=0.4.40"
 plist = "=1.7.1"
-rusqlite = { version = "=0.34.0", features = ["blob", "bundled"] }
+rusqlite = { version = "=0.35.0", features = ["blob", "bundled"] }
 sha1 = "=0.10.6"
 protobuf = "=3.7.2"
 lzma-rs = "=0.3.0"
