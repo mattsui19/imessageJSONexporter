@@ -137,6 +137,14 @@ impl AttachmentManager {
         if !matches!(self.mode, AttachmentManagerMode::Disabled) {
             let from = Path::new(&attachment_path);
 
+            // TODO: If we need to decrypt the `from` file, do it here first
+            if let Some(backup) = &config.backup {
+                match backup.get_file(from.file_name().unwrap().to_str().unwrap()) {
+                    Ok(file) => println!("File: {:?}", file.relative_path),
+                    Err(why) => println!("Error: {why:?}"),
+                }
+            }
+
             // Ensure the file exists at the specified location
             if !from.exists() {
                 eprintln!("Attachment not found at specified path: {from:?}");

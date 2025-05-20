@@ -9,6 +9,7 @@ use std::{
     path::PathBuf,
 };
 
+use crabapple::Backup;
 use fdlimit::raise_fd_limit;
 use fs2::available_space;
 use rusqlite::Connection;
@@ -16,8 +17,14 @@ use rusqlite::Connection;
 use crate::{
     Exporter, HTML, TXT,
     app::{
-        compatibility::attachment_manager::AttachmentManagerMode, error::RuntimeError,
-        export_type::ExportType, options::Options, sanitizers::sanitize_filename,
+        compatibility::{
+            attachment_manager::AttachmentManagerMode,
+            backup::{decrypt_backup, get_decrypted_message_database},
+        },
+        error::RuntimeError,
+        export_type::ExportType,
+        options::Options,
+        sanitizers::sanitize_filename,
     },
 };
 
@@ -59,6 +66,8 @@ pub struct Config {
     pub offset: i64,
     /// The connection we use to query the database
     pub db: Connection,
+    /// An optional encrypted iOS backup
+    pub backup: Option<Backup>,
 }
 
 impl Config {
@@ -211,7 +220,13 @@ impl Config {
     /// let app = Config::new(options).unwrap();
     /// ```
     pub fn new(options: Options) -> Result<Config, RuntimeError> {
-        let conn = get_connection(&options.get_db_path()).map_err(RuntimeError::DatabaseError)?;
+        let backup = decrypt_backup(&options)?;
+        let conn = match &backup {
+            Some(b) => get_connection(&get_decrypted_message_database(b)?),
+            None => get_connection(&options.get_db_path()),
+        }
+        .map_err(RuntimeError::DatabaseError)?;
+
         eprintln!("Building cache...");
         eprintln!("  [1/4] Caching chats...");
         let chatrooms = Chat::cache(&conn).map_err(RuntimeError::DatabaseError)?;
@@ -234,6 +249,7 @@ impl Config {
             options,
             offset: get_offset(),
             db: conn,
+            backup,
         })
     }
 
@@ -486,6 +502,7 @@ impl Config {
             options,
             offset: get_offset(),
             db: connection,
+            backup: None,
         }
     }
 
