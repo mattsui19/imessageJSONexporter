@@ -133,7 +133,7 @@ Export as `txt` and copy attachments in their original formats from the default 
 imessage-exporter -f txt -o output -c clone
 ```
 
-Export as `txt` from the an iPhone backup located at `~/iphone_backup_latest` to a new folder in the current working directory called `backup_export`:
+Export as `txt` from an iPhone backup located at `~/iphone_backup_latest` to a new folder in the current working directory called `backup_export`:
 
 ```zsh
 imessage-exporter -f txt -p ~/iphone_backup_latest -a iOS -o backup_export
