@@ -3,15 +3,14 @@
 */
 
 use std::{
-    env::temp_dir,
     fmt::Display,
-    fs::{File, create_dir_all, metadata, remove_file, write},
-    io::{BufWriter, Write, copy},
+    fs::{create_dir_all, metadata, remove_file, write},
     path::{Path, PathBuf},
 };
 
 use crate::app::{
     compatibility::{
+        backup::decrypt_file,
         converters::{
             audio::audio_copy_convert, common::copy_raw, image::image_copy_convert,
             sticker::sticker_copy_convert, video::video_copy_convert,
@@ -141,38 +140,18 @@ impl AttachmentManager {
             let mut from = PathBuf::from(&attachment_path);
 
             // Handle encrypted files from iOS backups
-            // TODO: Error handling
             if let Some(backup) = &config.backup {
-                match backup.get_file(from.file_name()?.to_str()?) {
-                    Ok(file) => {
-                        let temp_dir = temp_dir().join(&file.file_id);
-                        let mut temp_file = File::create(&temp_dir).ok()?;
-
-                        // Get the size of the file
-                        let file_size = file.metadata.size;
-                        // If the file is larger than 25MB, we will stream decryption from/to disk
-                        // otherwise, we will decrypt in memory
-                        if file_size > 25_000_000 {
-                            // Copy via disk
-                            let mut decryption_stream = backup.decrypt_entry_stream(&file).ok()?;
-                            let mut writer = BufWriter::new(temp_file);
-
-                            // Copy all data from reader to writer
-                            copy(&mut decryption_stream, &mut writer).ok()?;
-
-                            // Ensure all buffered data is flushed to disk
-                            writer.flush().ok()?;
-                        } else {
-                            // Copy via memory
-                            let decrypted_bytes = backup.decrypt_entry(&file).ok()?;
-                            temp_file.write_all(&decrypted_bytes).ok()?;
-                        }
-
-                        // Ensure we remove the temporary file later
+                match decrypt_file(backup, &from) {
+                    Ok(decrypted_path) => {
+                        // If the decrypted file is different from the original, use the decrypted one
+                        from = decrypted_path;
+                        // The decrypted file is temporary, so we need to remove it later
                         is_temp = true;
-                        from = temp_dir;
                     }
-                    Err(why) => println!("Error: {why}"),
+                    Err(why) => {
+                        eprintln!("Unable to decrypt {from:?}: {why}");
+                        return None;
+                    }
                 }
             }
 
@@ -353,5 +332,47 @@ fn update_file_metadata(from: &Path, to: &Path, message: &Message, config: &Conf
         if let Err(why) = set_file_times(to, atime, mtime) {
             eprintln!("Unable to update {to:?} metadata: {why}");
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::app::{
+        compatibility::attachment_manager::{AttachmentManager, AttachmentManagerMode},
+        export_type::ExportType,
+        options::Options,
+        runtime::Config,
+    };
+
+    #[test]
+    fn test_attachment_manager_mode() {
+        assert_eq!(
+            AttachmentManagerMode::from_cli("disabled"),
+            Some(AttachmentManagerMode::Disabled)
+        );
+        assert_eq!(
+            AttachmentManagerMode::from_cli("basic"),
+            Some(AttachmentManagerMode::Basic)
+        );
+        assert_eq!(
+            AttachmentManagerMode::from_cli("clone"),
+            Some(AttachmentManagerMode::Clone)
+        );
+        assert_eq!(
+            AttachmentManagerMode::from_cli("full"),
+            Some(AttachmentManagerMode::Full)
+        );
+        assert_eq!(AttachmentManagerMode::from_cli("invalid"), None);
+    }
+
+    #[test]
+    fn test_can_handle_attachment() {
+        let options = Options::fake_options(ExportType::Html);
+        let config = Config::fake_app(options);
+
+        let mut message = Config::fake_message();
+        let mut attachment = Config::fake_attachment();
+
+        let mut attachment_manager = AttachmentManager::from(AttachmentManagerMode::Disabled);
     }
 }
