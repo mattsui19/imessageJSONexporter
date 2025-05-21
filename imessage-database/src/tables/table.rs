@@ -188,7 +188,7 @@ pub const YOU: &str = "You";
 pub const UNKNOWN: &str = "Unknown";
 /// Default location for the Messages database on macOS
 pub const DEFAULT_PATH_MACOS: &str = "Library/Messages/chat.db";
-/// Default location for the Messages database in an unencrypted iOS backup
+/// Default location for the Messages database in an iOS backup
 pub const DEFAULT_PATH_IOS: &str = "3d/3d0d7e5fb2ce288813306e4d4636395e047a3d28";
 /// Chat name reserved for messages that do not belong to a chat in the table
 pub const ORPHANED: &str = "orphaned";
