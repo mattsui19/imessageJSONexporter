@@ -6,7 +6,7 @@ use std::{
     env::temp_dir,
     fmt::Display,
     fs::{File, create_dir_all, metadata, remove_file, write},
-    io::Write,
+    io::{BufWriter, Write, copy},
     path::{Path, PathBuf},
 };
 
@@ -148,9 +148,25 @@ impl AttachmentManager {
                         let temp_dir = temp_dir().join(&file.file_id);
                         let mut temp_file = File::create(&temp_dir).ok()?;
 
-                        // TODO: In memory conversion for small files, streaming for large files
-                        let decrypted_bytes = backup.decrypt_entry(&file).ok()?;
-                        temp_file.write_all(&decrypted_bytes).ok()?;
+                        // Get the size of the file
+                        let file_size = file.metadata.size;
+                        // If the file is larger than 25MB, we will stream decryption from/to disk
+                        // otherwise, we will decrypt in memory
+                        if file_size > 25_000_000 {
+                            // Copy via disk
+                            let mut decryption_stream = backup.decrypt_entry_stream(&file).ok()?;
+                            let mut writer = BufWriter::new(temp_file);
+
+                            // Copy all data from reader to writer
+                            copy(&mut decryption_stream, &mut writer).ok()?;
+
+                            // Ensure all buffered data is flushed to disk
+                            writer.flush().ok()?;
+                        } else {
+                            // Copy via memory
+                            let decrypted_bytes = backup.decrypt_entry(&file).ok()?;
+                            temp_file.write_all(&decrypted_bytes).ok()?;
+                        }
 
                         // Ensure we remove the temporary file later
                         is_temp = true;
