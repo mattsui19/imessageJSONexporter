@@ -14,7 +14,7 @@ pub fn decrypt_backup(options: &Options) -> Result<Option<Backup>, RuntimeError>
     eprintln!("Decrypting iOS backup...");
     eprintln!("  [1/3] Deriving backup keys...");
     let auth = Authentication::Password(pw.clone());
-    let backup = Backup::new(options.db_path.clone(), &auth)?;
+    let backup = Backup::open(options.db_path.clone(), &auth)?;
 
     Ok(Some(backup))
 }
