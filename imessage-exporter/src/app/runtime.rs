@@ -9,7 +9,7 @@ use std::{
     path::PathBuf,
 };
 
-use crabapple::{Backup, backup};
+use crabapple::Backup;
 use fdlimit::raise_fd_limit;
 use fs2::available_space;
 use rusqlite::Connection;
