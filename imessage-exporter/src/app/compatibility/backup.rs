@@ -1,4 +1,4 @@
-use std::{fs::File, io::copy, path::PathBuf};
+use std::{env::temp_dir, fs::File, io::copy, path::PathBuf};
 
 use crabapple::{Authentication, Backup};
 use imessage_database::{tables::table::DEFAULT_PATH_IOS, util::platform::Platform};
@@ -26,8 +26,8 @@ pub fn get_decrypted_message_database(backup: &Backup) -> Result<PathBuf, Runtim
 
     let mut decrypted_chat_db = backup.decrypt_entry_stream(&file)?;
 
-    // Write decrypted messages.db into the platform-specific temporary directory
-    let tmp_path = std::env::temp_dir().join("crabapple-chat.db");
+    // Write decrypted sms.db into a platform-specific temporary directory
+    let tmp_path = temp_dir().join("crabapple-sms.db");
     let mut file = File::create(&tmp_path).map_err(RuntimeError::DiskError)?;
 
     // Stream-decrypt directly into the temp file
