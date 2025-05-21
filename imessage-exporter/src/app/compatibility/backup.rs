@@ -33,11 +33,11 @@ pub fn get_decrypted_message_database(backup: &Backup) -> Result<PathBuf, Runtim
 
     // Write decrypted sms.db into a platform-specific temporary directory
     let tmp_path = temp_dir().join("crabapple-sms.db");
-    let mut file = File::create(&tmp_path).map_err(RuntimeError::DiskError)?;
+    let mut file = File::create(&tmp_path)?;
 
     // Stream-decrypt directly into the temp file
     eprintln!("  [3/3] Decrypting `sms.db`...");
-    copy(&mut decrypted_chat_db, &mut file).map_err(RuntimeError::DiskError)?;
+    copy(&mut decrypted_chat_db, &mut file)?;
 
     eprintln!(
         "Decrypted iOS backup: {} (version {})\n",

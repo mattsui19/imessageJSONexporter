@@ -67,11 +67,7 @@ impl<'a> Exporter<'a> for TXT<'a> {
         orphaned.push(ORPHANED);
         orphaned.set_extension("txt");
 
-        let file = File::options()
-            .append(true)
-            .create(true)
-            .open(&orphaned)
-            .map_err(|err| RuntimeError::CreateError(err, orphaned))?;
+        let file = File::options().append(true).create(true).open(&orphaned)?;
 
         Ok(TXT {
             config,
@@ -94,20 +90,18 @@ impl<'a> Exporter<'a> for TXT<'a> {
         // Set up progress bar
         let mut current_message = 0;
         let total_messages =
-            Message::get_count(self.config.db(), &self.config.options.query_context)
-                .map_err(RuntimeError::DatabaseError)?;
+            Message::get_count(self.config.db(), &self.config.options.query_context)?;
         self.pb.start(total_messages);
 
         let mut statement =
-            Message::stream_rows(self.config.db(), &self.config.options.query_context)
-                .map_err(RuntimeError::DatabaseError)?;
+            Message::stream_rows(self.config.db(), &self.config.options.query_context)?;
 
         let messages = statement
             .query_map([], |row| Ok(Message::from_row(row)))
             .map_err(|err| RuntimeError::DatabaseError(TableError::Messages(err)))?;
 
         for message in messages {
-            let mut msg = Message::extract(message).map_err(RuntimeError::DatabaseError)?;
+            let mut msg = Message::extract(message)?;
 
             // Early escape if we try and render the same message GUID twice
             // See https://github.com/ReagentX/imessage-exporter/issues/135 for rationale
@@ -127,9 +121,7 @@ impl<'a> Exporter<'a> for TXT<'a> {
             }
             // Message replies and tapbacks are rendered in context, so no need to render them separately
             else if !msg.is_tapback() {
-                let message = self
-                    .format_message(&msg, 0)
-                    .map_err(RuntimeError::DatabaseError)?;
+                let message = self.format_message(&msg, 0)?;
                 TXT::write_to_file(self.get_or_create_file(&msg)?, &message)?;
             }
             current_message += 1;
@@ -156,11 +148,7 @@ impl<'a> Exporter<'a> for TXT<'a> {
                         path.push(self.config.filename(chatroom));
                         path.set_extension("txt");
 
-                        let file = File::options()
-                            .append(true)
-                            .create(true)
-                            .open(&path)
-                            .map_err(|err| RuntimeError::CreateError(err, path))?;
+                        let file = File::options().append(true).create(true).open(&path)?;
 
                         Ok(entry.insert(BufWriter::new(file)))
                     }

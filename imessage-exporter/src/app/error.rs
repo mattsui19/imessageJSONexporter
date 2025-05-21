@@ -17,7 +17,6 @@ use crate::app::options::OPTION_BYPASS_FREE_SPACE_CHECK;
 #[derive(Debug)]
 pub enum RuntimeError {
     InvalidOptions(String),
-    CreateError(IoError, PathBuf),
     DiskError(IoError),
     DatabaseError(TableError),
     BackupError(BackupError),
@@ -29,7 +28,6 @@ impl Display for RuntimeError {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
         match self {
             RuntimeError::InvalidOptions(why) => write!(fmt, "Invalid options!\n{why}"),
-            RuntimeError::CreateError(why, path) => write!(fmt, "{why}: {path:?}"),
             RuntimeError::DiskError(why) => write!(fmt, "{why}"),
             RuntimeError::DatabaseError(why) => write!(fmt, "{why}"),
             RuntimeError::NotEnoughAvailableSpace(estimated_bytes, available_bytes) => {

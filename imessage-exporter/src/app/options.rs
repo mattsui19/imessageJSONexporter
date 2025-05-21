@@ -186,7 +186,7 @@ impl Options {
                     "{platform_str} is not a valid platform! Must be one of <{SUPPORTED_PLATFORMS}>"
                 )))?
             }
-            None => Platform::determine(&db_path).map_err(RuntimeError::DatabaseError)?,
+            None => Platform::determine(&db_path)?,
         };
 
         // Prevent cleartext_password from being set if the source is not an iOS backup

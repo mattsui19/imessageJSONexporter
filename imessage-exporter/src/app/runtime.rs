@@ -224,19 +224,17 @@ impl Config {
         let conn = match &backup {
             Some(b) => get_connection(&get_decrypted_message_database(b)?),
             None => get_connection(&options.get_db_path()),
-        }
-        .map_err(RuntimeError::DatabaseError)?;
+        }?;
 
         eprintln!("Building cache...");
         eprintln!("  [1/4] Caching chats...");
-        let chatrooms = Chat::cache(&conn).map_err(RuntimeError::DatabaseError)?;
+        let chatrooms = Chat::cache(&conn)?;
         eprintln!("  [2/4] Caching chatrooms...");
-        let chatroom_participants =
-            ChatToHandle::cache(&conn).map_err(RuntimeError::DatabaseError)?;
+        let chatroom_participants = ChatToHandle::cache(&conn)?;
         eprintln!("  [3/4] Caching participants...");
-        let participants = Handle::cache(&conn).map_err(RuntimeError::DatabaseError)?;
+        let participants = Handle::cache(&conn)?;
         eprintln!("  [4/4] Caching tapbacks...");
-        let tapbacks = Message::cache(&conn).map_err(RuntimeError::DatabaseError)?;
+        let tapbacks = Message::cache(&conn)?;
         eprintln!("Cache built!");
 
         Ok(Config {
@@ -345,12 +343,10 @@ impl Config {
     fn ensure_free_space(&self) -> Result<(), RuntimeError> {
         // Export size is usually about 6% the size of the db; we divide by 10 to over-estimate about 10% of the total size
         // for some safe headroom
-        let total_db_size =
-            get_db_size(&self.options.db_path).map_err(RuntimeError::DatabaseError)?;
+        let total_db_size = get_db_size(&self.options.db_path)?;
         let mut estimated_export_size = total_db_size / 10;
 
-        let free_space_at_location =
-            available_space(&self.options.export_path).map_err(RuntimeError::DiskError)?;
+        let free_space_at_location = available_space(&self.options.export_path)?;
 
         // Validate that there is enough disk space free to write the export
         if let AttachmentManagerMode::Disabled = self.options.attachment_manager.mode {
@@ -362,8 +358,7 @@ impl Config {
             }
         } else {
             let total_attachment_size =
-                Attachment::get_total_attachment_bytes(self.db(), &self.options.query_context)
-                    .map_err(RuntimeError::DatabaseError)?;
+                Attachment::get_total_attachment_bytes(self.db(), &self.options.query_context)?;
             estimated_export_size += total_attachment_size;
             if (estimated_export_size + total_attachment_size) >= free_space_at_location {
                 return Err(RuntimeError::NotEnoughAvailableSpace(
@@ -435,7 +430,7 @@ impl Config {
     /// ```
     pub fn start(&self) -> Result<(), RuntimeError> {
         if self.options.diagnostic {
-            self.run_diagnostic().map_err(RuntimeError::DatabaseError)?;
+            self.run_diagnostic()?;
         } else if let Some(export_type) = &self.options.export_type {
             // Ensure that if we want to filter on things, we have stuff to filter for
             if let Some(filters) = &self.options.conversation_filter {
@@ -448,14 +443,14 @@ impl Config {
             }
 
             // Ensure the path we want to export to exists
-            create_dir_all(&self.options.export_path).map_err(RuntimeError::DiskError)?;
+            create_dir_all(&self.options.export_path)?;
 
             // Ensure the path we want to copy attachments to exists, if requested
             if !matches!(
                 self.options.attachment_manager.mode,
                 AttachmentManagerMode::Disabled
             ) {
-                create_dir_all(self.attachment_path()).map_err(RuntimeError::DiskError)?;
+                create_dir_all(self.attachment_path())?;
             }
 
             // Ensure there is enough free disk space to write the export
