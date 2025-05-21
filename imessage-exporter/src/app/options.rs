@@ -336,7 +336,7 @@ fn get_command() -> Command {
             Arg::new(OPTION_DB_PATH)
                 .short('p')
                 .long(OPTION_DB_PATH)
-                .help(format!("Specify an optional custom path for the iMessage database location\nFor macOS, specify a path to a `chat.db` file\nFor iOS, specify a path to the root of an unencrypted backup directory\nIf omitted, the default directory is {}\n", default_db_path().display()))
+                .help(format!("Specify an optional custom path for the iMessage database location\nFor macOS, specify a path to a `chat.db` file\nFor iOS, specify a path to the root of an iOS backup directory\nIf the iOS backup is encrypted, --{OPTION_CLEARTEXT_PASSWORD} must be passed\nIf omitted, the default directory is {}\n", default_db_path().display()))
                 .display_order(3)
                 .value_name("path/to/source"),
         )
@@ -423,7 +423,7 @@ fn get_command() -> Command {
             Arg::new(OPTION_CLEARTEXT_PASSWORD)
                 .short('x')
                 .long(OPTION_CLEARTEXT_PASSWORD)
-                .help("Optional password for encrypted backups\nThis is only used when the source is an encrypted iOS backup directory.\n")
+                .help("Optional password for encrypted iOS backups\nThis is only used when the source is an encrypted iOS backup directory\n")
                 .display_order(14)
                 .value_name("password"),
         )
