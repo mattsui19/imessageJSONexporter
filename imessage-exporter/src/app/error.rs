@@ -5,7 +5,6 @@
 use std::{
     fmt::{Display, Formatter, Result},
     io::Error as IoError,
-    path::PathBuf,
 };
 
 use crabapple::error::BackupError;
