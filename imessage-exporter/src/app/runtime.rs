@@ -5,11 +5,11 @@
 use std::{
     cmp::min,
     collections::{BTreeSet, HashMap, HashSet},
-    fs::create_dir_all,
+    fs::{create_dir_all, remove_file},
     path::PathBuf,
 };
 
-use crabapple::Backup;
+use crabapple::{Backup, backup};
 use fdlimit::raise_fd_limit;
 use fs2::available_space;
 use rusqlite::Connection;
@@ -65,7 +65,7 @@ pub struct Config {
     /// Global date offset used by the iMessage database:
     pub offset: i64,
     /// The connection we use to query the database
-    pub db: Connection,
+    pub db: Option<Connection>,
     /// An optional encrypted iOS backup
     pub backup: Option<Backup>,
 }
@@ -248,9 +248,23 @@ impl Config {
             tapbacks,
             options,
             offset: get_offset(),
-            db: conn,
+            db: Some(conn),
             backup,
         })
+    }
+
+    /// Get the current database connection, if it is alive
+    ///
+    /// # Panics
+    ///
+    /// Panics if the database connection is closed.
+    pub(crate) fn db(&self) -> &Connection {
+        match self.db.as_ref() {
+            Some(db) => db,
+            None => {
+                panic!("Database connection is closed!");
+            }
+        }
     }
 
     /// Convert comma separated list of participant strings into table chat IDs using
@@ -348,7 +362,7 @@ impl Config {
             }
         } else {
             let total_attachment_size =
-                Attachment::get_total_attachment_bytes(&self.db, &self.options.query_context)
+                Attachment::get_total_attachment_bytes(self.db(), &self.options.query_context)
                     .map_err(RuntimeError::DatabaseError)?;
             estimated_export_size += total_attachment_size;
             if (estimated_export_size + total_attachment_size) >= free_space_at_location {
@@ -370,10 +384,10 @@ impl Config {
     /// Handles diagnostic tests for database
     fn run_diagnostic(&self) -> Result<(), TableError> {
         println!("\niMessage Database Diagnostics\n");
-        Handle::run_diagnostic(&self.db)?;
-        Message::run_diagnostic(&self.db)?;
-        Attachment::run_diagnostic(&self.db, &self.options.db_path, &self.options.platform)?;
-        ChatToHandle::run_diagnostic(&self.db)?;
+        Handle::run_diagnostic(self.db())?;
+        Message::run_diagnostic(self.db())?;
+        Attachment::run_diagnostic(self.db(), &self.options.db_path, &self.options.platform)?;
+        ChatToHandle::run_diagnostic(self.db())?;
 
         // Global Diagnostics
         println!("Global diagnostic data:");
@@ -501,7 +515,7 @@ impl Config {
             tapbacks: HashMap::new(),
             options,
             offset: get_offset(),
-            db: connection,
+            db: Some(connection),
             backup: None,
         }
     }
@@ -555,6 +569,27 @@ impl Config {
             hide_attachment: 0,
             emoji_description: None,
             copied_path: None,
+        }
+    }
+}
+
+impl Drop for Config {
+    fn drop(&mut self) {
+        if let Some(backup) = &self.backup {
+            // Remove the temporary `sms.db` file if it was created
+            if backup.manifest_db.is_temporary {
+                if let Some(conn) = self.db.take() {
+                    let path = conn.path().unwrap().to_string();
+                    conn.close().ok();
+
+                    // Remove the file, ignoring errors if any
+                    if let Err(e) = remove_file(&path) {
+                        eprintln!(
+                            "warning: failed to remove temporary `sms.db` file at {path}: {e}"
+                        );
+                    }
+                }
+            }
         }
     }
 }
