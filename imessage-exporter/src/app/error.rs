@@ -22,6 +22,7 @@ pub enum RuntimeError {
     DatabaseError(TableError),
     BackupError(BackupError),
     NotEnoughAvailableSpace(u64, u64),
+    FileNameError,
 }
 
 impl Display for RuntimeError {
@@ -41,12 +42,25 @@ impl Display for RuntimeError {
                 )
             }
             RuntimeError::BackupError(why) => write!(fmt, "{why}"),
+            RuntimeError::FileNameError => write!(fmt, "Invalid file name!"),
         }
+    }
+}
+
+impl From<TableError> for RuntimeError {
+    fn from(err: TableError) -> Self {
+        RuntimeError::DatabaseError(err)
     }
 }
 
 impl From<BackupError> for RuntimeError {
     fn from(err: BackupError) -> Self {
         RuntimeError::BackupError(err)
+    }
+}
+
+impl From<IoError> for RuntimeError {
+    fn from(err: IoError) -> Self {
+        RuntimeError::DiskError(err)
     }
 }
