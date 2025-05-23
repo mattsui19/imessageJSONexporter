@@ -26,9 +26,8 @@ pub fn decrypt_backup(options: &Options) -> Result<Option<Backup>, RuntimeError>
 
 pub fn get_decrypted_message_database(backup: &Backup) -> Result<PathBuf, RuntimeError> {
     let (_, file_id) = DEFAULT_PATH_IOS.split_at(3);
-    eprintln!("  [2/3] Resolving `sms.db`...");
+    eprintln!("  [2/3] Resolving messages database...");
     let file = backup.get_file(file_id)?;
-
     let mut decrypted_chat_db = backup.decrypt_entry_stream(&file)?;
 
     // Write decrypted sms.db into a platform-specific temporary directory
@@ -36,7 +35,7 @@ pub fn get_decrypted_message_database(backup: &Backup) -> Result<PathBuf, Runtim
     let mut file = File::create(&tmp_path)?;
 
     // Stream-decrypt directly into the temp file
-    eprintln!("  [3/3] Decrypting `sms.db`...");
+    eprintln!("  [3/3] Decrypting messages database...");
     copy(&mut decrypted_chat_db, &mut file)?;
 
     eprintln!(
