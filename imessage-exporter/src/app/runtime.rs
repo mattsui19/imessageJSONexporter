@@ -6,7 +6,7 @@ use std::{
     cmp::min,
     collections::{BTreeSet, HashMap, HashSet},
     fs::{create_dir_all, remove_file},
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 
 use crabapple::Backup;
@@ -29,7 +29,6 @@ use crate::{
 };
 
 use imessage_database::{
-    error::table::TableError,
     tables::{
         attachment::Attachment,
         chat::Chat,
@@ -377,7 +376,7 @@ impl Config {
     }
 
     /// Handles diagnostic tests for database
-    fn run_diagnostic(&self) -> Result<(), TableError> {
+    fn run_diagnostic(&self) -> Result<(), RuntimeError> {
         println!("\niMessage Database Diagnostics\n");
         Handle::run_diagnostic(self.db())?;
         Message::run_diagnostic(self.db())?;
@@ -387,7 +386,9 @@ impl Config {
         // Global Diagnostics
         println!("Global diagnostic data:");
 
-        let total_db_size = get_db_size(&self.options.db_path)?;
+        let total_db_size = get_db_size(Path::new(
+            self.db().path().ok_or(RuntimeError::FileNameError)?,
+        ))?;
         println!(
             "    Total database size: {}",
             format_file_size(total_db_size)
@@ -580,7 +581,7 @@ impl Drop for Config {
                     // Remove the file, ignoring errors if any
                     if let Err(e) = remove_file(&path) {
                         eprintln!(
-                            "warning: failed to remove temporary `sms.db` file at {path}: {e}"
+                            "warning: failed to remove temporary messages database at {path}: {e}"
                         );
                     }
                 }
