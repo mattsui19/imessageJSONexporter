@@ -235,6 +235,14 @@ impl<'a> Writer<'a> for HTML<'a> {
             "</span>",
         );
 
+        // Add message permalink
+        self.add_line(
+            &mut formatted_message,
+            &format!("<a title=\"Reveal in iMessage\" href=\"sms://open?message-guid={}\">⎋</a>", message.guid),
+            "<span class=\"message_permalink\">",
+            "</span>"
+        );
+
         // Add reply anchor if necessary
         if message.is_reply() {
             if indent_size > 0 {
