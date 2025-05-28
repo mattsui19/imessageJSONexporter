@@ -1565,7 +1565,7 @@ impl<'a> TextEffectFormatter<'a> for HTML<'a> {
 impl HTML<'_> {
     fn get_time(&self, message: &Message) -> (String, String) {
         let date = format(&message.date(&self.config.offset));
-        let mut read_at = String::with_capacity(48);
+        let mut read_at = String::new();
         let read_after = message.time_until_read(&self.config.offset);
         if let Some(time) = read_after {
             if !time.is_empty() {
