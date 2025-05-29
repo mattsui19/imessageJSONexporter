@@ -264,8 +264,6 @@ impl AttachmentManager {
                 if let Err(why) = remove_file(&from) {
                     eprintln!("Unable to remove encrypted file {from:?}: {why}");
                 }
-            } else {
-                println!("Attachment copied from: {from:?}");
             }
         }
 
