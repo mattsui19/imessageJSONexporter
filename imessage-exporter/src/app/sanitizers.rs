@@ -42,7 +42,7 @@ pub fn sanitize_filename(filename: &str) -> String {
     filename
         .chars()
         .map(|letter| {
-            if FILENAME_DISALLOWED_CHARS.contains(&letter) {
+            if (' '..='~').contains(&letter) && FILENAME_DISALLOWED_CHARS.contains(&letter) {
                 FILENAME_REPLACEMENT_CHAR
             } else {
                 letter
