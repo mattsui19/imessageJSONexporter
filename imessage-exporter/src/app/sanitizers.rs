@@ -8,11 +8,8 @@ use std::sync::LazyLock;
 use std::borrow::Cow;
 
 /// Characters disallowed in a filename
-static FILENAME_DISALLOWED_CHARS: LazyLock<HashSet<char>> = LazyLock::new(|| {
-    ['*', '"', '/', '\\', '<', '>', ':', '|', '?']
-        .into_iter()
-        .collect()
-});
+static FILENAME_DISALLOWED_CHARS: LazyLock<HashSet<char>> =
+    LazyLock::new(|| ['*', '"', '/', '\\', '<', '>', ':', '|', '?'].into());
 
 /// Characters disallowed in HTML
 static HTML_DISALLOWED_CHARS: LazyLock<HashMap<char, &str>> = LazyLock::new(|| {
@@ -25,8 +22,7 @@ static HTML_DISALLOWED_CHARS: LazyLock<HashMap<char, &str>> = LazyLock::new(|| {
         ('&', "&amp;"),
         (' ', "&nbsp;"),
     ]
-    .into_iter()
-    .collect()
+    .into()
 });
 /// The character to replace disallowed chars with
 const FILENAME_REPLACEMENT_CHAR: char = '_';
@@ -37,7 +33,7 @@ pub fn sanitize_filename(filename: &str) -> String {
         .chars()
         .map(|letter| {
             // Ensure the resultant string contains only printable ASCII characters (from space ' ' (0x20) through tilde '~' (0x7E))
-            if (' '..='~').contains(&letter) && FILENAME_DISALLOWED_CHARS.contains(&letter) {
+            if letter.is_control() || FILENAME_DISALLOWED_CHARS.contains(&letter) {
                 FILENAME_REPLACEMENT_CHAR
             } else {
                 letter
@@ -64,7 +60,7 @@ pub fn sanitize_html(input: &str) -> Cow<str> {
 }
 
 #[cfg(test)]
-mod test_filename {
+mod filename_sanitization_tests {
     use crate::app::sanitizers::sanitize_filename;
 
     #[test]
@@ -112,22 +108,57 @@ mod test_filename {
 
     #[test]
     fn handles_tab_char() {
-        assert_eq!(sanitize_filename("tab\there"), "tab\there");
+        assert_eq!(sanitize_filename("tab\there"), "tab_here");
     }
 
     #[test]
     fn handles_newline() {
-        assert_eq!(sanitize_filename("new\nline"), "new\nline");
+        assert_eq!(sanitize_filename("new\nline"), "new_line");
     }
 
     #[test]
     fn handles_carriage_return() {
-        assert_eq!(sanitize_filename("return\r"), "return\r");
+        assert_eq!(sanitize_filename("return\r"), "return_");
+    }
+
+    #[test]
+    fn handles_ascii_controls() {
+        assert_eq!(sanitize_filename("ascii\x01\x1F"), "ascii__");
+    }
+
+    #[test]
+    fn handles_empty_string() {
+        assert_eq!(sanitize_filename(""), "");
+    }
+
+    #[test]
+    fn leaves_allowed_chars_unchanged() {
+        assert_eq!(sanitize_filename("file.name-version"), "file.name-version");
+    }
+
+    #[test]
+    fn handles_accented_letters() {
+        assert_eq!(sanitize_filename("café/niño"), "café_niño");
+    }
+
+    #[test]
+    fn replaces_del_control_char() {
+        assert_eq!(sanitize_filename("\x7F"), "_");
+    }
+
+    #[test]
+    fn handles_mixed_control_and_disallowed() {
+        assert_eq!(sanitize_filename("*\t?\r"), "____");
+    }
+
+    #[test]
+    fn handles_chinese() {
+        assert_eq!(sanitize_filename("你好/世界"), "你好_世界");
     }
 }
 
 #[cfg(test)]
-mod tests {
+mod html_sanitization_tests {
     use crate::app::sanitizers::sanitize_html;
 
     #[test]
