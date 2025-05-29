@@ -10,6 +10,8 @@ use imessage_database::{tables::table::DEFAULT_PATH_IOS, util::platform::Platfor
 
 use crate::app::{error::RuntimeError, options::Options};
 
+const MAX_IN_MEMORY_DECRYPT: u64 = 25 * 1024 * 1024;
+
 /// Decrypt the iOS backup, if necessary
 pub fn decrypt_backup(options: &Options) -> Result<Option<Backup>, RuntimeError> {
     let (Platform::iOS, Some(pw)) = (&options.platform, &options.cleartext_password) else {
@@ -62,7 +64,7 @@ pub fn decrypt_file(backup: &Backup, from: &Path) -> Result<PathBuf, RuntimeErro
             let file_size = file.metadata.size;
             // If the file is larger than 25MB, we will stream decryption from/to disk
             // otherwise, we will decrypt in memory
-            if file_size > 25_000_000 {
+            if file_size > MAX_IN_MEMORY_DECRYPT {
                 // Copy via disk
                 let mut decryption_stream = backup.decrypt_entry_stream(&file)?;
                 let mut writer = BufWriter::new(temp_file);
