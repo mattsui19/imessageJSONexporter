@@ -8,7 +8,7 @@ This tool targets the current latest public release for iMessage. It may work wi
 
 ## Supported data sources
 
-- Local MacOS messages
+- Local macOS messages
 - Encrypted or unencrypted local iOS Backups
   - Unencrypted backups are resolved normally
   - Uses [crabapple](https://github.com/ReagentX/crabapple) to decrypt data from encrypted iOS backups
