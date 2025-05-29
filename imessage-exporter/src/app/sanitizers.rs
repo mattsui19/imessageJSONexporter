@@ -8,31 +8,25 @@ use std::sync::LazyLock;
 use std::borrow::Cow;
 
 /// Characters disallowed in a filename
-static FILENAME_DISALLOWED_CHARS: LazyLock<HashSet<&char>> = LazyLock::new(|| {
-    let mut set = HashSet::new();
-    set.insert(&'*');
-    set.insert(&'"');
-    set.insert(&'/');
-    set.insert(&'\\');
-    set.insert(&'<');
-    set.insert(&'>');
-    set.insert(&':');
-    set.insert(&'|');
-    set.insert(&'?');
-    set
+static FILENAME_DISALLOWED_CHARS: LazyLock<HashSet<char>> = LazyLock::new(|| {
+    ['*', '"', '/', '\\', '<', '>', ':', '|', '?']
+        .into_iter()
+        .collect()
 });
 
 /// Characters disallowed in HTML
-static HTML_DISALLOWED_CHARS: LazyLock<HashMap<&char, &str>> = LazyLock::new(|| {
-    let mut map = HashMap::new();
-    map.insert(&'>', "&gt;");
-    map.insert(&'<', "&lt;");
-    map.insert(&'"', "&quot;");
-    map.insert(&'\'', "&apos;");
-    map.insert(&'`', "&grave;");
-    map.insert(&'&', "&amp;");
-    map.insert(&' ', "&nbsp;");
-    map
+static HTML_DISALLOWED_CHARS: LazyLock<HashMap<char, &str>> = LazyLock::new(|| {
+    [
+        ('>', "&gt;"),
+        ('<', "&lt;"),
+        ('"', "&quot;"),
+        ('\'', "&apos;"),
+        ('`', "&grave;"),
+        ('&', "&amp;"),
+        (' ', "&nbsp;"),
+    ]
+    .into_iter()
+    .collect()
 });
 /// The character to replace disallowed chars with
 const FILENAME_REPLACEMENT_CHAR: char = '_';
