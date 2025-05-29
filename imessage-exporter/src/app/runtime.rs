@@ -23,7 +23,7 @@ use crate::{
         },
         error::RuntimeError,
         export_type::ExportType,
-        options::Options,
+        options::{OPTION_CLEARTEXT_PASSWORD, Options},
         sanitizers::sanitize_filename,
     },
 };
@@ -40,7 +40,7 @@ use imessage_database::{
             get_connection, get_db_size,
         },
     },
-    util::{dates::get_offset, size::format_file_size},
+    util::{dates::get_offset, platform::Platform, size::format_file_size},
 };
 
 const MAX_LENGTH: usize = 235;
@@ -224,6 +224,16 @@ impl Config {
             Some(b) => get_connection(&get_decrypted_message_database(b)?),
             None => get_connection(&options.get_db_path()),
         }?;
+
+        // Check if the backup is encrypted and a password was not provided
+        if matches!(options.platform, Platform::iOS)
+            && backup.is_none()
+            && conn.query_row("SELECT 1", [], |_| Ok(())).is_err()
+        {
+            return Err(RuntimeError::InvalidOptions(format!(
+                "The provided iOS backup is encrypted, but no password was provided. Please provide a password using the `--{OPTION_CLEARTEXT_PASSWORD}` option."
+            )));
+        }
 
         eprintln!("Building cache...");
         eprintln!("  [1/4] Caching chats...");
