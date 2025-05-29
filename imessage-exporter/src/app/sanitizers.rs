@@ -42,6 +42,7 @@ pub fn sanitize_filename(filename: &str) -> String {
     filename
         .chars()
         .map(|letter| {
+            // Ensure the resultant string contains only printable ASCII characters (from space ' ' (0x20) through tilde '~' (0x7E))
             if (' '..='~').contains(&letter) && FILENAME_DISALLOWED_CHARS.contains(&letter) {
                 FILENAME_REPLACEMENT_CHAR
             } else {

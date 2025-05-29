@@ -337,12 +337,7 @@ fn update_file_metadata(from: &Path, to: &Path, message: &Message, config: &Conf
 
 #[cfg(test)]
 mod tests {
-    use crate::app::{
-        compatibility::attachment_manager::{AttachmentManager, AttachmentManagerMode},
-        export_type::ExportType,
-        options::Options,
-        runtime::Config,
-    };
+    use crate::app::compatibility::attachment_manager::AttachmentManagerMode;
 
     #[test]
     fn test_attachment_manager_mode() {
@@ -363,16 +358,5 @@ mod tests {
             Some(AttachmentManagerMode::Full)
         );
         assert_eq!(AttachmentManagerMode::from_cli("invalid"), None);
-    }
-
-    #[test]
-    fn test_can_handle_attachment() {
-        let options = Options::fake_options(ExportType::Html);
-        let config = Config::fake_app(options);
-
-        let mut message = Config::fake_message();
-        let mut attachment = Config::fake_attachment();
-
-        let mut attachment_manager = AttachmentManager::from(AttachmentManagerMode::Disabled);
     }
 }
