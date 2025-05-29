@@ -352,7 +352,9 @@ impl Config {
     fn ensure_free_space(&self) -> Result<(), RuntimeError> {
         // Export size is usually about 6% the size of the db; we divide by 10 to over-estimate about 10% of the total size
         // for some safe headroom
-        let total_db_size = get_db_size(&self.options.db_path)?;
+        let total_db_size = get_db_size(Path::new(
+            self.db().path().ok_or(RuntimeError::FileNameError)?,
+        ))?;
         let mut estimated_export_size = total_db_size / 10;
 
         let free_space_at_location = available_space(&self.options.export_path)?;
