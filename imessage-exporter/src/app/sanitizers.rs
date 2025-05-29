@@ -9,11 +9,11 @@ use std::borrow::Cow;
 
 /// Characters disallowed in a filename
 static FILENAME_DISALLOWED_CHARS: LazyLock<HashSet<char>> =
-    LazyLock::new(|| ['*', '"', '/', '\\', '<', '>', ':', '|', '?'].into());
+    LazyLock::new(|| HashSet::from(['*', '"', '/', '\\', '<', '>', ':', '|', '?']));
 
 /// Characters disallowed in HTML
 static HTML_DISALLOWED_CHARS: LazyLock<HashMap<char, &str>> = LazyLock::new(|| {
-    [
+    HashMap::from([
         ('>', "&gt;"),
         ('<', "&lt;"),
         ('"', "&quot;"),
@@ -21,8 +21,7 @@ static HTML_DISALLOWED_CHARS: LazyLock<HashMap<char, &str>> = LazyLock::new(|| {
         ('`', "&grave;"),
         ('&', "&amp;"),
         (' ', "&nbsp;"),
-    ]
-    .into()
+    ])
 });
 /// The character to replace disallowed chars with
 const FILENAME_REPLACEMENT_CHAR: char = '_';
