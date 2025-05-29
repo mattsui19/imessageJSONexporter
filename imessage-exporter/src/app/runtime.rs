@@ -371,7 +371,7 @@ impl Config {
             let total_attachment_size =
                 Attachment::get_total_attachment_bytes(self.db(), &self.options.query_context)?;
             estimated_export_size += total_attachment_size;
-            if (estimated_export_size + total_attachment_size) >= free_space_at_location {
+            if estimated_export_size >= free_space_at_location {
                 return Err(RuntimeError::NotEnoughAvailableSpace(
                     estimated_export_size + total_attachment_size,
                     free_space_at_location,
