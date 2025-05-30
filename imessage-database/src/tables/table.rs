@@ -116,7 +116,7 @@ pub fn get_connection(path: &Path) -> Result<Connection, TableError> {
                 "Unable to read from chat database: {why}\nEnsure full disk access is enabled for your terminal emulator in System Settings > Privacy & Security > Full Disk Access"
             ))),
         };
-    };
+    }
 
     // Path does not point to a file
     if path.exists() && !path.is_file() {

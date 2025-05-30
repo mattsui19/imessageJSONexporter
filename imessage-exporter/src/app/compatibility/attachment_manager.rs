@@ -109,7 +109,7 @@ impl AttachmentManager {
             // Attempt the svg render
             if let Err(why) = write(to.to_str()?, handwriting.render_svg()) {
                 eprintln!("Unable to write to {to:?}: {why}");
-            };
+            }
 
             // Update file metadata
             update_file_metadata(&to, &to, message, config);
@@ -186,35 +186,33 @@ impl AttachmentManager {
             let mut new_media_type: Option<MediaType> = None;
 
             match attachment.mime_type() {
-                MediaType::Image(_) => {
-                    match self.mode {
-                        AttachmentManagerMode::Basic | AttachmentManagerMode::Full => {
-                            match &self.image_converter {
-                                Some(converter) => {
-                                    if attachment.is_sticker {
-                                        new_media_type = sticker_copy_convert(
-                                            &from,
-                                            &mut to,
-                                            converter,
-                                            &self.video_converter,
-                                            attachment.mime_type(),
-                                        );
-                                    } else {
-                                        new_media_type = image_copy_convert(
-                                            &from,
-                                            &mut to,
-                                            converter,
-                                            attachment.mime_type(),
-                                        );
-                                    }
+                MediaType::Image(_) => match self.mode {
+                    AttachmentManagerMode::Basic | AttachmentManagerMode::Full => {
+                        match &self.image_converter {
+                            Some(converter) => {
+                                if attachment.is_sticker {
+                                    new_media_type = sticker_copy_convert(
+                                        &from,
+                                        &mut to,
+                                        converter,
+                                        &self.video_converter,
+                                        attachment.mime_type(),
+                                    );
+                                } else {
+                                    new_media_type = image_copy_convert(
+                                        &from,
+                                        &mut to,
+                                        converter,
+                                        attachment.mime_type(),
+                                    );
                                 }
-                                None => copy_raw(&from, &to),
                             }
+                            None => copy_raw(&from, &to),
                         }
-                        AttachmentManagerMode::Clone => copy_raw(&from, &to),
-                        AttachmentManagerMode::Disabled => unreachable!(),
-                    };
-                }
+                    }
+                    AttachmentManagerMode::Clone => copy_raw(&from, &to),
+                    AttachmentManagerMode::Disabled => unreachable!(),
+                },
                 MediaType::Video(_) => match self.mode {
                     AttachmentManagerMode::Full => match &self.video_converter {
                         Some(converter) => {
@@ -228,7 +226,7 @@ impl AttachmentManager {
                         None => copy_raw(&from, &to),
                     },
                     AttachmentManagerMode::Clone | AttachmentManagerMode::Basic => {
-                        copy_raw(&from, &to)
+                        copy_raw(&from, &to);
                     }
                     AttachmentManagerMode::Disabled => unreachable!(),
                 },
@@ -245,7 +243,7 @@ impl AttachmentManager {
                         None => copy_raw(&from, &to),
                     },
                     AttachmentManagerMode::Clone | AttachmentManagerMode::Basic => {
-                        copy_raw(&from, &to)
+                        copy_raw(&from, &to);
                     }
                     AttachmentManagerMode::Disabled => unreachable!(),
                 },
@@ -256,7 +254,7 @@ impl AttachmentManager {
             update_file_metadata(&from, &to, message, config);
             attachment.copied_path = Some(to);
             if let Some(media_type) = new_media_type {
-                attachment.mime_type = Some(media_type.as_mime_type())
+                attachment.mime_type = Some(media_type.as_mime_type());
             }
 
             // Remove the temporary file used for decryption, if it exists

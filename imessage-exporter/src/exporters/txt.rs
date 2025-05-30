@@ -228,7 +228,7 @@ impl<'a> Writer<'a> for TXT<'a> {
                                     self.format_edited(message, edited_parts, idx, &indent)
                                 {
                                     self.add_line(&mut formatted_message, &edited, &indent);
-                                };
+                                }
                             }
                         } else {
                             let mut formatted_text = self.format_attributes(text, text_attrs);
@@ -270,7 +270,7 @@ impl<'a> Writer<'a> for TXT<'a> {
                         }
                         // Attachment does not exist in attachments table
                         None => {
-                            self.add_line(&mut formatted_message, "Attachment missing!", &indent)
+                            self.add_line(&mut formatted_message, "Attachment missing!", &indent);
                         }
                     }
                 }
@@ -289,10 +289,10 @@ impl<'a> Writer<'a> for TXT<'a> {
                             self.format_edited(message, edited_parts, idx, &indent)
                         {
                             self.add_line(&mut formatted_message, &edited, &indent);
-                        };
+                        }
                     }
                 }
-            };
+            }
 
             // Handle expressives
             if message.expressive_send_style_id.is_some() {
@@ -523,7 +523,7 @@ impl<'a> Writer<'a> for TXT<'a> {
                     }
                 }
                 return Err(PlistParseError::NoPayload);
-            };
+            }
             Ok(app_bubble)
         } else {
             Err(PlistParseError::WrongMessageType)
@@ -643,11 +643,11 @@ impl<'a> Writer<'a> for TXT<'a> {
         }
     }
 
-    fn format_shareplay(&self) -> &str {
+    fn format_shareplay(&self) -> &'static str {
         "SharePlay Message\nEnded"
     }
 
-    fn format_shared_location(&self, msg: &'a Message) -> &str {
+    fn format_shared_location(&self, msg: &'a Message) -> &'static str {
         // Handle Shared Location
         if msg.started_sharing_location() {
             return "Started sharing location!";
@@ -690,7 +690,7 @@ impl<'a> Writer<'a> for TXT<'a> {
                                     out_s.push_str(" later: ");
                                 }
                             }
-                        };
+                        }
 
                         // Update the previous timestamp for the next loop
                         previous_timestamp = Some(&event.date);
@@ -708,20 +708,17 @@ impl<'a> Writer<'a> for TXT<'a> {
                         "They"
                     };
 
-                    match readable_diff(
+                    if let Some(diff) = readable_diff(
                         msg.date(&self.config.offset),
                         msg.date_edited(&self.config.offset),
                     ) {
-                        Some(diff) => {
-                            out_s.push_str(who);
-                            out_s.push_str(" unsent this message part ");
-                            out_s.push_str(&diff);
-                            out_s.push_str(" after sending!");
-                        }
-                        None => {
-                            out_s.push_str(who);
-                            out_s.push_str(" unsent this message part!");
-                        }
+                        out_s.push_str(who);
+                        out_s.push_str(" unsent this message part ");
+                        out_s.push_str(&diff);
+                        out_s.push_str(" after sending!");
+                    } else {
+                        out_s.push_str(who);
+                        out_s.push_str(" unsent this message part!");
                     }
                 }
                 EditStatus::Original => {
@@ -736,12 +733,12 @@ impl<'a> Writer<'a> for TXT<'a> {
 
     fn format_attributes(&'a self, text: &'a str, effects: &'a [TextAttributes]) -> String {
         let mut formatted_text: String = String::with_capacity(text.len());
-        effects.iter().for_each(|effect| {
+        for effect in effects {
             if let Some(message_content) = text.get(effect.start..effect.end) {
                 // There isn't really a way to represent formatted text in a plain text export
                 formatted_text.push_str(message_content);
             }
-        });
+        }
         formatted_text
     }
 
@@ -919,7 +916,7 @@ impl<'a> BalloonFormatter<&'a str> for TXT<'a> {
         match self.config.options.attachment_manager.mode {
             AttachmentManagerMode::Disabled => balloon
                 .render_ascii(40)
-                .replace("\n", &format!("{indent}\n")),
+                .replace('\n', &format!("{indent}\n")),
             _ => self
                 .config
                 .options
@@ -934,13 +931,13 @@ impl<'a> BalloonFormatter<&'a str> for TXT<'a> {
                 .unwrap_or_else(|| {
                     balloon
                         .render_ascii(40)
-                        .replace("\n", &format!("{indent}\n"))
+                        .replace('\n', &format!("{indent}\n"))
                 }),
         }
     }
 
     fn format_digital_touch(&self, _: &Message, balloon: &DigitalTouch, indent: &str) -> String {
-        format!("{indent}Digital Touch Message: {:?}", balloon)
+        format!("{indent}Digital Touch Message: {balloon:?}")
     }
 
     fn format_apple_pay(&self, balloon: &AppMessage, indent: &str) -> String {

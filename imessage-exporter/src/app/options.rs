@@ -126,8 +126,7 @@ impl Options {
             for (set, opt) in format_deps {
                 if set {
                     return Err(RuntimeError::InvalidOptions(format!(
-                        "Option --{opt} is enabled, which requires --{}",
-                        OPTION_EXPORT_TYPE
+                        "Option --{opt} is enabled, which requires --{OPTION_EXPORT_TYPE}"
                     )));
                 }
             }
@@ -204,7 +203,7 @@ impl Options {
                     "Supplied {OPTION_ATTACHMENT_ROOT} `{path}` does not exist!"
                 )));
             }
-        };
+        }
 
         // Warn the user that custom attachment roots have no effect on iOS backups
         if attachment_root.is_some() && platform == Platform::iOS {
@@ -297,7 +296,7 @@ fn validate_path(
                 }
             }
         }
-    };
+    }
 
     Ok(resolved_path)
 }

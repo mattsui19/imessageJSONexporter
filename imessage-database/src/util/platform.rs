@@ -39,6 +39,7 @@ impl Platform {
     }
 
     /// Given user's input, return a variant if the input matches one
+    #[must_use]
     pub fn from_cli(platform: &str) -> Option<Self> {
         match platform.to_lowercase().as_str() {
             "macos" => Some(Self::macOS),
