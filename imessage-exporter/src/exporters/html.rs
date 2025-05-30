@@ -139,7 +139,7 @@ impl<'a> Exporter<'a> for HTML<'a> {
         self.pb.finish();
 
         eprintln!("Writing HTML footers...");
-        for (_, buf) in self.files.iter_mut() {
+        for buf in self.files.values_mut() {
             HTML::write_to_file(buf, FOOTER)?;
         }
         HTML::write_to_file(&mut self.orphaned, FOOTER)?;
@@ -341,7 +341,7 @@ impl<'a> Writer<'a> for HTML<'a> {
                                         "<div class=\"edited\">",
                                         "</div>",
                                     );
-                                };
+                                }
                             }
                         } else {
                             let mut formatted_text = self.format_attributes(text, text_attrs);
@@ -440,10 +440,10 @@ impl<'a> Writer<'a> for HTML<'a> {
                                 "<span class=\"unsent\">",
                                 "</span>",
                             );
-                        };
+                        }
                     }
                 }
-            };
+            }
 
             // Write the part div end
             self.add_line(&mut formatted_message, "</div>", "", "");
@@ -633,7 +633,7 @@ impl<'a> Writer<'a> for HTML<'a> {
                             if let Some(prompt) = &sticker.emoji_description {
                                 sticker_embed.push_str(&format!(
                                     "\n<div class=\"genmoji_prompt\">Genmoji prompt: {prompt}</div>"
-                                ))
+                                ));
                             }
                         }
                         StickerSource::Memoji => sticker_embed
@@ -647,7 +647,7 @@ impl<'a> Writer<'a> for HTML<'a> {
                             ) {
                                 sticker_embed.push_str(&format!(
                                     "\n<div class=\"sticker_effect\">Sent with {sticker_effect} effect</div>"
-                                ))
+                                ));
                             }
                         }
                         StickerSource::App(bundle_id) => {
@@ -657,7 +657,7 @@ impl<'a> Writer<'a> for HTML<'a> {
                                 .unwrap_or(bundle_id);
                             sticker_embed.push_str(&format!(
                                 "\n<div class=\"sticker_name\">App: {app_name}</div>"
-                            ))
+                            ));
                         }
                     }
                 }
@@ -888,11 +888,11 @@ impl<'a> Writer<'a> for HTML<'a> {
         }
     }
 
-    fn format_shareplay(&self) -> &str {
+    fn format_shareplay(&self) -> &'static str {
         "<hr>SharePlay Message Ended"
     }
 
-    fn format_shared_location(&self, msg: &'a Message) -> &str {
+    fn format_shared_location(&self, msg: &'a Message) -> &'static str {
         // Handle Shared Location
         if msg.started_sharing_location() {
             return "<hr>Started sharing location!";
@@ -965,12 +965,12 @@ impl<'a> Writer<'a> for HTML<'a> {
                         Some(diff) => {
                             out_s.push_str(&format!(
                                 "<span class=\"unsent\">{who} unsent this message part {diff} after sending!</span>"
-                            ))
+                            ));
                         },
                         None => {
                             out_s.push_str(&format!(
                                 "<span class=\"unsent\">{who} unsent this message part!</span>"
-                            ))
+                            ));
                         },
                     }
                 }
@@ -985,13 +985,13 @@ impl<'a> Writer<'a> for HTML<'a> {
 
     fn format_attributes(&'a self, text: &'a str, attributes: &'a [TextAttributes]) -> String {
         let mut formatted_text = String::with_capacity(text.len());
-        attributes.iter().for_each(|effect| {
+        for effect in attributes {
             if let Some(message_content) = text.get(effect.start..effect.end) {
                 // We cannot sanitize the html beforehand because it may change the length of the text
                 formatted_text
                     .push_str(&self.format_effect(&sanitize_html(message_content), &effect.effect));
             }
-        });
+        }
         formatted_text
     }
 
@@ -1347,8 +1347,7 @@ impl<'a> BalloonFormatter<&'a Message> for HTML<'a> {
 
     fn format_digital_touch(&self, _: &Message, balloon: &DigitalTouch, _: &'a Message) -> String {
         format!(
-            "<div class=\"app_header\"><div class=\"name\">Digital Touch Message</div></div>\n<div class=\"app_footer\"><div class=\"caption\">{:?}</div></div>",
-            balloon
+            "<div class=\"app_header\"><div class=\"name\">Digital Touch Message</div></div>\n<div class=\"app_footer\"><div class=\"caption\">{balloon:?}</div></div>"
         )
     }
 
@@ -1762,7 +1761,7 @@ mod tests {
         message.date_read = 674526582885055488;
         assert_eq!(
             exporter.get_time(&message),
-            ("May 17, 2022  6:30:31 PM".to_string(), "".to_string())
+            ("May 17, 2022  6:30:31 PM".to_string(), String::new())
         );
     }
 

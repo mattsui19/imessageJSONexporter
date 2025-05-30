@@ -11,7 +11,7 @@ const TEMPLATE_DEFAULT: &str =
 const TEMPLATE_BUSY: &str =
     "{spinner:.green} [{elapsed}] [{bar:.blue}] {human_pos}/{human_len} (ETA: N/A) {msg}";
 
-/// Wrapper around indicatif's ProgressBar with specialized functionality
+/// Wrapper around indicatif's `ProgressBar` with specialized functionality
 pub struct ExportProgress {
     pub bar: ProgressBar,
 }

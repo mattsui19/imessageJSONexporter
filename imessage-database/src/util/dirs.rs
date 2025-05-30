@@ -16,7 +16,7 @@ use crate::tables::table::DEFAULT_PATH_MACOS;
 /// let path = home();
 /// println!("{path}");
 /// ```
-pub fn home() -> String {
+#[must_use] pub fn home() -> String {
     var("HOME").unwrap_or_default()
 }
 
@@ -30,6 +30,6 @@ pub fn home() -> String {
 /// let path = default_db_path();
 /// println!("{path:?}");
 /// ```
-pub fn default_db_path() -> PathBuf {
+#[must_use] pub fn default_db_path() -> PathBuf {
     PathBuf::from(format!("{}/{DEFAULT_PATH_MACOS}", home()))
 }

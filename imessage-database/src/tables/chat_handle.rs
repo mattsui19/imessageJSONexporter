@@ -260,9 +260,9 @@ mod tests {
             .into_iter()
             .collect::<Vec<(i32, i32)>>();
 
-        output_1.sort();
-        output_2.sort();
-        output_3.sort();
+        output_1.sort_unstable();
+        output_2.sort_unstable();
+        output_3.sort_unstable();
 
         assert_eq!(output_1, output_2);
         assert_eq!(output_1, output_3);

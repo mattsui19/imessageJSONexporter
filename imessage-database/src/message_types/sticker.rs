@@ -36,11 +36,11 @@ impl StickerSource {
     ///
     /// println!("{:?}", StickerSource::from_bundle_id("com.apple.messages.genmoji")); // StickerSource::Genmoji
     /// ```
-    pub fn from_bundle_id(bundle_id: &str) -> Option<Self> {
+    #[must_use] pub fn from_bundle_id(bundle_id: &str) -> Option<Self> {
         match parse_balloon_bundle_id(Some(bundle_id)) {
             Some("com.apple.messages.genmoji") => Some(StickerSource::Genmoji),
-            Some("com.apple.Animoji.StickersApp.MessagesExtension")
-            | Some("com.apple.Jellyfish.Animoji") => Some(StickerSource::Memoji),
+            Some("com.apple.Animoji.StickersApp.MessagesExtension" |
+"com.apple.Jellyfish.Animoji") => Some(StickerSource::Memoji),
             Some("com.apple.Stickers.UserGenerated.MessagesExtension") => {
                 Some(StickerSource::UserGenerated)
             }
@@ -97,7 +97,7 @@ impl Default for StickerEffect {
 }
 
 /// Parse the sticker effect type from the EXIF data of a HEIC blob
-pub fn get_sticker_effect(mut heic_data: Vec<u8>) -> StickerEffect {
+#[must_use] pub fn get_sticker_effect(mut heic_data: Vec<u8>) -> StickerEffect {
     // Find the start index and drain
     for idx in 0..heic_data.len() {
         if idx + STICKER_EFFECT_PREFIX.len() < heic_data.len() {

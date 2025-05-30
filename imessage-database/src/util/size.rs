@@ -15,7 +15,7 @@ const UNITS: [&str; 5] = ["B", "KB", "MB", "GB", "TB"];
 /// let size: String = format_file_size(5612000);
 /// println!("{size}"); // 5.35 MB
 /// ```
-pub fn format_file_size(total_bytes: u64) -> String {
+#[must_use] pub fn format_file_size(total_bytes: u64) -> String {
     let mut index: usize = 0;
     let mut bytes = total_bytes as f64;
     while index < UNITS.len() - 1 && bytes > DIVISOR {

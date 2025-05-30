@@ -58,14 +58,14 @@ impl MediaType<'_> {
     ///
     /// println!("{:?}", MediaType::Image("png").as_mime_type()); // "image/png"
     /// ```
-    pub fn as_mime_type(&self) -> String {
+    #[must_use] pub fn as_mime_type(&self) -> String {
         match self {
             MediaType::Image(subtype) => format!("image/{subtype}"),
             MediaType::Video(subtype) => format!("video/{subtype}"),
             MediaType::Audio(subtype) => format!("audio/{subtype}"),
             MediaType::Text(subtype) => format!("text/{subtype}"),
             MediaType::Application(subtype) => format!("application/{subtype}"),
-            MediaType::Other(mime) => mime.to_string(),
+            MediaType::Other(mime) => (*mime).to_string(),
             MediaType::Unknown => String::new(),
         }
     }
@@ -130,7 +130,7 @@ impl GetBlob for Attachment {
             rusqlite::MAIN_DB,
             ATTACHMENT,
             column,
-            self.rowid as i64,
+            i64::from(self.rowid),
             true,
         )
         .ok()
@@ -180,7 +180,7 @@ impl Attachment {
     }
 
     /// Get the media type of an attachment
-    pub fn mime_type(&'_ self) -> MediaType<'_> {
+    #[must_use] pub fn mime_type(&'_ self) -> MediaType<'_> {
         match &self.mime_type {
             Some(mime) => {
                 let mut mime_parts = mime.split('/');
@@ -262,7 +262,7 @@ impl Attachment {
     }
 
     /// Get the path to an attachment, if it exists
-    pub fn path(&self) -> Option<&Path> {
+    #[must_use] pub fn path(&self) -> Option<&Path> {
         match &self.filename {
             Some(name) => Some(Path::new(name)),
             None => None,
@@ -270,7 +270,7 @@ impl Attachment {
     }
 
     /// Get the file name extension of an attachment, if it exists
-    pub fn extension(&self) -> Option<&str> {
+    #[must_use] pub fn extension(&self) -> Option<&str> {
         match self.path() {
             Some(path) => match path.extension() {
                 Some(ext) => ext.to_str(),
@@ -283,7 +283,7 @@ impl Attachment {
     /// Get a reasonable filename for an attachment
     ///
     /// If the [`transfer_name`](Self::transfer_name) field is populated, use that. If it is not present, fall back to the `filename` field.
-    pub fn filename(&self) -> &str {
+    #[must_use] pub fn filename(&self) -> &str {
         if let Some(transfer_name) = &self.transfer_name {
             return transfer_name;
         }
@@ -294,7 +294,7 @@ impl Attachment {
     }
 
     /// Get a human readable file size for an attachment using [`format_file_size`]
-    pub fn file_size(&self) -> String {
+    #[must_use] pub fn file_size(&self) -> String {
         format_file_size(u64::try_from(self.total_bytes).unwrap_or(0))
     }
 
@@ -344,7 +344,7 @@ impl Attachment {
     /// Use the optional `custom_attachment_root` parameter when the attachments are not stored in
     /// the same place as the database expects.The expected location is [`DEFAULT_ATTACHMENT_ROOT`].
     /// A custom attachment root like `/custom/path` will overwrite a path like `~/Library/Messages/Attachments/3d/...` to `/custom/path/3d/...`
-    pub fn resolved_attachment_path(
+    #[must_use] pub fn resolved_attachment_path(
         &self,
         platform: &Platform,
         db_path: &Path,
@@ -456,7 +456,7 @@ impl Attachment {
             if missing_files > 0 && total_attachments > 0 {
                 println!(
                     "    Missing files: {missing_files:?} ({:.0}%)",
-                    (missing_files as f64 / total_attachments as f64) * 100f64
+                    (missing_files as f64 / f64::from(total_attachments)) * 100f64
                 );
                 println!("        No path provided: {null_attachments}");
                 println!(

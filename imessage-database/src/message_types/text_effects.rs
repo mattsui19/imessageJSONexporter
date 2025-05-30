@@ -100,7 +100,7 @@ impl Animation {
     ///
     /// let animation = Animation::from_id(5); // Animation::Big
     /// ```
-    pub fn from_id(value: i64) -> Self {
+    #[must_use] pub fn from_id(value: i64) -> Self {
         match value {
             // In order of appearance in the text effects menu
             5 => Self::Big,

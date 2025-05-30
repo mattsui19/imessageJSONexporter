@@ -53,7 +53,7 @@ impl HandwrittenMessage {
     }
 
     /// Renders the handwriting message as an `svg` graphic.
-    pub fn render_svg(&self) -> String {
+    #[must_use] pub fn render_svg(&self) -> String {
         let mut svg = String::new();
         svg.push('\n');
         svg.push_str(format!(r#"<svg viewBox="0 0 {} {}" preserveAspectRatio="xMidYMid meet" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">"#, self.width, self.height).as_str());
@@ -65,13 +65,13 @@ impl HandwrittenMessage {
         svg.push_str("</metadata>\n");
         svg.push_str("<style>\n");
         svg.push_str(
-            r#"    .line {
+            r"    .line {
         fill: none;
         stroke: black;
         stroke-linecap: round;
         stroke-linejoin: round;
     }
-"#,
+",
         );
         svg.push_str("</style>\n");
         generate_strokes(&mut svg, &self.strokes);
@@ -80,7 +80,7 @@ impl HandwrittenMessage {
     }
 
     /// Renders the handwriting message as an ASCII graphic with a maximum height.
-    pub fn render_ascii(&self, max_height: usize) -> String {
+    #[must_use] pub fn render_ascii(&self, max_height: usize) -> String {
         // Create a blank canvas filled with spaces
         let h = max_height.min(self.height as usize);
         let w = ((self.width as usize) * h)
@@ -90,29 +90,27 @@ impl HandwrittenMessage {
 
         // Plot the lines on the canvas
         // Width is only used when drawing the line on an SVG
-        fit_strokes(
+        for line in &fit_strokes(
             &self.strokes,
             w as u16,
             h as u16,
             self.height,
             self.width,
             1,
-        )
-        .iter()
-        .for_each(|line| {
+        ) {
             line.windows(2).for_each(|window| {
                 draw_line(&mut canvas, &window[0], &window[1]);
             });
-        });
+        }
 
         // Convert the canvas to a string
         let mut output = String::with_capacity(h * (w + 1));
-        canvas.into_iter().for_each(|row| {
-            row.iter().for_each(|&ch| {
-                let _ = write!(output, "{}", ch);
-            });
+        for row in canvas {
+            for &ch in &row {
+                let _ = write!(output, "{ch}");
+            }
             output.push('\n');
-        });
+        }
 
         output
     }
@@ -120,10 +118,10 @@ impl HandwrittenMessage {
 
 /// Draws a line on a 2d character grid using Bresenham's line algorithm.
 fn draw_line(canvas: &mut [Vec<char>], start: &Point, end: &Point) {
-    let mut x_curr = start.x as i64;
-    let mut y_curr = start.y as i64;
-    let x_end = end.x as i64;
-    let y_end = end.y as i64;
+    let mut x_curr = i64::from(start.x);
+    let mut y_curr = i64::from(start.y);
+    let x_end = i64::from(end.x);
+    let y_end = i64::from(end.y);
 
     let dx = (x_end - x_curr).abs();
     let dy = -(y_end - y_curr).abs();
@@ -144,7 +142,7 @@ fn draw_line(canvas: &mut [Vec<char>], start: &Point, end: &Point) {
         }
     }
 
-    draw_point(canvas, x_end, y_end)
+    draw_point(canvas, x_end, y_end);
 }
 
 /// Draws a point on a 2d character grid.
@@ -156,13 +154,13 @@ fn draw_point(canvas: &mut [Vec<char>], x: i64, y: i64) {
 
 /// Generates svg lines from an array of strokes.
 fn generate_strokes(svg: &mut String, strokes: &[Vec<Point>]) {
-    strokes.iter().for_each(|stroke| {
+    for stroke in strokes.iter() {
         let mut segments = String::with_capacity(80 * (stroke.len() - 1));
-        group_points(stroke).iter().for_each(|(width, points)| {
+        for (width, points) in &group_points(stroke) {
             let mut points_svg = String::with_capacity(points.len() * 3);
-            points.iter().for_each(|point| {
+            for point in points {
                 points_svg.push_str(&format!(" {},{}", point.x, point.y));
-            });
+            }
             segments.push_str(
                 format!(
                     r#"<polyline class="line" points="{}" stroke-width="{}" />"#,
@@ -172,9 +170,9 @@ fn generate_strokes(svg: &mut String, strokes: &[Vec<Point>]) {
                 .as_str(),
             );
             segments.push('\n');
-        });
+        }
         svg.push_str(segments.as_str());
-    });
+    }
 }
 
 /// Group points along a stroke together by width
@@ -183,7 +181,7 @@ fn group_points(stroke: &[Point]) -> Vec<(u16, Vec<&Point>)> {
     let mut curr = stroke[0].width;
     let mut segment = vec![];
 
-    stroke.iter().for_each(|point| {
+    for point in stroke {
         segment.push(point);
         if curr != point.width {
             if segment.len() == 1 {
@@ -193,7 +191,7 @@ fn group_points(stroke: &[Point]) -> Vec<(u16, Vec<&Point>)> {
             segment = vec![point];
             curr = point.width;
         }
-    });
+    }
 
     if !segment.is_empty() {
         segment.push(segment[segment.len() - 1]);
@@ -230,8 +228,8 @@ fn fit_strokes(
 
 /// Resize converts `v` from a coordinate where `max_v` is the current height/width and `box_size` is the wanted height/width.
 fn resize(v: u16, box_size: u16, max_v: u16) -> u16 {
-    (v as i64 * box_size as i64)
-        .checked_div(max_v as i64)
+    (i64::from(v) * i64::from(box_size))
+        .checked_div(i64::from(max_v))
         .unwrap_or(0) as u16
 }
 

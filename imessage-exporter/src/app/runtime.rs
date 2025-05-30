@@ -276,7 +276,7 @@ impl Config {
 
     /// Convert comma separated list of participant strings into table chat IDs using
     ///   1) filter `self.participant` keys based on the values (by comparing to user values)
-    ///   2) get the chat IDs keys from `self.chatroom_participants` for values that contain the selected handle_ids
+    ///   2) get the chat IDs keys from `self.chatroom_participants` for values that contain the selected `handle_ids`
     ///   3) send those chat and handle IDs to the query context so they are included in the message table filters
     pub(crate) fn resolve_filtered_handles(&mut self) {
         if let Some(conversation_filter) = &self.options.conversation_filter {
@@ -289,11 +289,11 @@ impl Config {
             self.participants
                 .iter()
                 .for_each(|(handle_id, handle_name)| {
-                    parsed_handle_filter.iter().for_each(|included_name| {
+                    for included_name in &parsed_handle_filter {
                         if handle_name.contains(included_name) {
                             included_handles.insert(*handle_id);
                         }
-                    });
+                    }
                 });
 
             // Second, scan the list of chatrooms for IDs that contain the selected participants
@@ -313,7 +313,7 @@ impl Config {
                 .query_context
                 .set_selected_chat_ids(included_chatrooms);
 
-            self.log_filtered_handles_and_chats()
+            self.log_filtered_handles_and_chats();
         }
     }
 
@@ -338,10 +338,10 @@ impl Config {
             eprintln!(
                 "Filtering for {} handle{} across {} chatrooms...",
                 unique_handle_ids.len(),
-                if unique_handle_ids.len() != 1 {
-                    "s"
-                } else {
+                if unique_handle_ids.len() == 1 {
                     ""
+                } else {
+                    "s"
                 },
                 unique_chat_ids.len()
             );
@@ -377,7 +377,7 @@ impl Config {
                     free_space_at_location,
                 ));
             }
-        };
+        }
 
         println!(
             "Estimated export size: {}",
@@ -407,13 +407,13 @@ impl Config {
         );
 
         let unique_handles: HashSet<i32> =
-            HashSet::from_iter(self.real_participants.values().cloned());
+            HashSet::from_iter(self.real_participants.values().copied());
         let duplicated_handles = self.participants.len() - unique_handles.len();
         if duplicated_handles > 0 {
             println!("    Duplicated contacts: {duplicated_handles}");
         }
 
-        let unique_chats: HashSet<i32> = HashSet::from_iter(self.real_chatrooms.values().cloned());
+        let unique_chats: HashSet<i32> = HashSet::from_iter(self.real_chatrooms.values().copied());
         let duplicated_chats = self.chatrooms.len() - unique_chats.len();
         if duplicated_chats > 0 {
             println!("    Duplicated chats: {duplicated_chats}");
@@ -449,8 +449,7 @@ impl Config {
             if let Some(filters) = &self.options.conversation_filter {
                 if !self.options.query_context.has_filters() {
                     return Err(RuntimeError::InvalidOptions(format!(
-                        "Selected filter `{}` does not match any participants!",
-                        filters
+                        "Selected filter `{filters}` does not match any participants!"
                     )));
                 }
             }

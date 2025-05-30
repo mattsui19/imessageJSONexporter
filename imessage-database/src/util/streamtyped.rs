@@ -231,7 +231,7 @@ mod tests {
         let mut bytes = vec![];
         file.read_to_end(&mut bytes).unwrap();
         let parsed = parse(bytes).unwrap();
-        println!("{:?}", parsed);
+        println!("{parsed:?}");
 
         let expected = "From arbitrary byte stream:\r\u{FFFC}To native Rust data structures:\r";
 
@@ -248,7 +248,7 @@ mod tests {
         let mut bytes = vec![];
         file.read_to_end(&mut bytes).unwrap();
         let parsed = parse(bytes).unwrap();
-        println!("{:?}", parsed);
+        println!("{parsed:?}");
 
         let expected =
             "\u{FFFC}This is how the notes look to me fyi, in case it helps make sense of anything";
@@ -266,7 +266,7 @@ mod tests {
         let mut bytes = vec![];
         file.read_to_end(&mut bytes).unwrap();
         let parsed = parse(bytes).unwrap();
-        println!("{:?}", parsed);
+        println!("{parsed:?}");
 
         let expected = "A single ChatGPT instance takes 5MW of power to run";
 

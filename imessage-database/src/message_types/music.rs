@@ -44,7 +44,7 @@ impl<'a> BalloonProvider<'a> for MusicMessage<'a> {
                 track_name: get_string_from_dict(music_metadata, "name"),
                 lyrics: get_value_from_dict(music_metadata, "lyricExcerpt")
                     .and_then(|l| get_string_from_dict(l, "lyrics"))
-                    .map(|lyrics| lyrics.split("\n").collect()),
+                    .map(|lyrics| lyrics.split('\n').collect()),
             });
         }
         Err(PlistParseError::NoPayload)
@@ -121,7 +121,7 @@ mod tests {
         let plist = Value::from_reader(plist_data).unwrap();
         let parsed = parse_ns_keyed_archiver(&plist).unwrap();
 
-        println!("{:#?}", parsed);
+        println!("{parsed:#?}");
 
         let balloon = MusicMessage::from_map(&parsed).unwrap();
         let expected = MusicMessage {

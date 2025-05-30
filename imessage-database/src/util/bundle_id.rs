@@ -15,7 +15,7 @@
 /// let bundle_id = "com.apple.messages.MSMessageExtensionBalloonPlugin:0000000000:com.apple.SafetyMonitorApp.SafetyMonitorMessages";
 /// let parsed = parse_balloon_bundle_id(Some(bundle_id)); // Some("com.apple.SafetyMonitorApp.SafetyMonitorMessages")
 /// ```
-pub fn parse_balloon_bundle_id(bundle_id: Option<&str>) -> Option<&str> {
+#[must_use] pub fn parse_balloon_bundle_id(bundle_id: Option<&str>) -> Option<&str> {
     bundle_id.and_then(|id| {
         let mut parts = id.split(':');
         let first = parts.next();

@@ -86,7 +86,7 @@ impl Cacheable for Chat {
 
 impl Chat {
     /// Generate a name for a chat, falling back to the default if a custom one is not set
-    pub fn name(&self) -> &str {
+    #[must_use] pub fn name(&self) -> &str {
         match self.display_name() {
             Some(name) => name,
             None => &self.chat_identifier,
@@ -94,7 +94,7 @@ impl Chat {
     }
 
     /// Get the current display name for the chat, if it exists.
-    pub fn display_name(&self) -> Option<&str> {
+    #[must_use] pub fn display_name(&self) -> Option<&str> {
         match &self.display_name {
             Some(name) => {
                 if !name.is_empty() {
@@ -107,7 +107,7 @@ impl Chat {
     }
 
     /// Get the service used by the chat, i.e. iMessage, SMS, IRC, etc.
-    pub fn service(&self) -> Service {
+    #[must_use] pub fn service(&self) -> Service {
         Service::from(self.service_name.as_deref())
     }
 }

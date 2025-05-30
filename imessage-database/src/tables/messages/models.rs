@@ -47,7 +47,7 @@ pub enum Service<'a> {
 }
 
 impl<'a> Service<'a> {
-    pub fn from(service: Option<&'a str>) -> Self {
+    #[must_use] pub fn from(service: Option<&'a str>) -> Self {
         if let Some(service_name) = service {
             return match service_name.trim() {
                 "iMessage" => Service::iMessage,
@@ -105,7 +105,7 @@ pub struct TextAttributes<'a> {
 }
 
 impl<'a> TextAttributes<'a> {
-    pub fn new(start: usize, end: usize, effect: TextEffect<'a>) -> Self {
+    #[must_use] pub fn new(start: usize, end: usize, effect: TextEffect<'a>) -> Self {
         Self { start, end, effect }
     }
 }
@@ -156,7 +156,7 @@ impl<'a> AttachmentMeta<'a> {
     /// ];
     /// let meta = AttachmentMeta::from_components(&components);
     /// ```
-    pub fn from_components(components: &'a [Archivable]) -> Option<Self> {
+    #[must_use] pub fn from_components(components: &'a [Archivable]) -> Option<Self> {
         let mut guid = None;
         let mut transcription = None;
         let mut height = None;
@@ -167,16 +167,16 @@ impl<'a> AttachmentMeta<'a> {
             if let Some(key_name) = key.as_nsstring() {
                 match key_name {
                     "__kIMFileTransferGUIDAttributeName" => {
-                        guid = components.get(idx + 1)?.as_nsstring()
+                        guid = components.get(idx + 1)?.as_nsstring();
                     }
                     "IMAudioTranscription" => {
-                        transcription = components.get(idx + 1)?.as_nsstring()
+                        transcription = components.get(idx + 1)?.as_nsstring();
                     }
                     "__kIMInlineMediaHeightAttributeName" => {
-                        height = components.get(idx + 1)?.as_nsnumber_float()
+                        height = components.get(idx + 1)?.as_nsnumber_float();
                     }
                     "__kIMInlineMediaWidthAttributeName" => {
-                        width = components.get(idx + 1)?.as_nsnumber_float()
+                        width = components.get(idx + 1)?.as_nsnumber_float();
                     }
                     "__kIMFilenameAttributeName" => name = components.get(idx + 1)?.as_nsstring(),
                     _ => {}
@@ -212,8 +212,8 @@ pub enum GroupAction<'a> {
 }
 
 impl<'a> GroupAction<'a> {
-    /// Creates a new EventType based on the provided `item_type` and `group_action_type`
-    pub fn from_message(message: &'a Message) -> Option<Self> {
+    /// Creates a new `EventType` based on the provided `item_type` and `group_action_type`
+    #[must_use] pub fn from_message(message: &'a Message) -> Option<Self> {
         match (
             message.item_type,
             message.group_action_type,

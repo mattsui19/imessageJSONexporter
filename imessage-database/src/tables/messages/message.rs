@@ -438,7 +438,7 @@ impl GetBlob for Message {
             rusqlite::MAIN_DB,
             MESSAGE,
             column,
-            self.rowid as i64,
+            i64::from(self.rowid),
             true,
         )
         .ok()
@@ -556,7 +556,7 @@ impl Message {
     /// only the most recent message will get the tag.
     ///
     /// `offset` can be provided by [`get_offset`](crate::util::dates::get_offset) or manually.
-    pub fn time_until_read(&self, offset: &i64) -> Option<String> {
+    #[must_use] pub fn time_until_read(&self, offset: &i64) -> Option<String> {
         // Message we received
         if !self.is_from_me && self.date_read != 0 && self.date != 0 {
             return readable_diff(self.date(offset), self.date_read(offset));
@@ -569,47 +569,47 @@ impl Message {
     }
 
     /// `true` if the message is a response to a thread, else `false`
-    pub fn is_reply(&self) -> bool {
+    #[must_use] pub fn is_reply(&self) -> bool {
         self.thread_originator_guid.is_some()
     }
 
     /// `true` if the message is an [`Announcement`], else `false`
-    pub fn is_announcement(&self) -> bool {
+    #[must_use] pub fn is_announcement(&self) -> bool {
         self.get_announcement().is_some()
     }
 
     /// `true` if the message is a [`Tapback`] to another message, else `false`
-    pub fn is_tapback(&self) -> bool {
+    #[must_use] pub fn is_tapback(&self) -> bool {
         matches!(self.variant(), Variant::Tapback(..))
     }
 
     /// `true` if the message has an [`Expressive`], else `false`
-    pub fn is_expressive(&self) -> bool {
+    #[must_use] pub fn is_expressive(&self) -> bool {
         self.expressive_send_style_id.is_some()
     }
 
     /// `true` if the message has a [URL preview](crate::message_types::url), else `false`
-    pub fn is_url(&self) -> bool {
+    #[must_use] pub fn is_url(&self) -> bool {
         matches!(self.variant(), Variant::App(CustomBalloon::URL))
     }
 
     /// `true` if the message is a [`HandwrittenMessage`](crate::message_types::handwriting::models::HandwrittenMessage), else `false`
-    pub fn is_handwriting(&self) -> bool {
+    #[must_use] pub fn is_handwriting(&self) -> bool {
         matches!(self.variant(), Variant::App(CustomBalloon::Handwriting))
     }
 
     /// `true` if the message is a [`Digital Touch`](crate::message_types::digital_touch::models), else `false`
-    pub fn is_digital_touch(&self) -> bool {
+    #[must_use] pub fn is_digital_touch(&self) -> bool {
         matches!(self.variant(), Variant::App(CustomBalloon::DigitalTouch))
     }
 
     /// `true` if the message was [`Edited`](crate::message_types::edited), else `false`
-    pub fn is_edited(&self) -> bool {
+    #[must_use] pub fn is_edited(&self) -> bool {
         self.date_edited != 0
     }
 
     /// `true` if the specified message component was [edited](crate::message_types::edited::EditStatus::Edited), else `false`
-    pub fn is_part_edited(&self, index: usize) -> bool {
+    #[must_use] pub fn is_part_edited(&self, index: usize) -> bool {
         if let Some(edited_parts) = &self.edited_parts {
             if let Some(part) = edited_parts.part(index) {
                 return matches!(part.status, EditStatus::Edited);
@@ -619,7 +619,7 @@ impl Message {
     }
 
     /// `true` if all message components were [unsent](crate::message_types::edited::EditStatus::Unsent), else `false`
-    pub fn is_fully_unsent(&self) -> bool {
+    #[must_use] pub fn is_fully_unsent(&self) -> bool {
         self.edited_parts.as_ref().is_some_and(|ep| {
             ep.parts
                 .iter()
@@ -630,27 +630,27 @@ impl Message {
     /// `true` if the message contains [`Attachment`](crate::tables::attachment::Attachment)s, else `false`
     ///
     /// Attachments can be queried with [`Attachment::from_message()`](crate::tables::attachment::Attachment::from_message).
-    pub fn has_attachments(&self) -> bool {
+    #[must_use] pub fn has_attachments(&self) -> bool {
         self.num_attachments > 0
     }
 
     /// `true` if the message begins a thread, else `false`
-    pub fn has_replies(&self) -> bool {
+    #[must_use] pub fn has_replies(&self) -> bool {
         self.num_replies > 0
     }
 
     /// `true` if the message indicates a sent audio message was kept, else `false`
-    pub fn is_kept_audio_message(&self) -> bool {
+    #[must_use] pub fn is_kept_audio_message(&self) -> bool {
         self.item_type == 5
     }
 
     /// `true` if the message is a [SharePlay/FaceTime](crate::message_types::variants::Variant::SharePlay) message, else `false`
-    pub fn is_shareplay(&self) -> bool {
+    #[must_use] pub fn is_shareplay(&self) -> bool {
         self.item_type == 6
     }
 
     /// `true` if the message was sent by the database owner, else `false`
-    pub fn is_from_me(&self) -> bool {
+    #[must_use] pub fn is_from_me(&self) -> bool {
         if let (Some(other_handle), Some(share_direction)) =
             (self.other_handle, self.share_direction)
         {
@@ -661,17 +661,17 @@ impl Message {
     }
 
     /// Get the group action for the current message
-    pub fn group_action(&self) -> Option<GroupAction> {
+    #[must_use] pub fn group_action(&self) -> Option<GroupAction> {
         GroupAction::from_message(self)
     }
 
     /// `true` if the message indicates a sender started sharing their location, else `false`
-    pub fn started_sharing_location(&self) -> bool {
+    #[must_use] pub fn started_sharing_location(&self) -> bool {
         self.item_type == 4 && self.group_action_type == 0 && !self.share_status
     }
 
     /// `true` if the message indicates a sender stopped sharing their location, else `false`
-    pub fn stopped_sharing_location(&self) -> bool {
+    #[must_use] pub fn stopped_sharing_location(&self) -> bool {
         self.item_type == 4 && self.group_action_type == 0 && self.share_status
     }
 
@@ -686,7 +686,7 @@ impl Message {
     /// cannot be recovered.
     ///
     /// Note: This is not the same as an [`Unsent`](crate::message_types::edited::EditStatus::Unsent) message.
-    pub fn is_deleted(&self) -> bool {
+    #[must_use] pub fn is_deleted(&self) -> bool {
         self.deleted_from.is_some()
     }
 
@@ -734,7 +734,7 @@ impl Message {
             // Allocate the filter string for interpolation
             let ids = chat_ids
                 .iter()
-                .map(|x| x.to_string())
+                .map(std::string::ToString::to_string)
                 .collect::<Vec<String>>()
                 .join(", ");
 
@@ -842,7 +842,7 @@ impl Message {
     }
 
     /// See [`Tapback`] for details on this data.
-    pub fn clean_associated_guid(&self) -> Option<(usize, &str)> {
+    #[must_use] pub fn clean_associated_guid(&self) -> Option<(usize, &str)> {
         if let Some(guid) = &self.associated_message_guid {
             if guid.starts_with("p:") {
                 let mut split = guid.split('/');
@@ -901,7 +901,7 @@ impl Message {
     }
 
     /// Get the variant of a message, see [`variants`](crate::message_types::variants) for detail.
-    pub fn variant(&self) -> Variant {
+    #[must_use] pub fn variant(&self) -> Variant {
         // Check if a message was edited first as those have special properties
         if self.is_edited() {
             return Variant::Edited;
@@ -1028,7 +1028,7 @@ impl Message {
     }
 
     /// Determine the type of announcement a message contains, if it contains one
-    pub fn get_announcement(&self) -> Option<Announcement> {
+    #[must_use] pub fn get_announcement(&self) -> Option<Announcement> {
         if let Some(action) = self.group_action() {
             return Some(Announcement::GroupAction(action));
         }
@@ -1045,7 +1045,7 @@ impl Message {
     }
 
     /// Determine the service the message was sent from, i.e. iMessage, SMS, IRC, etc.
-    pub fn service(&self) -> Service {
+    #[must_use] pub fn service(&self) -> Service {
         Service::from(self.service.as_deref())
     }
 
@@ -1099,7 +1099,7 @@ impl Message {
     }
 
     /// Determine which [`Expressive`] the message was sent with
-    pub fn get_expressive(&self) -> Expressive {
+    #[must_use] pub fn get_expressive(&self) -> Expressive {
         match &self.expressive_send_style_id {
             Some(content) => match content.as_str() {
                 "com.apple.MobileSMS.expressivesend.gentle" => {
@@ -1180,7 +1180,7 @@ impl Message {
 
 #[cfg(test)]
 impl Message {
-    pub fn blank() -> Message {
+    #[must_use] pub fn blank() -> Message {
         Message {
             rowid: i32::default(),
             guid: String::default(),

@@ -92,10 +92,10 @@ impl<'a> URLMessage<'a> {
 
         if let Some(meta) = root_dict.get("richLinkMetadata") {
             return Ok(meta);
-        };
+        }
         if let Some(meta) = root_dict.get("metadata") {
             return Ok(meta);
-        };
+        }
         Err(PlistParseError::NoPayload)
     }
 
@@ -127,7 +127,7 @@ impl<'a> URLMessage<'a> {
     }
 
     /// Get the redirected URL from a URL message, falling back to the original URL, if it exists
-    pub fn get_url(&self) -> Option<&str> {
+    #[must_use] pub fn get_url(&self) -> Option<&str> {
         self.url.or(self.original_url)
     }
 }
