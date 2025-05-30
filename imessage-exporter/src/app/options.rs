@@ -699,7 +699,7 @@ mod arg_tests {
     }
 
     #[test]
-    fn can_build_option_valid_platform_ios_password() {
+    fn can_build_option_ios_password() {
         // Get matches from sample args
         let command = get_command();
         let args = command.get_matches_from([
@@ -737,7 +737,7 @@ mod arg_tests {
     }
 
     #[test]
-    fn can_build_option_valid_platform_macos_password() {
+    fn cant_build_option_macos_password() {
         // Get matches from sample args
         let command = get_command();
         let args = command.get_matches_from([
