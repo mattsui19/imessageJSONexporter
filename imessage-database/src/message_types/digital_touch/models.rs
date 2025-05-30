@@ -10,7 +10,8 @@ use crate::message_types::digital_touch::digital_touch_proto::{
 use protobuf::Message;
 
 /// Converts a raw byte payload from the database into a [`DigitalTouch`].
-#[must_use] pub fn from_payload(payload: &[u8]) -> Option<DigitalTouch> {
+#[must_use]
+pub fn from_payload(payload: &[u8]) -> Option<DigitalTouch> {
     let msg = BaseMessage::parse_from_bytes(payload).ok()?;
 
     Some(msg.TouchKind.enum_value_or_default())
@@ -18,7 +19,7 @@ use protobuf::Message;
 
 #[cfg(test)]
 mod tests {
-    use crate::message_types::digital_touch::{from_payload, DigitalTouch};
+    use crate::message_types::digital_touch::{DigitalTouch, from_payload};
 
     use std::env::current_dir;
     use std::fs::File;

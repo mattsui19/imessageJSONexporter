@@ -220,12 +220,14 @@ impl EditedMessage {
     }
 
     /// Gets the edited message data for the given message part index
-    #[must_use] pub fn part(&self, index: usize) -> Option<&EditedMessagePart> {
+    #[must_use]
+    pub fn part(&self, index: usize) -> Option<&EditedMessagePart> {
         self.parts.get(index)
     }
 
     /// Gets the edited message data for the given message part index
-    #[must_use] pub fn is_unedited_at(&self, index: usize) -> bool {
+    #[must_use]
+    pub fn is_unedited_at(&self, index: usize) -> bool {
         match self.parts.get(index) {
             Some(part) => matches!(part.status, EditStatus::Original),
             None => false,
@@ -233,7 +235,8 @@ impl EditedMessage {
     }
 
     /// Gets the number of parts that may or may not have been edited or unsent
-    #[must_use] pub fn items(&self) -> usize {
+    #[must_use]
+    pub fn items(&self) -> usize {
         self.parts.len()
     }
 }

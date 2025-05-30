@@ -25,7 +25,7 @@ const END_PATTERN: [u8; 2] = [0x0086, 0x0084];
 /// ```txt
 /// streamtyped���@���NSAttributedString�NSObject����NSString��+Example message  ��iI���� NSDictionary��i����__kIMMessagePartAttributeName����NSNumber��NSValue��*������
 /// ```
-/// 
+///
 /// In that example, the returned body text would be `"Example message"`.
 pub fn parse(mut stream: Vec<u8>) -> Result<String, StreamTypedError> {
     // Find the start index and drain

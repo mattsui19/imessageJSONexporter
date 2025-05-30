@@ -101,7 +101,9 @@ mod tests {
             url: Some(
                 "https://music.apple.com/us/album/%D0%BF%D0%B5%D1%81%D0%BD%D1%8C-1/1539641998?i=1539641999",
             ),
-            preview: Some("https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview115/v4/b2/65/b3/b265b31f-facb-3ea3-e6bc-91a8d01c9b2f/mzaf_18233159060539450284.plus.aac.ep.m4a"),
+            preview: Some(
+                "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview115/v4/b2/65/b3/b265b31f-facb-3ea3-e6bc-91a8d01c9b2f/mzaf_18233159060539450284.plus.aac.ep.m4a",
+            ),
             artist: Some("БАТЮШКА"),
             album: Some("Панихида"),
             track_name: Some("Песнь 1"),
@@ -132,7 +134,10 @@ mod tests {
             artist: Some("Dual Core"),
             album: Some("Downtime"),
             track_name: Some("Another Chapter"),
-            lyrics: Some(vec!["I remember when it all started, something from a dream", "Addicted to the black and green letters on my screen"]),
+            lyrics: Some(vec![
+                "I remember when it all started, something from a dream",
+                "Addicted to the black and green letters on my screen",
+            ]),
         };
 
         assert_eq!(balloon, expected);

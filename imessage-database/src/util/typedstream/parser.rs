@@ -68,7 +68,8 @@ impl<'a> TypedStreamReader<'a> {
     /// let bytes: Vec<u8> = vec![]; // Example stream
     /// let mut reader = TypedStreamReader::from(&bytes);
     /// ```
-    #[must_use] pub fn from(stream: &'a [u8]) -> Self {
+    #[must_use]
+    pub fn from(stream: &'a [u8]) -> Self {
         Self {
             stream,
             idx: 0,

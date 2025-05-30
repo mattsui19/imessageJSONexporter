@@ -23,7 +23,8 @@ pub const TIMESTAMP_FACTOR: i64 = 1000000000;
 ///
 /// let current_epoch = get_offset();
 /// ```
-#[must_use] pub fn get_offset() -> i64 {
+#[must_use]
+pub fn get_offset() -> i64 {
     Utc.with_ymd_and_hms(2001, 1, 1, 0, 0, 0)
         .unwrap()
         .timestamp()
@@ -60,7 +61,8 @@ pub fn get_local_time(date_stamp: &i64, offset: &i64) -> Result<DateTime<Local>,
 /// let date = format(&Ok(Local::now()));
 /// println!("{date}");
 /// ```
-#[must_use] pub fn format(date: &Result<DateTime<Local>, MessageError>) -> String {
+#[must_use]
+pub fn format(date: &Result<DateTime<Local>, MessageError>) -> String {
     match date {
         Ok(d) => DateTime::format(d, "%b %d, %Y %l:%M:%S %p").to_string(),
         Err(why) => why.to_string(),
@@ -79,7 +81,8 @@ pub fn get_local_time(date_stamp: &i64, offset: &i64) -> Result<DateTime<Local>,
 /// let end = Ok(Local.with_ymd_and_hms(2020, 5, 20, 9, 15, 13).unwrap());
 /// println!("{}", readable_diff(start, end).unwrap()) // "5 minutes, 2 seconds"
 /// ```
-#[must_use] pub fn readable_diff(
+#[must_use]
+pub fn readable_diff(
     start: Result<DateTime<Local>, MessageError>,
     end: Result<DateTime<Local>, MessageError>,
 ) -> Option<String> {

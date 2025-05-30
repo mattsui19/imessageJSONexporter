@@ -7,7 +7,7 @@ use std::collections::{BTreeSet, HashMap};
 
 use crate::{
     error::table::TableError,
-    tables::table::{Cacheable, Deduplicate, Diagnostic, Table, HANDLE, ME},
+    tables::table::{Cacheable, Deduplicate, Diagnostic, HANDLE, ME, Table},
     util::output::{done_processing, processing},
 };
 
@@ -101,7 +101,7 @@ impl Deduplicate for Handle {
     /// that represents a single handle for all of the deduplicate handles.
     ///
     /// Assuming no new handles have been written to the database, deduplicated data is deterministic across runs.
-    /// 
+    ///
     /// # Example:
     ///
     /// ```

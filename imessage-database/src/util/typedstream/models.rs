@@ -84,7 +84,8 @@ impl Archivable {
     /// );
     /// println!("{:?}", not_nsstring.as_nsstring()); // None
     /// ```
-    #[must_use] pub fn as_nsstring(&self) -> Option<&str> {
+    #[must_use]
+    pub fn as_nsstring(&self) -> Option<&str> {
         if let Archivable::Object(Class { name, .. }, value) = self {
             if name == "NSString" || name == "NSMutableString" {
                 if let Some(OutputData::String(text)) = value.first() {
@@ -121,7 +122,8 @@ impl Archivable {
     /// );
     /// println!("{:?}", not_nsnumber.as_nsnumber_int()); // None
     /// ```
-    #[must_use] pub fn as_nsnumber_int(&self) -> Option<&i64> {
+    #[must_use]
+    pub fn as_nsnumber_int(&self) -> Option<&i64> {
         if let Archivable::Object(Class { name, .. }, value) = self {
             if name == "NSNumber" {
                 if let Some(OutputData::SignedInteger(num)) = value.first() {
@@ -158,7 +160,8 @@ impl Archivable {
     /// );
     /// println!("{:?}", not_nsnumber.as_nsnumber_float()); // None
     /// ```
-    #[must_use] pub fn as_nsnumber_float(&self) -> Option<&f64> {
+    #[must_use]
+    pub fn as_nsnumber_float(&self) -> Option<&f64> {
         if let Archivable::Object(Class { name, .. }, value) = self {
             if name == "NSNumber" {
                 if let Some(OutputData::Double(num)) = value.first() {
