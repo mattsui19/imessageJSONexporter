@@ -966,12 +966,12 @@ impl<'a> Writer<'a> for HTML<'a> {
                             out_s.push_str(&format!(
                                 "<span class=\"unsent\">{who} unsent this message part {diff} after sending!</span>"
                             ));
-                        },
+                        }
                         None => {
                             out_s.push_str(&format!(
                                 "<span class=\"unsent\">{who} unsent this message part!</span>"
                             ));
-                        },
+                        }
                     }
                 }
                 EditStatus::Original => {

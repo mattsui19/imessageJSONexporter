@@ -186,35 +186,33 @@ impl AttachmentManager {
             let mut new_media_type: Option<MediaType> = None;
 
             match attachment.mime_type() {
-                MediaType::Image(_) => {
-                    match self.mode {
-                        AttachmentManagerMode::Basic | AttachmentManagerMode::Full => {
-                            match &self.image_converter {
-                                Some(converter) => {
-                                    if attachment.is_sticker {
-                                        new_media_type = sticker_copy_convert(
-                                            &from,
-                                            &mut to,
-                                            converter,
-                                            &self.video_converter,
-                                            attachment.mime_type(),
-                                        );
-                                    } else {
-                                        new_media_type = image_copy_convert(
-                                            &from,
-                                            &mut to,
-                                            converter,
-                                            attachment.mime_type(),
-                                        );
-                                    }
+                MediaType::Image(_) => match self.mode {
+                    AttachmentManagerMode::Basic | AttachmentManagerMode::Full => {
+                        match &self.image_converter {
+                            Some(converter) => {
+                                if attachment.is_sticker {
+                                    new_media_type = sticker_copy_convert(
+                                        &from,
+                                        &mut to,
+                                        converter,
+                                        &self.video_converter,
+                                        attachment.mime_type(),
+                                    );
+                                } else {
+                                    new_media_type = image_copy_convert(
+                                        &from,
+                                        &mut to,
+                                        converter,
+                                        attachment.mime_type(),
+                                    );
                                 }
-                                None => copy_raw(&from, &to),
                             }
+                            None => copy_raw(&from, &to),
                         }
-                        AttachmentManagerMode::Clone => copy_raw(&from, &to),
-                        AttachmentManagerMode::Disabled => unreachable!(),
                     }
-                }
+                    AttachmentManagerMode::Clone => copy_raw(&from, &to),
+                    AttachmentManagerMode::Disabled => unreachable!(),
+                },
                 MediaType::Video(_) => match self.mode {
                     AttachmentManagerMode::Full => match &self.video_converter {
                         Some(converter) => {

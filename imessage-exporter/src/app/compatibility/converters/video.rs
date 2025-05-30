@@ -21,10 +21,7 @@ pub(crate) fn video_copy_convert(
     converter: &VideoConverter,
     mime_type: MediaType,
 ) -> Option<MediaType<'static>> {
-    if matches!(
-        mime_type,
-        MediaType::Video("mov" | "MOV" | "quicktime")
-    ) {
+    if matches!(mime_type, MediaType::Video("mov" | "MOV" | "quicktime")) {
         let output_type = VideoType::Mp4;
 
         // Update extension for conversion

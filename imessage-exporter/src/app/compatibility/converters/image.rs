@@ -21,10 +21,7 @@ pub(crate) fn image_copy_convert(
     converter: &ImageConverter,
     mime_type: MediaType,
 ) -> Option<MediaType<'static>> {
-    if matches!(
-        mime_type,
-        MediaType::Image("heic" | "HEIC")
-    ) {
+    if matches!(mime_type, MediaType::Image("heic" | "HEIC")) {
         let output_type = ImageType::Jpeg;
 
         // Update extension for conversion
