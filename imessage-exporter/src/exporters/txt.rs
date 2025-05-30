@@ -67,11 +67,7 @@ impl<'a> Exporter<'a> for TXT<'a> {
         orphaned.push(ORPHANED);
         orphaned.set_extension("txt");
 
-        let file = File::options()
-            .append(true)
-            .create(true)
-            .open(&orphaned)
-            .map_err(|err| RuntimeError::CreateError(err, orphaned))?;
+        let file = File::options().append(true).create(true).open(&orphaned)?;
 
         Ok(TXT {
             config,
@@ -94,20 +90,18 @@ impl<'a> Exporter<'a> for TXT<'a> {
         // Set up progress bar
         let mut current_message = 0;
         let total_messages =
-            Message::get_count(&self.config.db, &self.config.options.query_context)
-                .map_err(RuntimeError::DatabaseError)?;
+            Message::get_count(self.config.db(), &self.config.options.query_context)?;
         self.pb.start(total_messages);
 
         let mut statement =
-            Message::stream_rows(&self.config.db, &self.config.options.query_context)
-                .map_err(RuntimeError::DatabaseError)?;
+            Message::stream_rows(self.config.db(), &self.config.options.query_context)?;
 
         let messages = statement
             .query_map([], |row| Ok(Message::from_row(row)))
             .map_err(|err| RuntimeError::DatabaseError(TableError::Messages(err)))?;
 
         for message in messages {
-            let mut msg = Message::extract(message).map_err(RuntimeError::DatabaseError)?;
+            let mut msg = Message::extract(message)?;
 
             // Early escape if we try and render the same message GUID twice
             // See https://github.com/ReagentX/imessage-exporter/issues/135 for rationale
@@ -118,7 +112,7 @@ impl<'a> Exporter<'a> for TXT<'a> {
             current_message_row = msg.rowid;
 
             // Generate the text of the message
-            let _ = msg.generate_text(&self.config.db);
+            let _ = msg.generate_text(self.config.db());
 
             // Render the announcement in-line
             if msg.is_announcement() {
@@ -127,9 +121,7 @@ impl<'a> Exporter<'a> for TXT<'a> {
             }
             // Message replies and tapbacks are rendered in context, so no need to render them separately
             else if !msg.is_tapback() {
-                let message = self
-                    .format_message(&msg, 0)
-                    .map_err(RuntimeError::DatabaseError)?;
+                let message = self.format_message(&msg, 0)?;
                 TXT::write_to_file(self.get_or_create_file(&msg)?, &message)?;
             }
             current_message += 1;
@@ -156,11 +148,7 @@ impl<'a> Exporter<'a> for TXT<'a> {
                         path.push(self.config.filename(chatroom));
                         path.set_extension("txt");
 
-                        let file = File::options()
-                            .append(true)
-                            .create(true)
-                            .open(&path)
-                            .map_err(|err| RuntimeError::CreateError(err, path))?;
+                        let file = File::options().append(true).create(true).open(&path)?;
 
                         Ok(entry.insert(BufWriter::new(file)))
                     }
@@ -202,8 +190,8 @@ impl<'a> Writer<'a> for TXT<'a> {
 
         // Useful message metadata
         let message_parts = message.body();
-        let mut attachments = Attachment::from_message(&self.config.db, message)?;
-        let mut replies = message.get_replies(&self.config.db)?;
+        let mut attachments = Attachment::from_message(self.config.db(), message)?;
+        let mut replies = message.get_replies(self.config.db())?;
 
         // Index of where we are in the attachment Vector
         let mut attachment_index: usize = 0;
@@ -345,7 +333,7 @@ impl<'a> Writer<'a> for TXT<'a> {
                 replies
                     .iter_mut()
                     .try_for_each(|reply| -> Result<(), TableError> {
-                        let _ = reply.generate_text(&self.config.db);
+                        let _ = reply.generate_text(self.config.db());
                         if !reply.is_tapback() {
                             self.add_line(
                                 &mut formatted_message,
@@ -427,7 +415,7 @@ impl<'a> Writer<'a> for TXT<'a> {
                 let mut out_s = format!("Sticker from {who}: {path_to_sticker}");
 
                 // Determine the source of the sticker
-                if let Some(sticker_source) = sticker.get_sticker_source(&self.config.db) {
+                if let Some(sticker_source) = sticker.get_sticker_source(self.config.db()) {
                     match sticker_source {
                         StickerSource::Genmoji => {
                             // Add sticker prompt
@@ -449,7 +437,7 @@ impl<'a> Writer<'a> for TXT<'a> {
                         StickerSource::App(bundle_id) => {
                             // Add the application name used to generate/send the sticker
                             let app_name = sticker
-                                .get_sticker_source_application_name(&self.config.db)
+                                .get_sticker_source_application_name(self.config.db())
                                 .unwrap_or(bundle_id);
                             out_s.push_str(&format!(" (App: {app_name})"));
                         }
@@ -473,7 +461,7 @@ impl<'a> Writer<'a> for TXT<'a> {
 
             // Handwritten messages use a different payload type, so check that first
             if message.is_handwriting() {
-                if let Some(payload) = message.raw_payload_data(&self.config.db) {
+                if let Some(payload) = message.raw_payload_data(self.config.db()) {
                     return match HandwrittenMessage::from_payload(&payload) {
                         Ok(bubble) => Ok(self.format_handwriting(message, &bubble, indent)),
                         Err(why) => Err(PlistParseError::HandwritingError(why)),
@@ -482,7 +470,7 @@ impl<'a> Writer<'a> for TXT<'a> {
             }
 
             if message.is_digital_touch() {
-                if let Some(payload) = message.raw_payload_data(&self.config.db) {
+                if let Some(payload) = message.raw_payload_data(self.config.db()) {
                     return match digital_touch::from_payload(&payload) {
                         Some(bubble) => Ok(self.format_digital_touch(message, &bubble, indent)),
                         None => Err(PlistParseError::DigitalTouchError),
@@ -490,7 +478,7 @@ impl<'a> Writer<'a> for TXT<'a> {
                 }
             }
 
-            if let Some(payload) = message.payload_data(&self.config.db) {
+            if let Some(payload) = message.payload_data(self.config.db()) {
                 // Handle URL messages separately since they are a special case
                 let parsed = parse_ns_keyed_archiver(&payload)?;
                 let res = if message.is_url() {
@@ -551,7 +539,7 @@ impl<'a> Writer<'a> for TXT<'a> {
 
                 match tapback {
                     Tapback::Sticker => {
-                        let mut paths = Attachment::from_message(&self.config.db, msg)?;
+                        let mut paths = Attachment::from_message(self.config.db(), msg)?;
                         let who = self.config.who(
                             msg.handle_id,
                             msg.is_from_me(),

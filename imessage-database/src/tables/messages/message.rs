@@ -435,7 +435,7 @@ impl GetBlob for Message {
     /// Extract a blob of data that belongs to a single message from a given column
     fn get_blob<'a>(&self, db: &'a Connection, column: &str) -> Option<Blob<'a>> {
         db.blob_open(
-            rusqlite::DatabaseName::Main,
+            rusqlite::MAIN_DB,
             MESSAGE,
             column,
             self.rowid as i64,

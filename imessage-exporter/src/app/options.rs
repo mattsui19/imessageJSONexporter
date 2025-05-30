@@ -39,6 +39,7 @@ pub const OPTION_PLATFORM: &str = "platform";
 pub const OPTION_BYPASS_FREE_SPACE_CHECK: &str = "ignore-disk-warning";
 pub const OPTION_USE_CALLER_ID: &str = "use-caller-id";
 pub const OPTION_CONVERSATION_FILTER: &str = "conversation-filter";
+pub const OPTION_CLEARTEXT_PASSWORD: &str = "cleartext-password";
 
 // Other CLI Text
 pub const SUPPORTED_FILE_TYPES: &str = "txt, html";
@@ -78,6 +79,8 @@ pub struct Options {
     pub ignore_disk_space: bool,
     /// An optional filter for conversation participants
     pub conversation_filter: Option<String>,
+    /// An optional password for encrypted backups
+    pub cleartext_password: Option<String>,
 }
 
 impl Options {
@@ -96,6 +99,7 @@ impl Options {
         let platform_type: Option<&String> = args.get_one(OPTION_PLATFORM);
         let ignore_disk_space = args.get_flag(OPTION_BYPASS_FREE_SPACE_CHECK);
         let conversation_filter: Option<&String> = args.get_one(OPTION_CONVERSATION_FILTER);
+        let cleartext_password: Option<&String> = args.get_one(OPTION_CLEARTEXT_PASSWORD);
 
         // Build the export type
         let export_type: Option<ExportType> = match export_file_type {
@@ -122,7 +126,7 @@ impl Options {
             for (set, opt) in format_deps {
                 if set {
                     return Err(RuntimeError::InvalidOptions(format!(
-                        "Option `{opt}` is enabled, which requires `--{}`",
+                        "Option --{opt} is enabled, which requires --{}",
                         OPTION_EXPORT_TYPE
                     )));
                 }
@@ -152,7 +156,7 @@ impl Options {
         // Prevent custom_name vs. use_caller_id collision
         if custom_name.is_some() && use_caller_id {
             return Err(RuntimeError::InvalidOptions(format!(
-                "`--{OPTION_CUSTOM_NAME}` is enabled; `--{OPTION_USE_CALLER_ID}` is disallowed"
+                "--{OPTION_CUSTOM_NAME} is enabled; --{OPTION_USE_CALLER_ID} is disallowed"
             )));
         }
 
@@ -182,8 +186,15 @@ impl Options {
                     "{platform_str} is not a valid platform! Must be one of <{SUPPORTED_PLATFORMS}>"
                 )))?
             }
-            None => Platform::determine(&db_path),
+            None => Platform::determine(&db_path)?,
         };
+
+        // Prevent cleartext_password from being set if the source is not an iOS backup
+        if cleartext_password.is_some() && !matches!(platform, Platform::iOS) {
+            return Err(RuntimeError::InvalidOptions(format!(
+                "--{OPTION_CLEARTEXT_PASSWORD} is enabled; it can only be used with iOS backups."
+            )));
+        }
 
         // Validate that the custom attachment root exists, if provided
         if let Some(path) = attachment_root {
@@ -230,6 +241,7 @@ impl Options {
             platform,
             ignore_disk_space,
             conversation_filter: conversation_filter.cloned(),
+            cleartext_password: cleartext_password.cloned(),
         })
     }
 
@@ -324,7 +336,7 @@ fn get_command() -> Command {
             Arg::new(OPTION_DB_PATH)
                 .short('p')
                 .long(OPTION_DB_PATH)
-                .help(format!("Specify an optional custom path for the iMessage database location\nFor macOS, specify a path to a `chat.db` file\nFor iOS, specify a path to the root of an unencrypted backup directory\nIf omitted, the default directory is {}\n", default_db_path().display()))
+                .help(format!("Specify an optional custom path for the iMessage database location\nFor macOS, specify a path to a `chat.db` file\nFor iOS, specify a path to the root of a device backup directory\nIf the iOS backup is encrypted, --{OPTION_CLEARTEXT_PASSWORD} must be passed\nIf omitted, the default directory is {}\n", default_db_path().display()))
                 .display_order(3)
                 .value_name("path/to/source"),
         )
@@ -404,8 +416,16 @@ fn get_command() -> Command {
                 .short('t')
                 .long(OPTION_CONVERSATION_FILTER)
                 .help("Filter exported conversations by contact numbers or emails\nTo provide multiple filter criteria, use a comma-separated string\nAll conversations with the specified participants are exported, including group conversations\nExample: `-t steve@apple.com,5558675309`\n")
-                .value_name("filter")
                 .display_order(13)
+                .value_name("filter"),
+        )
+        .arg(
+            Arg::new(OPTION_CLEARTEXT_PASSWORD)
+                .short('x')
+                .long(OPTION_CLEARTEXT_PASSWORD)
+                .help("Optional password for encrypted iOS backups\nThis is only used when the source is an encrypted iOS backup directory\n")
+                .display_order(14)
+                .value_name("password"),
         )
 }
 
@@ -430,6 +450,7 @@ impl Options {
             platform: Platform::macOS,
             ignore_disk_space: false,
             conversation_filter: None,
+            cleartext_password: None,
         }
     }
 }
@@ -477,6 +498,7 @@ mod arg_tests {
             platform: Platform::default(),
             ignore_disk_space: false,
             conversation_filter: None,
+            cleartext_password: None,
         };
 
         assert_eq!(actual, expected);
@@ -558,6 +580,7 @@ mod arg_tests {
             platform: Platform::default(),
             ignore_disk_space: false,
             conversation_filter: None,
+            cleartext_password: None,
         };
 
         assert_eq!(actual, expected);
@@ -590,6 +613,7 @@ mod arg_tests {
             platform: Platform::default(),
             ignore_disk_space: false,
             conversation_filter: None,
+            cleartext_password: None,
         };
 
         assert_eq!(actual, expected);
@@ -645,6 +669,90 @@ mod arg_tests {
     }
 
     #[test]
+    fn can_build_option_valid_platform() {
+        // Get matches from sample args
+        let command = get_command();
+        let args = command.get_matches_from(["imessage-exporter", "-a", "ios", "-f", "txt"]);
+
+        // Build the Options
+        let actual = Options::from_args(&args).unwrap();
+
+        // Expected data
+        let expected = Options {
+            db_path: default_db_path(),
+            attachment_root: None,
+            attachment_manager: AttachmentManager::from(AttachmentManagerMode::Disabled),
+            diagnostic: false,
+            export_type: Some(ExportType::Txt),
+            export_path: validate_path(None, &None).unwrap(),
+            query_context: QueryContext::default(),
+            no_lazy: false,
+            custom_name: None,
+            use_caller_id: false,
+            platform: Platform::iOS,
+            ignore_disk_space: false,
+            conversation_filter: None,
+            cleartext_password: None,
+        };
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn can_build_option_ios_password() {
+        // Get matches from sample args
+        let command = get_command();
+        let args = command.get_matches_from([
+            "imessage-exporter",
+            "-a",
+            "ios",
+            "-f",
+            "txt",
+            "-x",
+            "password",
+        ]);
+
+        // Build the Options
+        let actual = Options::from_args(&args).unwrap();
+
+        // Expected data
+        let expected = Options {
+            db_path: default_db_path(),
+            attachment_root: None,
+            attachment_manager: AttachmentManager::from(AttachmentManagerMode::Disabled),
+            diagnostic: false,
+            export_type: Some(ExportType::Txt),
+            export_path: validate_path(None, &None).unwrap(),
+            query_context: QueryContext::default(),
+            no_lazy: false,
+            custom_name: None,
+            use_caller_id: false,
+            platform: Platform::iOS,
+            ignore_disk_space: false,
+            conversation_filter: None,
+            cleartext_password: Some("password".to_string()),
+        };
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn cant_build_option_macos_password() {
+        // Get matches from sample args
+        let command = get_command();
+        let args = command.get_matches_from([
+            "imessage-exporter",
+            "-a",
+            "macos",
+            "-f",
+            "txt",
+            "-x",
+            "password",
+        ]);
+        assert!(Options::from_args(&args).is_err());
+    }
+
+    #[test]
     fn cant_build_option_invalid_export_type() {
         // Get matches from sample args
         let command = get_command();
@@ -676,6 +784,7 @@ mod arg_tests {
             platform: Platform::default(),
             ignore_disk_space: false,
             conversation_filter: None,
+            cleartext_password: None,
         };
 
         assert_eq!(actual, expected);
@@ -705,6 +814,7 @@ mod arg_tests {
             platform: Platform::default(),
             ignore_disk_space: false,
             conversation_filter: None,
+            cleartext_password: None,
         };
 
         assert_eq!(actual, expected);
@@ -735,6 +845,7 @@ mod arg_tests {
             platform: Platform::default(),
             ignore_disk_space: false,
             conversation_filter: Some(String::from("steve@apple.com")),
+            cleartext_password: None,
         };
 
         assert_eq!(actual, expected);
@@ -764,6 +875,7 @@ mod arg_tests {
             platform: Platform::default(),
             ignore_disk_space: false,
             conversation_filter: None,
+            cleartext_password: None,
         };
 
         assert_eq!(actual, expected);
@@ -793,6 +905,7 @@ mod arg_tests {
             platform: Platform::default(),
             ignore_disk_space: false,
             conversation_filter: None,
+            cleartext_password: None,
         };
 
         assert_eq!(actual, expected);
@@ -864,6 +977,7 @@ mod arg_tests {
             platform: Platform::default(),
             ignore_disk_space: true,
             conversation_filter: None,
+            cleartext_password: None,
         };
 
         assert_eq!(actual, expected);
