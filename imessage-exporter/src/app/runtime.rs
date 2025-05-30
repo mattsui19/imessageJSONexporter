@@ -231,7 +231,7 @@ impl Config {
             && conn.query_row("SELECT 1", [], |_| Ok(())).is_err()
         {
             return Err(RuntimeError::InvalidOptions(format!(
-                "The provided iOS backup is encrypted, but no password was provided. Please provide a password using the `--{OPTION_CLEARTEXT_PASSWORD}` option."
+                "The provided iOS backup is encrypted, but no password was provided. Please provide a password using the --{OPTION_CLEARTEXT_PASSWORD} option."
             )));
         }
 

@@ -32,10 +32,9 @@ impl Display for RuntimeError {
             RuntimeError::NotEnoughAvailableSpace(estimated_bytes, available_bytes) => {
                 write!(
                     fmt,
-                    "Not enough free disk space!\nEstimated export size: {}\nDisk space available: {}\nPass `--{}` to ignore\n",
+                    "Not enough free disk space!\nEstimated export size: {}\nDisk space available: {}\nPass --{OPTION_BYPASS_FREE_SPACE_CHECK} to ignore\n",
                     format_file_size(*estimated_bytes),
                     format_file_size(*available_bytes),
-                    OPTION_BYPASS_FREE_SPACE_CHECK
                 )
             }
             RuntimeError::BackupError(why) => write!(fmt, "{why}"),

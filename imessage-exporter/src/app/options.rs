@@ -126,7 +126,7 @@ impl Options {
             for (set, opt) in format_deps {
                 if set {
                     return Err(RuntimeError::InvalidOptions(format!(
-                        "Option `{opt}` is enabled, which requires `--{}`",
+                        "Option --{opt} is enabled, which requires --{}",
                         OPTION_EXPORT_TYPE
                     )));
                 }
@@ -156,7 +156,7 @@ impl Options {
         // Prevent custom_name vs. use_caller_id collision
         if custom_name.is_some() && use_caller_id {
             return Err(RuntimeError::InvalidOptions(format!(
-                "`--{OPTION_CUSTOM_NAME}` is enabled; `--{OPTION_USE_CALLER_ID}` is disallowed"
+                "--{OPTION_CUSTOM_NAME} is enabled; --{OPTION_USE_CALLER_ID} is disallowed"
             )));
         }
 
@@ -192,7 +192,7 @@ impl Options {
         // Prevent cleartext_password from being set if the source is not an iOS backup
         if cleartext_password.is_some() && !matches!(platform, Platform::iOS) {
             return Err(RuntimeError::InvalidOptions(format!(
-                "`--{OPTION_CLEARTEXT_PASSWORD}` is enabled; it can only be used with iOS backups."
+                "--{OPTION_CLEARTEXT_PASSWORD} is enabled; it can only be used with iOS backups."
             )));
         }
 
@@ -336,7 +336,7 @@ fn get_command() -> Command {
             Arg::new(OPTION_DB_PATH)
                 .short('p')
                 .long(OPTION_DB_PATH)
-                .help(format!("Specify an optional custom path for the iMessage database location\nFor macOS, specify a path to a `chat.db` file\nFor iOS, specify a path to the root of an iOS backup directory\nIf the iOS backup is encrypted, --{OPTION_CLEARTEXT_PASSWORD} must be passed\nIf omitted, the default directory is {}\n", default_db_path().display()))
+                .help(format!("Specify an optional custom path for the iMessage database location\nFor macOS, specify a path to a `chat.db` file\nFor iOS, specify a path to the root of a device backup directory\nIf the iOS backup is encrypted, --{OPTION_CLEARTEXT_PASSWORD} must be passed\nIf omitted, the default directory is {}\n", default_db_path().display()))
                 .display_order(3)
                 .value_name("path/to/source"),
         )
