@@ -156,7 +156,7 @@ fn draw_point(canvas: &mut [Vec<char>], x: i64, y: i64) {
 
 /// Generates svg lines from an array of strokes.
 fn generate_strokes(svg: &mut String, strokes: &[Vec<Point>]) {
-    for stroke in strokes.iter() {
+    for stroke in strokes {
         let mut segments = String::with_capacity(80 * (stroke.len() - 1));
         for (width, points) in &group_points(stroke) {
             let mut points_svg = String::with_capacity(points.len() * 3);
