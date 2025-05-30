@@ -62,7 +62,7 @@ The [releases page](https://github.com/ReagentX/imessage-exporter/releases) prov
 -p, --db-path <path/to/source>
         Specify an optional custom path for the iMessage database location
         For macOS, specify a path to a `chat.db` file
-        For iOS, specify a path to the root of an iOS backup directory
+        For iOS, specify a path to the root of a device backup directory
         If the iOS backup is encrypted, --cleartext-password must be passed
         If omitted, the default directory is ~/Library/Messages/chat.db
         
