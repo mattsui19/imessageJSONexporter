@@ -19,7 +19,7 @@ pub fn from_payload(payload: &[u8]) -> Option<DigitalTouch> {
 
 #[cfg(test)]
 mod tests {
-    use crate::message_types::digital_touch::{DigitalTouch, from_payload};
+    use crate::message_types::digital_touch::{from_payload, DigitalTouch};
 
     use std::env::current_dir;
     use std::fs::File;
