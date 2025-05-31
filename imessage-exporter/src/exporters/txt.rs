@@ -13,7 +13,7 @@ use crate::{
         compatibility::attachment_manager::AttachmentManagerMode, error::RuntimeError,
         progress::ExportProgress, runtime::Config,
     },
-    exporters::exporter::{BalloonFormatter, Exporter, Writer},
+    exporters::exporter::{ATTACHMENT_NO_FILENAME, BalloonFormatter, Exporter, Writer},
 };
 
 use imessage_database::{
@@ -386,7 +386,7 @@ impl<'a> Writer<'a> for TXT<'a> {
             .options
             .attachment_manager
             .handle_attachment(message, attachment, self.config)
-            .ok_or(attachment.filename())?;
+            .ok_or(attachment.filename().ok_or(ATTACHMENT_NO_FILENAME)?)?;
 
         if will_encode {
             self.pb.set_default_style();
@@ -1120,7 +1120,9 @@ mod tests {
     use std::env::current_dir;
 
     use crate::{
-        Config, Exporter, Options, TXT, app::export_type::ExportType, exporters::exporter::Writer,
+        Config, Exporter, Options, TXT,
+        app::{compatibility::attachment_manager::AttachmentManagerMode, export_type::ExportType},
+        exporters::exporter::Writer,
     };
     use imessage_database::{
         tables::{messages::models::AttachmentMeta, table::ME},
@@ -1786,7 +1788,7 @@ mod tests {
     }
 
     #[test]
-    fn can_format_txt_attachment_macos_invalid() {
+    fn can_format_txt_attachment_macos_invalid_disabled() {
         // Create exporter
         let options = Options::fake_options(ExportType::Txt);
         let config = Config::fake_app(options);
@@ -1796,11 +1798,33 @@ mod tests {
 
         let mut attachment = Config::fake_attachment();
         attachment.filename = None;
+        attachment.transfer_name = None;
 
         let actual =
             exporter.format_attachment(&mut attachment, &message, &AttachmentMeta::default());
 
-        assert_eq!(actual, Err("d.jpg"));
+        assert_eq!(actual, Err("Attachment missing name metadata!"));
+    }
+
+    #[test]
+    fn can_format_txt_attachment_macos_invalid_clone() {
+        // Create exporter
+        let mut options = Options::fake_options(ExportType::Txt);
+        options.attachment_manager.mode = AttachmentManagerMode::Clone;
+
+        let config = Config::fake_app(options);
+        let exporter = TXT::new(&config).unwrap();
+
+        let message = Config::fake_message();
+
+        let mut attachment = Config::fake_attachment();
+        attachment.filename = None;
+        attachment.transfer_name = None;
+
+        let actual =
+            exporter.format_attachment(&mut attachment, &message, &AttachmentMeta::default());
+
+        assert_eq!(actual, Err("Attachment missing name metadata!"));
     }
 
     #[test]
@@ -1823,23 +1847,47 @@ mod tests {
     }
 
     #[test]
-    fn can_format_txt_attachment_ios_invalid() {
+    fn can_format_txt_attachment_ios_invalid_disabled() {
         // Create exporter
         let options = Options::fake_options(ExportType::Txt);
         let mut config = Config::fake_app(options);
-        // Modify this
         config.options.platform = Platform::iOS;
+
         let exporter = TXT::new(&config).unwrap();
 
         let message = Config::fake_message();
 
         let mut attachment = Config::fake_attachment();
         attachment.filename = None;
+        attachment.transfer_name = None;
 
         let actual =
             exporter.format_attachment(&mut attachment, &message, &AttachmentMeta::default());
 
-        assert_eq!(actual, Err("d.jpg"));
+        assert_eq!(actual, Err("Attachment missing name metadata!"));
+    }
+
+    #[test]
+    fn can_format_txt_attachment_ios_invalid_clone() {
+        // Create exporter
+        let mut options = Options::fake_options(ExportType::Txt);
+        options.attachment_manager.mode = AttachmentManagerMode::Clone;
+
+        let mut config = Config::fake_app(options);
+        config.options.platform = Platform::iOS;
+
+        let exporter = TXT::new(&config).unwrap();
+
+        let message = Config::fake_message();
+
+        let mut attachment = Config::fake_attachment();
+        attachment.filename = None;
+        attachment.transfer_name = None;
+
+        let actual =
+            exporter.format_attachment(&mut attachment, &message, &AttachmentMeta::default());
+
+        assert_eq!(actual, Err("Attachment missing name metadata!"));
     }
 
     #[test]
