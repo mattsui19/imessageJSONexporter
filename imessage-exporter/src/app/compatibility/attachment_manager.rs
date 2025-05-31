@@ -128,12 +128,13 @@ impl AttachmentManager {
         attachment: &'a mut Attachment,
         config: &Config,
     ) -> Option<()> {
-        // Resolve the path to the attachment
-        let attachment_path = attachment.resolved_attachment_path(
-            &config.options.platform,
-            &config.options.db_path,
-            config.options.attachment_root.as_deref(),
-        )?;
+        if !matches!(self.mode, AttachmentManagerMode::Disabled) {
+            // Resolve the path to the attachment
+            let attachment_path = attachment.resolved_attachment_path(
+                &config.options.platform,
+                &config.options.db_path,
+                config.options.attachment_root.as_deref(),
+            )?;
 
         if !matches!(self.mode, AttachmentManagerMode::Disabled) {
             let mut is_temp = false;
