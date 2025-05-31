@@ -225,7 +225,7 @@ impl EditedMessage {
         self.parts.get(index)
     }
 
-    /// Gets the edited message data for the given message part index
+    /// Indicates if the given message part has been edited
     #[must_use]
     pub fn is_unedited_at(&self, index: usize) -> bool {
         match self.parts.get(index) {
