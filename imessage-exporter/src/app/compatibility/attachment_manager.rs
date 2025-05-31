@@ -136,7 +136,6 @@ impl AttachmentManager {
                 config.options.attachment_root.as_deref(),
             )?;
 
-        if !matches!(self.mode, AttachmentManagerMode::Disabled) {
             let mut is_temp = false;
             let mut from = PathBuf::from(&attachment_path);
 
@@ -255,7 +254,13 @@ impl AttachmentManager {
             }
 
             // Update file metadata
-            update_file_metadata(&from, &to, message, config);
+            if !is_temp {
+                // If the file was copied, we need to update the metadata from the source file
+                update_file_metadata(&from, &to, message, config);
+            } else {
+                // If the file was decrypted, we need to update the metadata from the original file
+                update_file_metadata(Path::new(&attachment_path), &to, message, config);
+            }
             attachment.copied_path = Some(to);
             if let Some(media_type) = new_media_type {
                 attachment.mime_type = Some(media_type.as_mime_type());
