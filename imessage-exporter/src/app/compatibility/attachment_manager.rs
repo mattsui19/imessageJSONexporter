@@ -143,13 +143,17 @@ impl AttachmentManager {
             if let Some(backup) = &config.backup {
                 // We shouldn't get here without an encrypted backup, but just in case, validate it
                 if backup.is_encrypted() {
-                    if let Ok(decrypted_path) = decrypt_file(backup, &from) {
-                        // If the decrypted file is different from the original, use the decrypted one
-                        from = decrypted_path;
-                        // The decrypted file is temporary, so we need to remove it later
-                        is_temp = true;
-                    } else {
-                        return None;
+                    match decrypt_file(backup, &from) {
+                        Ok(decrypted_path) => {
+                            // If the decrypted file is different from the original, use the decrypted one
+                            from = decrypted_path;
+                            // The decrypted file is temporary, so we need to remove it later
+                            is_temp = true;
+                        }
+                        Err(why) => {
+                            eprintln!("Unable to decrypt {from:?}: {why}");
+                            return None;
+                        }
                     }
                 }
             }
