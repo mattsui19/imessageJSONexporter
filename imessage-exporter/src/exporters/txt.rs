@@ -378,7 +378,7 @@ impl<'a> Writer<'a> for TXT<'a> {
 
         if will_encode {
             self.pb
-                .set_busy_style("Encoding video, estimates may become inaccurate...".to_string());
+                .set_busy_style("Encoding video, estimates paused...".to_string());
         }
 
         // Copy the file, if requested
