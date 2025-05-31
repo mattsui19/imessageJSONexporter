@@ -4,7 +4,7 @@ The library and binary crates aim to provide the most comprehensive and accurate
 
 ## Targeted Versions
 
-This tool targets the current latest public release for iMessage. It may work with older databases, but all features may not be available.
+This tool targets the current latest public release for Messages.app. It may work with older databases, but all features may not be available.
 
 ## Supported data sources
 
