@@ -13,7 +13,9 @@ use crate::{
         compatibility::attachment_manager::AttachmentManagerMode, error::RuntimeError,
         progress::ExportProgress, runtime::Config, sanitizers::sanitize_html,
     },
-    exporters::exporter::{BalloonFormatter, Exporter, TextEffectFormatter, Writer},
+    exporters::exporter::{
+        ATTACHMENT_NO_FILENAME, BalloonFormatter, Exporter, TextEffectFormatter, Writer,
+    },
 };
 
 use imessage_database::{
@@ -547,7 +549,7 @@ impl<'a> Writer<'a> for HTML<'a> {
 
         if will_encode {
             self.pb
-                .set_busy_style("Encoding video, estimates may become inaccurate...".to_string());
+                .set_busy_style("Encoding video, estimates paused...".to_string());
         }
 
         // Copy the file, if requested
@@ -555,7 +557,7 @@ impl<'a> Writer<'a> for HTML<'a> {
             .options
             .attachment_manager
             .handle_attachment(message, attachment, self.config)
-            .ok_or(attachment.filename())?;
+            .ok_or(attachment.filename().ok_or(ATTACHMENT_NO_FILENAME)?)?;
 
         if will_encode {
             self.pb.set_default_style();
@@ -589,13 +591,13 @@ impl<'a> Writer<'a> for HTML<'a> {
             MediaType::Text(_) => {
                 format!(
                     "<a href=\"{embed_path}\">Click to download {} ({})</a>",
-                    attachment.filename(),
+                    attachment.filename().ok_or(ATTACHMENT_NO_FILENAME)?,
                     attachment.file_size()
                 )
             }
             MediaType::Application(_) => format!(
                 "<a href=\"{embed_path}\">Click to download {} ({})</a>",
-                attachment.filename(),
+                attachment.filename().ok_or(ATTACHMENT_NO_FILENAME)?,
                 attachment.file_size()
             ),
             MediaType::Unknown => {
@@ -606,7 +608,7 @@ impl<'a> Writer<'a> for HTML<'a> {
                 {
                     format!(
                         "<p>Folder: <i>{}</i> ({}) <a href=\"{embed_path}\">Click to open</a></p>",
-                        attachment.filename(),
+                        attachment.filename().ok_or(ATTACHMENT_NO_FILENAME)?,
                         attachment.file_size()
                     )
                 } else {
@@ -1703,7 +1705,9 @@ mod tests {
     use std::{env::current_dir, path::PathBuf};
 
     use crate::{
-        Config, Exporter, HTML, Options, app::export_type::ExportType, exporters::exporter::Writer,
+        Config, Exporter, HTML, Options,
+        app::{compatibility::attachment_manager::AttachmentManagerMode, export_type::ExportType},
+        exporters::exporter::Writer,
     };
     use imessage_database::{
         tables::{messages::models::AttachmentMeta, table::ME},
@@ -2410,7 +2414,7 @@ mod tests {
     }
 
     #[test]
-    fn can_format_html_attachment_macos_invalid() {
+    fn can_format_html_attachment_macos_invalid_disabled() {
         // Create exporter
         let options = Options::fake_options(ExportType::Html);
         let config = Config::fake_app(options);
@@ -2420,11 +2424,33 @@ mod tests {
 
         let mut attachment = Config::fake_attachment();
         attachment.filename = None;
+        attachment.transfer_name = None;
 
         let actual =
             exporter.format_attachment(&mut attachment, &message, &AttachmentMeta::default());
 
-        assert_eq!(actual, Err("d.jpg"));
+        assert_eq!(actual, Err("Attachment missing name metadata!"));
+    }
+
+    #[test]
+    fn can_format_html_attachment_macos_invalid_clone() {
+        // Create exporter
+        let mut options = Options::fake_options(ExportType::Html);
+        options.attachment_manager.mode = AttachmentManagerMode::Clone;
+
+        let config = Config::fake_app(options);
+        let exporter = HTML::new(&config).unwrap();
+
+        let message = Config::fake_message();
+
+        let mut attachment = Config::fake_attachment();
+        attachment.filename = None;
+        attachment.transfer_name = None;
+
+        let actual =
+            exporter.format_attachment(&mut attachment, &message, &AttachmentMeta::default());
+
+        assert_eq!(actual, Err("Attachment missing name metadata!"));
     }
 
     #[test]
@@ -2447,7 +2473,7 @@ mod tests {
     }
 
     #[test]
-    fn can_format_html_attachment_ios_invalid() {
+    fn can_format_html_attachment_ios_invalid_disabled() {
         // Create exporter
         let options = Options::fake_options(ExportType::Html);
         let config = Config::fake_app(options);
@@ -2457,11 +2483,33 @@ mod tests {
 
         let mut attachment = Config::fake_attachment();
         attachment.filename = None;
+        attachment.transfer_name = None;
 
         let actual =
             exporter.format_attachment(&mut attachment, &message, &AttachmentMeta::default());
 
-        assert_eq!(actual, Err("d.jpg"));
+        assert_eq!(actual, Err("Attachment missing name metadata!"));
+    }
+
+    #[test]
+    fn can_format_html_attachment_ios_invalid_clone() {
+        // Create exporter
+        let mut options = Options::fake_options(ExportType::Html);
+        options.attachment_manager.mode = AttachmentManagerMode::Clone;
+
+        let config = Config::fake_app(options);
+        let exporter = HTML::new(&config).unwrap();
+
+        let message = Config::fake_message();
+
+        let mut attachment = Config::fake_attachment();
+        attachment.filename = None;
+        attachment.transfer_name = None;
+
+        let actual =
+            exporter.format_attachment(&mut attachment, &message, &AttachmentMeta::default());
+
+        assert_eq!(actual, Err("Attachment missing name metadata!"));
     }
 
     #[test]

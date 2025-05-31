@@ -26,6 +26,7 @@ use crate::{
         options::{OPTION_CLEARTEXT_PASSWORD, Options},
         sanitizers::sanitize_filename,
     },
+    exporters::exporter::ATTACHMENT_NO_FILENAME,
 };
 
 use imessage_database::{
@@ -122,7 +123,12 @@ impl Config {
                     &self.options.db_path,
                     self.options.attachment_root.as_deref(),
                 )
-                .unwrap_or_else(|| attachment.filename().to_string()),
+                .unwrap_or_else(|| {
+                    attachment
+                        .filename()
+                        .unwrap_or(ATTACHMENT_NO_FILENAME)
+                        .to_string()
+                }),
         }
     }
 
@@ -1052,7 +1058,7 @@ mod directory_tests {
         // Create attachment
         let mut attachment = Config::fake_attachment();
         let mut full_path = PathBuf::from("/Users/ReagentX/exports/attachments");
-        full_path.push(attachment.filename());
+        full_path.push(attachment.filename().unwrap());
         attachment.copied_path = Some(full_path);
 
         let result = app.message_attachment_path(&attachment);

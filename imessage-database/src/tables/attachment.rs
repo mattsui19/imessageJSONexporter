@@ -288,14 +288,8 @@ impl Attachment {
     ///
     /// If the [`transfer_name`](Self::transfer_name) field is populated, use that. If it is not present, fall back to the `filename` field.
     #[must_use]
-    pub fn filename(&self) -> &str {
-        if let Some(transfer_name) = &self.transfer_name {
-            return transfer_name;
-        }
-        if let Some(filename) = &self.filename {
-            return filename;
-        }
-        "Attachment missing name metadata!"
+    pub fn filename(&self) -> Option<&str> {
+        self.transfer_name.as_deref().or(self.filename.as_deref())
     }
 
     /// Get a human readable file size for an attachment using [`format_file_size`]
@@ -628,21 +622,21 @@ mod tests {
     #[test]
     fn can_get_filename() {
         let attachment = sample_attachment();
-        assert_eq!(attachment.filename(), "c.png");
+        assert_eq!(attachment.filename(), Some("c.png"));
     }
 
     #[test]
     fn can_get_filename_no_transfer_name() {
         let mut attachment = sample_attachment();
         attachment.transfer_name = None;
-        assert_eq!(attachment.filename(), "a/b/c.png");
+        assert_eq!(attachment.filename(), Some("a/b/c.png"));
     }
 
     #[test]
     fn can_get_filename_no_filename() {
         let mut attachment = sample_attachment();
         attachment.filename = None;
-        assert_eq!(attachment.filename(), "c.png");
+        assert_eq!(attachment.filename(), Some("c.png"));
     }
 
     #[test]
@@ -650,7 +644,7 @@ mod tests {
         let mut attachment = sample_attachment();
         attachment.transfer_name = None;
         attachment.filename = None;
-        assert_eq!(attachment.filename(), "Attachment missing name metadata!");
+        assert_eq!(attachment.filename(), None);
     }
 
     #[test]

@@ -128,29 +128,32 @@ impl AttachmentManager {
         attachment: &'a mut Attachment,
         config: &Config,
     ) -> Option<()> {
-        // Resolve the path to the attachment
-        let attachment_path = attachment.resolved_attachment_path(
-            &config.options.platform,
-            &config.options.db_path,
-            config.options.attachment_root.as_deref(),
-        )?;
-
         if !matches!(self.mode, AttachmentManagerMode::Disabled) {
+            // Resolve the path to the attachment
+            let attachment_path = attachment.resolved_attachment_path(
+                &config.options.platform,
+                &config.options.db_path,
+                config.options.attachment_root.as_deref(),
+            )?;
+
             let mut is_temp = false;
             let mut from = PathBuf::from(&attachment_path);
 
             // Handle encrypted files from iOS backups
             if let Some(backup) = &config.backup {
-                match decrypt_file(backup, &from) {
-                    Ok(decrypted_path) => {
-                        // If the decrypted file is different from the original, use the decrypted one
-                        from = decrypted_path;
-                        // The decrypted file is temporary, so we need to remove it later
-                        is_temp = true;
-                    }
-                    Err(why) => {
-                        eprintln!("Unable to decrypt {from:?}: {why}");
-                        return None;
+                // We shouldn't get here without an encrypted backup, but just in case, validate it
+                if backup.is_encrypted() {
+                    match decrypt_file(backup, &from) {
+                        Ok(decrypted_path) => {
+                            // If the decrypted file is different from the original, use the decrypted one
+                            from = decrypted_path;
+                            // The decrypted file is temporary, so we need to remove it later
+                            is_temp = true;
+                        }
+                        Err(why) => {
+                            eprintln!("Unable to decrypt {from:?}: {why}");
+                            return None;
+                        }
                     }
                 }
             }
@@ -251,7 +254,13 @@ impl AttachmentManager {
             }
 
             // Update file metadata
-            update_file_metadata(&from, &to, message, config);
+            if is_temp {
+                // If the file was decrypted, we need to update the metadata from the original file
+                update_file_metadata(Path::new(&attachment_path), &to, message, config);
+            } else {
+                // If the file was copied, we need to update the metadata from the source file
+                update_file_metadata(&from, &to, message, config);
+            }
             attachment.copied_path = Some(to);
             if let Some(media_type) = new_media_type {
                 attachment.mime_type = Some(media_type.as_mime_type());
