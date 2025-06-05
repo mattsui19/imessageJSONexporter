@@ -42,43 +42,31 @@ pub(crate) fn video_copy_convert(
 }
 
 /// Build ffmpeg arguments for remuxing without re-encoding
-fn build_remux_args(from_path: &str, to_path: &str) -> Vec<String> {
+fn build_remux_args<'a>(from_path: &'a str, to_path: &'a str) -> Vec<&'a str> {
     vec![
-        "-i".to_string(),
-        from_path.to_string(),
-        "-c".to_string(),
-        "copy".to_string(),
-        "-f".to_string(),
-        VideoType::Mp4.to_str().to_string(),
-        to_path.to_string(),
+        "-i",
+        from_path,
+        "-c",
+        "copy",
+        "-f",
+        VideoType::Mp4.to_str(),
+        to_path,
     ]
 }
 
 // Build ffmpeg arguments for encoding with optional hardware acceleration
-fn build_encode_args(from_path: &str, to_path: &str, hw: &Option<HardwareEncoder>) -> Vec<String> {
-    let mut args = vec!["-i".to_string(), from_path.to_string()];
+fn build_encode_args<'a>(
+    from_path: &'a str,
+    to_path: &'a str,
+    hw: Option<&HardwareEncoder>,
+) -> Vec<&'a str> {
+    let mut args = vec!["-i", from_path];
     if let Some(hw) = hw {
-        args.extend(vec![
-            "-c:v".to_string(),
-            hw.codec_name().to_string(),
-            "-preset".to_string(),
-            "fast".to_string(),
-        ]);
+        args.extend(&["-c:v", hw.codec_name(), "-preset", "fast"]);
     } else {
-        args.extend(vec![
-            "-c:v".to_string(),
-            "libx264".to_string(),
-            "-preset".to_string(),
-            "fast".to_string(),
-        ]);
+        args.extend(&["-c:v", "libx264", "-preset", "fast"]);
     }
-    args.extend(vec![
-        "-c:a".to_string(),
-        "copy".to_string(),
-        "-movflags".to_string(),
-        "+faststart".to_string(),
-        to_path.to_string(),
-    ]);
+    args.extend(&["-c:a", "copy", "-movflags", "+faststart", to_path]);
     args
 }
 
@@ -92,15 +80,13 @@ fn convert_mov(
     let (from_path, to_path) = ensure_paths(from, to)?;
 
     // First, try remuxing into MP4 container without re-encoding
-    let remux_args_str = build_remux_args(from_path, to_path);
-    let remux_args: Vec<&str> = remux_args_str.iter().map(String::as_str).collect();
+    let remux_args = build_remux_args(from_path, to_path);
     if run_command(converter.name(), remux_args).is_some() {
         return Some(());
     }
 
     // Remux failed; fallback to re-encoding
-    let encode_args_str = build_encode_args(from_path, to_path, hardware_encoder);
-    let encode_args: Vec<&str> = encode_args_str.iter().map(String::as_str).collect();
+    let encode_args = build_encode_args(from_path, to_path, hardware_encoder.as_ref());
     run_command(converter.name(), encode_args)
 }
 
@@ -116,10 +102,7 @@ mod tests {
         let from = "input.mov";
         let to = "output.mp4";
         let args = build_remux_args(from, to);
-        let expected: Vec<String> = ["-i", from, "-c", "copy", "-f", VideoType::Mp4.to_str(), to]
-            .iter()
-            .map(|s| (*s).to_string())
-            .collect();
+        let expected: Vec<&str> = vec!["-i", from, "-c", "copy", "-f", VideoType::Mp4.to_str(), to];
         assert_eq!(args, expected);
     }
 
@@ -127,8 +110,8 @@ mod tests {
     fn test_build_encode_args_hw() {
         let from = "in.mov";
         let to = "out.mp4";
-        let args = build_encode_args(from, to, &Some(HardwareEncoder::Nvenc));
-        let expected: Vec<String> = [
+        let args = build_encode_args(from, to, Some(&HardwareEncoder::Nvenc));
+        let expected: Vec<&str> = vec![
             "-i",
             from,
             "-c:v",
@@ -140,10 +123,7 @@ mod tests {
             "-movflags",
             "+faststart",
             to,
-        ]
-        .iter()
-        .map(|s| (*s).to_string())
-        .collect();
+        ];
         assert_eq!(args, expected);
     }
 
@@ -151,8 +131,8 @@ mod tests {
     fn test_build_encode_args_sw() {
         let from = "in.mov";
         let to = "out.mp4";
-        let args = build_encode_args(from, to, &None);
-        let expected: Vec<String> = [
+        let args = build_encode_args(from, to, None);
+        let expected: Vec<&str> = vec![
             "-i",
             from,
             "-c:v",
@@ -164,10 +144,7 @@ mod tests {
             "-movflags",
             "+faststart",
             to,
-        ]
-        .iter()
-        .map(|s| (*s).to_string())
-        .collect();
+        ];
         assert_eq!(args, expected);
     }
 }
