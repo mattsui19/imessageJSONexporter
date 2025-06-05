@@ -98,8 +98,8 @@ On my M1 Max MacBook Pro, approximate performance is as follows:
 |---|---|
 | `disabled` | 58,000 |
 | `clone` | 29,000 |
-| `basic` | < 350 |
-| `full` | < 20 |
+| `basic` | ≈ 350 |
+| `full` | ≈ 250 |
 
 For more information on `--copy-method`, see [here](../imessage-exporter/README.md#how-to-use) and [here](./features.md#supported-message-features).
 
