@@ -39,12 +39,19 @@ const COLS: &str = "a.rowid, a.filename, a.uti, a.mime_type, a.transfer_name, a.
 /// The interior `str` contains the subtype, i.e. `x-m4a` for `audio/x-m4a`
 #[derive(Debug, PartialEq, Eq)]
 pub enum MediaType<'a> {
+    /// Image MIME type, such as `"image/png"`` or `"image/jpeg"`
     Image(&'a str),
+    /// Video MIME type, such as `"video/mp4"`` or `"video/quicktime"`
     Video(&'a str),
+    /// Audio MIME type, such as `"audio/mp3"`` or `"audio/x-m4a`"
     Audio(&'a str),
+    /// Text MIME type, such as `"text/plain"`` or `"text/html"`
     Text(&'a str),
+    /// Application MIME type, such as `"application/pdf"`` or `"application/json"`
     Application(&'a str),
+    /// Other MIME types that don't fit the standard categories
     Other(&'a str),
+    /// Unknown MIME type when the type could not be determined
     Unknown,
 }
 
@@ -75,6 +82,7 @@ impl MediaType<'_> {
 /// Represents a single row in the `attachment` table.
 #[derive(Debug)]
 pub struct Attachment {
+    /// The unique identifier for the attachment in the database
     pub rowid: i32,
     /// The path to the file on disk
     pub filename: Option<String>,
@@ -88,6 +96,7 @@ pub struct Attachment {
     pub total_bytes: i64,
     /// `true` if the attachment was a sticker, else `false`
     pub is_sticker: bool,
+    /// Flag indicating whether the attachment should be hidden in the UI
     pub hide_attachment: i32,
     /// The prompt used to generate a Genmoji
     pub emoji_description: Option<String>,

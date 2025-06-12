@@ -11,11 +11,17 @@ use super::typedstream::TypedStreamError;
 /// Errors that can happen when working with message table data
 #[derive(Debug)]
 pub enum MessageError {
+    /// Required data is missing from the message
     MissingData,
+    /// Message has no text content
     NoText,
+    /// Error occurred when parsing with the StreamTyped parser
     StreamTypedParseError(StreamTypedError),
+    /// Error occurred when parsing with the TypedStream parser
     TypedStreamParseError(TypedStreamError),
+    /// Error occurred when parsing Plist data
     PlistParseError(PlistParseError),
+    /// Timestamp value is invalid or out of range
     InvalidTimestamp(i64),
 }
 

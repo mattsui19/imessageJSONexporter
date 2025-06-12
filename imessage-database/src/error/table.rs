@@ -7,12 +7,19 @@ use std::fmt::{Display, Formatter, Result};
 /// Errors that can happen when extracting data from a `SQLite` table
 #[derive(Debug)]
 pub enum TableError {
+    /// Error when parsing attachment data
     Attachment(rusqlite::Error),
+    /// Error when parsing chat to handle relationship data
     ChatToHandle(rusqlite::Error),
+    /// Error when parsing chat data
     Chat(rusqlite::Error),
+    /// Error when parsing handle data
     Handle(rusqlite::Error),
+    /// Error when parsing messages data
     Messages(rusqlite::Error),
+    /// Error when connecting to the database
     CannotConnect(String),
+    /// Error when reading from the database file
     CannotRead(std::io::Error),
 }
 

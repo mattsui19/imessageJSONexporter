@@ -25,14 +25,19 @@ pub trait Table {
 
 /// Defines behavior for table data that can be cached in memory
 pub trait Cacheable {
+    /// The key type for the cache HashMap
     type K;
+    /// The value type for the cache HashMap
     type V;
+    /// Caches the table data in a HashMap
     fn cache(db: &Connection) -> Result<HashMap<Self::K, Self::V>, TableError>;
 }
 
 /// Defines behavior for deduplicating data in a table
 pub trait Deduplicate {
+    /// The type of data being deduplicated
     type T;
+    /// Creates a mapping from duplicated IDs to canonical IDs
     fn dedupe(duplicated_data: &HashMap<i32, Self::T>) -> HashMap<i32, i32>;
 }
 
