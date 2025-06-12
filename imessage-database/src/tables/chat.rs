@@ -25,8 +25,6 @@ pub struct Chat {
     pub service_name: Option<String>,
     /// Optional custom name created created for the chat
     pub display_name: Option<String>,
-    // Properties metadata stored as a `plist` in the database.
-    // pub properties: Option<String>,
 }
 
 impl Table for Chat {
