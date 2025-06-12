@@ -25,11 +25,11 @@ pub trait Table {
 
 /// Defines behavior for table data that can be cached in memory
 pub trait Cacheable {
-    /// The key type for the cache HashMap
+    /// The key type for the cache `HashMap`
     type K;
-    /// The value type for the cache HashMap
+    /// The value type for the cache `HashMap`
     type V;
-    /// Caches the table data in a HashMap
+    /// Caches the table data in a `HashMap`
     fn cache(db: &Connection) -> Result<HashMap<Self::K, Self::V>, TableError>;
 }
 
@@ -183,6 +183,8 @@ pub const ATTRIBUTED_BODY: &str = "attributedBody";
 pub const STICKER_USER_INFO: &str = "sticker_user_info";
 /// The attribution info contains `plist`-encoded metadata for sticker attachments
 pub const ATTRIBUTION_INFO: &str = "attribution_info";
+/// The properties column contains `plist`-encoded metadata for a chat
+pub const PROPERTIES: &str = "properties";
 
 // Default information
 /// Name used for messages sent by the database owner in a first-person context
