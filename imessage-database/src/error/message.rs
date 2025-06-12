@@ -15,9 +15,9 @@ pub enum MessageError {
     MissingData,
     /// Message has no text content
     NoText,
-    /// Error occurred when parsing with the StreamTyped parser
+    /// Error occurred when parsing with the `StreamTyped` parser
     StreamTypedParseError(StreamTypedError),
-    /// Error occurred when parsing with the TypedStream parser
+    /// Error occurred when parsing with the `TypedStream` parser
     TypedStreamParseError(TypedStreamError),
     /// Error occurred when parsing Plist data
     PlistParseError(PlistParseError),
