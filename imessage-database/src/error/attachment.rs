@@ -10,7 +10,9 @@ use std::{
 /// Errors that can happen when working with attachment table data
 #[derive(Debug)]
 pub enum AttachmentError {
+    /// The attachment file could not be found at the specified path
     FileNotFound(String),
+    /// The attachment file exists but could not be read due to an IO error
     Unreadable(String, Error),
 }
 

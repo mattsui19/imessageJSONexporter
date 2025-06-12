@@ -153,7 +153,9 @@ pub(crate) const COLS: &str = "rowid, guid, text, service, handle_id, destinatio
 #[derive(Debug)]
 #[allow(non_snake_case)]
 pub struct Message {
+    /// The unique identifier for the message in the database
     pub rowid: i32,
+    /// The globally unique identifier for the message
     pub guid: String,
     /// The text of the message, which may require calling [`Self::generate_text()`] to populate
     pub text: Option<String>,
@@ -1206,6 +1208,7 @@ impl Message {
 #[cfg(test)]
 impl Message {
     #[must_use]
+    /// Create a blank test message with default values
     pub fn blank() -> Message {
         Message {
             rowid: i32::default(),

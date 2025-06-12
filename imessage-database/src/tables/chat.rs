@@ -17,12 +17,16 @@ use crate::{
 /// Represents a single row in the `chat` table.
 #[derive(Debug)]
 pub struct Chat {
+    /// The unique identifier for the chat in the database
     pub rowid: i32,
+    /// The identifier for the chat, typically a phone number, email, or group chat ID
     pub chat_identifier: String,
     /// The service the chat used, i.e. iMessage, SMS, IRC, etc.
     pub service_name: Option<String>,
     /// Optional custom name created created for the chat
     pub display_name: Option<String>,
+    // Properties metadata stored as a `plist` in the database.
+    // pub properties: Option<String>,
 }
 
 impl Table for Chat {

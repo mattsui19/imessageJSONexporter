@@ -14,6 +14,7 @@ use crate::{
 /// Represents a single row in the `handle` table.
 #[derive(Debug)]
 pub struct Handle {
+    /// The unique identifier for the handle in the database
     pub rowid: i32,
     /// Identifier for a contact, i.e. a phone number or email address
     pub id: String,
