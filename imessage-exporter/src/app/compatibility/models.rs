@@ -165,7 +165,7 @@ pub enum HardwareEncoder {
     Nvenc,
     /// Intel Quick Sync Video H.264 encoder (`QSV`)
     Qsv,
-    /// Apple VideoToolbox H.264 encoder on macOS
+    /// Apple `VideoToolbox` H.264 encoder on macOS
     VideoToolbox,
 }
 
