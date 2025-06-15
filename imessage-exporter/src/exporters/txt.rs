@@ -93,42 +93,46 @@ impl<'a> Exporter<'a> for TXT<'a> {
             Message::get_count(self.config.db(), &self.config.options.query_context)?;
         self.pb.start(total_messages);
 
-        let mut statement =
-            Message::stream_rows(self.config.db(), &self.config.options.query_context)?;
+        Message::stream(self.config.db(), |message_result| {
+            match message_result {
+                Ok(mut msg) => {
+                    if msg.is_announcement() || !msg.is_tapback() {
+                        // Early escape if we try and render the same message GUID twice
+                        // See https://github.com/ReagentX/imessage-exporter/issues/135 for rationale
+                        if msg.rowid == current_message_row {
+                            current_message += 1;
+                            return Ok(());
+                        }
+                        current_message_row = msg.rowid;
 
-        let messages = statement
-            .query_map([], |row| Ok(Message::from_row(row)))
-            .map_err(|err| RuntimeError::DatabaseError(TableError::QueryError(err)))?;
+                        // Generate the text of the message
+                        let _ = msg.generate_text(self.config.db());
 
-        for message in messages {
-            let mut msg = Message::extract(message)?;
+                        // Render the announcement in-line
+                        if msg.is_announcement() {
+                            let announcement = self.format_announcement(&msg);
+                            TXT::write_to_file(self.get_or_create_file(&msg)?, &announcement)?;
+                        }
+                        // Message replies and tapbacks are rendered in context, so no need to render them separately
+                        else if !msg.is_tapback() {
+                            let message = self.format_message(&msg, 0)?;
+                            TXT::write_to_file(self.get_or_create_file(&msg)?, &message)?;
+                        }
 
-            // Early escape if we try and render the same message GUID twice
-            // See https://github.com/ReagentX/imessage-exporter/issues/135 for rationale
-            if msg.rowid == current_message_row {
-                current_message += 1;
-                continue;
+                        current_message += 1;
+                        if current_message % 99 == 0 {
+                            self.pb.set_position(current_message);
+                        }
+                    }
+                }
+                Err(err) => {
+                    // If we encounter an error, log it and continue
+                    eprintln!("Error processing message: {}", err);
+                }
             }
-            current_message_row = msg.rowid;
+            Ok::<(), RuntimeError>(())
+        })?;
 
-            // Generate the text of the message
-            let _ = msg.generate_text(self.config.db());
-
-            // Render the announcement in-line
-            if msg.is_announcement() {
-                let announcement = self.format_announcement(&msg);
-                TXT::write_to_file(self.get_or_create_file(&msg)?, &announcement)?;
-            }
-            // Message replies and tapbacks are rendered in context, so no need to render them separately
-            else if !msg.is_tapback() {
-                let message = self.format_message(&msg, 0)?;
-                TXT::write_to_file(self.get_or_create_file(&msg)?, &message)?;
-            }
-            current_message += 1;
-            if current_message % 99 == 0 {
-                self.pb.set_position(current_message);
-            }
-        }
         self.pb.finish();
         Ok(())
     }
