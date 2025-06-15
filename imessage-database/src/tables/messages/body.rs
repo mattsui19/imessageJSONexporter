@@ -155,102 +155,113 @@ fn get_bubble_type<'a>(
     let range_start = get_char_idx(text.as_ref()?, start, char_indices);
     let range_end = get_char_idx(text.as_ref()?, end, char_indices);
 
-    // Collection of effects found in the current range
-    let mut found_effects = vec![];
+    // Check for attachment first, because this is a different bubble type
+    if has_attribute(components, "__kIMFileTransferGUIDAttributeName") {
+        return Some(BubbleResult::New(BubbleComponent::Attachment(
+            AttachmentMeta::from_components(components)?,
+        )));
+    }
 
-    // If we have found styles already, we can skip any future style checks
-    let mut parsed_styles = false;
+    // Collect all text effects for this range
+    let effects = collect_text_effects(components, range_start, range_end);
+
+    // Return the effects, or Default if none found
+    let final_effects = if effects.is_empty() {
+        vec![TextAttributes::new(
+            range_start,
+            range_end,
+            TextEffect::Default,
+        )]
+    } else {
+        effects
+    };
+
+    Some(BubbleResult::Continuation(final_effects))
+}
+
+/// Check if components contain a specific attribute key
+fn has_attribute(components: &[Archivable], attribute_name: &str) -> bool {
+    components
+        .iter()
+        .any(|component| matches!(component.as_nsstring(), Some(key) if key == attribute_name))
+}
+
+/// Collect all text effects from the component attributes
+fn collect_text_effects<'a>(
+    components: &'a [Archivable],
+    range_start: usize,
+    range_end: usize,
+) -> Vec<TextAttributes<'a>> {
+    let mut effects = vec![];
+    let mut style_attributes = vec![];
 
     for (idx, key) in components.iter().enumerate() {
         if let Some(key_name) = key.as_nsstring() {
             match key_name {
-                "__kIMFileTransferGUIDAttributeName" => {
-                    return Some(BubbleResult::New(BubbleComponent::Attachment(
-                        AttachmentMeta::from_components(components)?,
-                    )));
-                }
                 "__kIMMentionConfirmedMention" => {
-                    found_effects.push(TextAttributes::new(
-                        range_start,
-                        range_end,
-                        TextEffect::Mention(components.get(idx + 1)?.as_nsstring().unwrap_or("")),
-                    ));
+                    if let Some(mention_value) =
+                        components.get(idx + 1).and_then(|c| c.as_nsstring())
+                    {
+                        effects.push(TextAttributes::new(
+                            range_start,
+                            range_end,
+                            TextEffect::Mention(mention_value),
+                        ));
+                    }
                 }
                 "__kIMLinkAttributeName" => {
-                    found_effects.push(TextAttributes::new(
-                        range_start,
-                        range_end,
-                        TextEffect::Link(components.get(idx + 2)?.as_nsstring().unwrap_or("#")),
-                    ));
+                    if let Some(link_value) = components.get(idx + 2).and_then(|c| c.as_nsstring())
+                    {
+                        effects.push(TextAttributes::new(
+                            range_start,
+                            range_end,
+                            TextEffect::Link(link_value),
+                        ));
+                    }
                 }
                 "__kIMOneTimeCodeAttributeName" => {
-                    found_effects.push(TextAttributes::new(
-                        range_start,
-                        range_end,
-                        TextEffect::OTP,
-                    ));
+                    effects.push(TextAttributes::new(range_start, range_end, TextEffect::OTP));
                 }
                 "__kIMCalendarEventAttributeName" => {
-                    found_effects.push(TextAttributes::new(
+                    effects.push(TextAttributes::new(
                         range_start,
                         range_end,
                         TextEffect::Conversion(Unit::Timezone),
                     ));
                 }
-                // Any number of text styles can be applied to a message, but we only need to parse them once for any given range
-                "__kIMTextBoldAttributeName"
-                | "__kIMTextUnderlineAttributeName"
-                | "__kIMTextItalicAttributeName"
-                | "__kIMTextStrikethroughAttributeName" => {
-                    if !parsed_styles {
-                        found_effects.push(TextAttributes::new(
+                "__kIMTextEffectAttributeName" => {
+                    if let Some(effect_id) =
+                        components.get(idx + 1).and_then(|c| c.as_nsnumber_int())
+                    {
+                        effects.push(TextAttributes::new(
                             range_start,
                             range_end,
-                            TextEffect::Styles(resolve_styles(components)),
+                            TextEffect::Animated(Animation::from_id(*effect_id)),
                         ));
-                        parsed_styles = true;
                     }
                 }
-                "__kIMTextEffectAttributeName" => {
-                    found_effects.push(TextAttributes::new(
-                        range_start,
-                        range_end,
-                        TextEffect::Animated(Animation::from_id(
-                            *components.get(idx + 1)?.as_nsnumber_int().unwrap_or(&0),
-                        )),
-                    ));
+                // Collect style attributes for later processing
+                "__kIMTextBoldAttributeName" => style_attributes.push(Style::Bold),
+                "__kIMTextUnderlineAttributeName" => style_attributes.push(Style::Underline),
+                "__kIMTextItalicAttributeName" => style_attributes.push(Style::Italic),
+                "__kIMTextStrikethroughAttributeName" => {
+                    style_attributes.push(Style::Strikethrough)
                 }
                 _ => {}
             }
         }
     }
-    // If we found any effects, return them as a new bubble component
-    if !found_effects.is_empty() {
-        return Some(BubbleResult::Continuation(found_effects));
+
+    // Add styles effect if any styles were found
+    if !style_attributes.is_empty() {
+        effects.push(TextAttributes::new(
+            range_start,
+            range_end,
+            TextEffect::Styles(style_attributes),
+        ));
     }
 
-    Some(BubbleResult::Continuation(vec![TextAttributes::new(
-        range_start,
-        range_end,
-        TextEffect::Default,
-    )]))
-}
-
-/// Extract text styles from a range of key-value pairs
-fn resolve_styles(components: &[Archivable]) -> Vec<Style> {
-    let mut styles = vec![];
-    for key in components {
-        if let Some(key_name) = key.as_nsstring() {
-            match key_name {
-                "__kIMTextBoldAttributeName" => styles.push(Style::Bold),
-                "__kIMTextUnderlineAttributeName" => styles.push(Style::Underline),
-                "__kIMTextItalicAttributeName" => styles.push(Style::Italic),
-                "__kIMTextStrikethroughAttributeName" => styles.push(Style::Strikethrough),
-                _ => {}
-            }
-        }
-    }
-    styles
+    effects
 }
 
 /// Fallback logic to parse the body from the message string content
