@@ -411,8 +411,7 @@ impl<'a> TypedStreamReader<'a> {
         // Process types one by one to avoid borrowing conflicts
         let types_len = self.types_table[type_index].len();
         for i in 0..types_len {
-            let found_type = self.types_table[type_index][i].clone();
-            match found_type {
+            match &self.types_table[type_index][i] {
                 Type::Utf8String => out_v.push(OutputData::String(self.read_string()?)),
                 Type::EmbeddedData => {
                     return self.read_embedded_data();
@@ -448,9 +447,9 @@ impl<'a> TypedStreamReader<'a> {
                 }
                 Type::Float => out_v.push(OutputData::Float(self.read_float()?)),
                 Type::Double => out_v.push(OutputData::Double(self.read_double()?)),
-                Type::Unknown(byte) => out_v.push(OutputData::Byte(byte)),
-                Type::String(s) => out_v.push(OutputData::String(s)),
-                Type::Array(size) => out_v.push(OutputData::Array(self.read_array(size)?)),
+                Type::Unknown(byte) => out_v.push(OutputData::Byte(*byte)),
+                Type::String(s) => out_v.push(OutputData::String(s.to_string())),
+                Type::Array(size) => out_v.push(OutputData::Array(self.read_array(*size)?)),
             }
         }
 
