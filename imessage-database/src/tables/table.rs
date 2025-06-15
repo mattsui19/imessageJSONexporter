@@ -4,7 +4,6 @@
  # Zero-Allocation Streaming API
 
  This module provides zero-allocation streaming capabilities for all database tables through a callback-based API.
- This allows processing large tables without loading them entirely into memory, which is crucial for performance and memory efficiency.
 
  ```no_run
  use imessage_database::{
