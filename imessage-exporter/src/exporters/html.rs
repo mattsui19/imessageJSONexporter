@@ -989,8 +989,17 @@ impl<'a> Writer<'a> for HTML<'a> {
 
     fn format_attributes(&'a self, text: &'a str, attributes: &'a [TextAttributes]) -> String {
         let mut formatted_text = String::with_capacity(text.len());
+        let mut prev_start = 0;
+        let mut prev_end = 0;
+
         for effect in attributes {
-            if let Some(message_content) = text.get(effect.start..effect.end) {
+            if prev_start == effect.start && prev_end == effect.end {
+                formatted_text = self
+                    .format_effect(&formatted_text, &effect.effect)
+                    .to_string();
+            } else if let Some(message_content) = text.get(effect.start..effect.end) {
+                prev_start = effect.start;
+                prev_end = effect.end;
                 // We cannot sanitize the html beforehand because it may change the length of the text
                 formatted_text
                     .push_str(&self.format_effect(&sanitize_html(message_content), &effect.effect));
@@ -3485,6 +3494,39 @@ mod text_effect_tests {
 
         let actual = exporter.format_message(&message, 0).unwrap();
         let expected = "<div class=\"message\">\n<div class=\"sent iMessage\">\n<p><span class=\"timestamp\"><a title=\"Reveal in Messages app\" href=\"sms://open?message-guid=\">May 17, 2022  5:29:42 PM</a> </span>\n<span class=\"sender\">Me</span></p>\n<hr><div class=\"message_part\">\n<span class=\"bubble\"><u>Underline</u> normal <span class=\"animationJitter\">jitter</span> normal</span>\n</div>\n</div>\n</div>\n";
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn can_format_html_text_styled_plain_link() {
+        // Create exporter
+        let options = Options::fake_options(crate::app::export_type::ExportType::Html);
+        let config = Config::fake_app(options);
+        let exporter = HTML::new(&config).unwrap();
+
+        let mut message = Config::fake_message();
+        // May 17, 2022  8:29:42 PM
+        message.date = 674526582885055488;
+        message.text =
+            Some("https://github.com/ReagentX/imessage-exporter/discussions/553".to_string());
+        message.is_from_me = true;
+        message.chat_id = Some(0);
+
+        let typedstream_path = current_dir()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("imessage-database/test_data/typedstream/StyledLink");
+        let mut file = File::open(typedstream_path).unwrap();
+        let mut bytes = vec![];
+        file.read_to_end(&mut bytes).unwrap();
+
+        let mut parser = TypedStreamReader::from(&bytes);
+        message.components = parser.parse().ok();
+
+        let actual = exporter.format_message(&message, 0).unwrap();
+        let expected = "<div class=\"message\">\n<div class=\"sent iMessage\">\n<p><span class=\"timestamp\"><a title=\"Reveal in Messages app\" href=\"sms://open?message-guid=\">May 17, 2022  5:29:42 PM</a> </span>\n<span class=\"sender\">Me</span></p>\n<hr><div class=\"message_part\">\n<span class=\"bubble\"><a href=\"https://github.com/ReagentX/imessage-exporter/discussions/553\"><span class=\"animationBig\">https://github.com/ReagentX/imessage-exporter/discussions/553</span></a></span>\n</div>\n</div>\n</div>\n";
 
         assert_eq!(actual, expected);
     }
