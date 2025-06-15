@@ -251,7 +251,7 @@ impl<'a> TypedStreamReader<'a> {
         let pointer = self.get_current_byte()?;
         let result = u32::from(pointer)
             .checked_sub(REFERENCE_TAG as u32)
-            .ok_or(TypedStreamError::InvalidPointer(pointer));
+            .ok_or(TypedStreamError::InvalidPointer(pointer as usize));
         self.idx += 1;
         result
     }
@@ -402,7 +402,7 @@ impl<'a> TypedStreamReader<'a> {
     fn read_types(&mut self, type_index: usize) -> Result<Option<Archivable>, TypedStreamError> {
         // Validate the index first
         if type_index >= self.types_table.len() {
-            return Err(TypedStreamError::InvalidPointer(type_index as u8));
+            return Err(TypedStreamError::InvalidPointer(type_index));
         }
 
         let mut out_v = Vec::with_capacity(8); // Pre-allocate for better performance
