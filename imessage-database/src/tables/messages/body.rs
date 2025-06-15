@@ -16,7 +16,7 @@ const REPLACEMENT_CHARS: [char; 2] = [ATTACHMENT_CHAR, APP_CHAR];
 
 pub enum BubbleResult<'a> {
     New(BubbleComponent<'a>),
-    Continuation(TextAttributes<'a>),
+    Continuation(Vec<TextAttributes<'a>>),
 }
 
 /// Logic to use deserialized typedstream data to parse the message body
@@ -69,8 +69,8 @@ pub(crate) fn parse_body_typedstream<'a>(
                 match bubble {
                     BubbleResult::New(item) => out_v.push(item),
                     BubbleResult::Continuation(effect) => match out_v.last_mut() {
-                        Some(BubbleComponent::Text(attrs)) => attrs.push(effect),
-                        _ => out_v.push(BubbleComponent::Text(vec![effect])),
+                        Some(BubbleComponent::Text(attrs)) => attrs.extend(effect),
+                        _ => out_v.push(BubbleComponent::Text(effect)),
                     },
                 }
             }
@@ -151,8 +151,16 @@ fn get_bubble_type<'a>(
     end: usize,
     char_indices: &[usize],
 ) -> Option<BubbleResult<'a>> {
+    // The start and end indexes are based on the `char_indices` of the text, so we need to convert them
     let range_start = get_char_idx(text.as_ref()?, start, char_indices);
     let range_end = get_char_idx(text.as_ref()?, end, char_indices);
+
+    // Collection of effects found in the current range
+    let mut found_effects = vec![];
+
+    // If we have found styles already, we can skip any future style checks
+    let mut parsed_styles = false;
+
     for (idx, key) in components.iter().enumerate() {
         if let Some(key_name) = key.as_nsstring() {
             match key_name {
@@ -162,62 +170,70 @@ fn get_bubble_type<'a>(
                     )));
                 }
                 "__kIMMentionConfirmedMention" => {
-                    return Some(BubbleResult::Continuation(TextAttributes::new(
+                    found_effects.push(TextAttributes::new(
                         range_start,
                         range_end,
                         TextEffect::Mention(components.get(idx + 1)?.as_nsstring().unwrap_or("")),
-                    )));
+                    ));
                 }
                 "__kIMLinkAttributeName" => {
-                    return Some(BubbleResult::Continuation(TextAttributes::new(
+                    found_effects.push(TextAttributes::new(
                         range_start,
                         range_end,
                         TextEffect::Link(components.get(idx + 2)?.as_nsstring().unwrap_or("#")),
-                    )));
+                    ));
                 }
                 "__kIMOneTimeCodeAttributeName" => {
-                    return Some(BubbleResult::Continuation(TextAttributes::new(
+                    found_effects.push(TextAttributes::new(
                         range_start,
                         range_end,
                         TextEffect::OTP,
-                    )));
+                    ));
                 }
                 "__kIMCalendarEventAttributeName" => {
-                    return Some(BubbleResult::Continuation(TextAttributes::new(
+                    found_effects.push(TextAttributes::new(
                         range_start,
                         range_end,
                         TextEffect::Conversion(Unit::Timezone),
-                    )));
+                    ));
                 }
-                // Any number of text styles can be applied to a message
+                // Any number of text styles can be applied to a message, but we only need to parse them once for any given range
                 "__kIMTextBoldAttributeName"
                 | "__kIMTextUnderlineAttributeName"
                 | "__kIMTextItalicAttributeName"
                 | "__kIMTextStrikethroughAttributeName" => {
-                    return Some(BubbleResult::Continuation(TextAttributes::new(
-                        range_start,
-                        range_end,
-                        TextEffect::Styles(resolve_styles(components)),
-                    )));
+                    if !parsed_styles {
+                        found_effects.push(TextAttributes::new(
+                            range_start,
+                            range_end,
+                            TextEffect::Styles(resolve_styles(components)),
+                        ));
+                        parsed_styles = true;
+                    }
                 }
                 "__kIMTextEffectAttributeName" => {
-                    return Some(BubbleResult::Continuation(TextAttributes::new(
+                    found_effects.push(TextAttributes::new(
                         range_start,
                         range_end,
                         TextEffect::Animated(Animation::from_id(
                             *components.get(idx + 1)?.as_nsnumber_int().unwrap_or(&0),
                         )),
-                    )));
+                    ));
                 }
                 _ => {}
             }
         }
     }
-    Some(BubbleResult::Continuation(TextAttributes::new(
+    // If we found any effects, return them as a new bubble component
+    if !found_effects.is_empty() {
+        return Some(BubbleResult::Continuation(found_effects));
+    }
+
+    Some(BubbleResult::Continuation(vec![TextAttributes::new(
         range_start,
         range_end,
         TextEffect::Default,
-    )))
+    )]))
 }
 
 /// Extract text styles from a range of key-value pairs
@@ -1215,6 +1231,49 @@ mod typedstream_tests {
                     name: None
                 })
             ]
+        );
+    }
+
+    #[test]
+    fn can_get_message_body_text_styled_plain_link() {
+        let mut m = Message::blank();
+        m.text = Some("https://github.com/ReagentX/imessage-exporter/discussions/553".to_string());
+
+        let typedstream_path = current_dir()
+            .unwrap()
+            .as_path()
+            .join("test_data/typedstream/StyledLink");
+        let mut file = File::open(typedstream_path).unwrap();
+        let mut bytes = vec![];
+        file.read_to_end(&mut bytes).unwrap();
+
+        let mut parser = TypedStreamReader::from(&bytes);
+        m.components = parser.parse().ok();
+
+        m.components
+            .as_ref()
+            .unwrap()
+            .iter()
+            .enumerate()
+            .for_each(|(idx, item)| println!("\t{idx}: {item:?}"));
+
+        assert_eq!(
+            parse_body_typedstream(
+                m.components.as_ref(),
+                m.text.as_deref(),
+                m.edited_parts.as_ref()
+            )
+            .unwrap(),
+            vec![BubbleComponent::Text(vec![
+                TextAttributes::new(0, 61, TextEffect::Animated(Animation::Big),),
+                TextAttributes::new(
+                    0,
+                    61,
+                    TextEffect::Link(
+                        "https://github.com/ReagentX/imessage-exporter/discussions/553"
+                    )
+                )
+            ]),]
         );
     }
 }
