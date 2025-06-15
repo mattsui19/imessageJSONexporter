@@ -134,7 +134,7 @@ impl<'a> Exporter<'a> for HTML<'a> {
                 }
                 Err(err) => {
                     // If we encounter an error, log it and continue
-                    eprintln!("Error processing message: {}", err);
+                    eprintln!("Error retrieving message: {}", err);
                 }
             }
             Ok::<(), RuntimeError>(())
