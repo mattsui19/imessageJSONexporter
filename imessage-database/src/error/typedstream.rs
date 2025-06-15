@@ -23,7 +23,7 @@ pub enum TypedStreamError {
     /// Indicates that an array could not be properly parsed
     InvalidArray,
     /// Indicates that a pointer could not be parsed, with the invalid byte value
-    InvalidPointer(u8),
+    InvalidPointer(usize),
 }
 
 impl Display for TypedStreamError {

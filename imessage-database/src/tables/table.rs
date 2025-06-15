@@ -41,7 +41,7 @@ use crate::{
 
 /// Defines behavior for SQL Table data
 pub trait Table: Sized {
-    /// Deserialize a single row into Self, returning a rusqlite::Result
+    /// Deserialize a single row into Self, returning a [`rusqlite::Result`]
     fn from_row(row: &Row) -> Result<Self>;
 
     /// Prepare SELECT * statement
