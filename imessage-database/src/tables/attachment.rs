@@ -121,14 +121,13 @@ impl Table for Attachment {
     }
 
     fn get(db: &Connection) -> Result<Statement, TableError> {
-        db.prepare(&format!("SELECT * from {ATTACHMENT}"))
-            .map_err(TableError::Attachment)
+        Ok(db.prepare(&format!("SELECT * from {ATTACHMENT}"))?)
     }
 
     fn extract(attachment: Result<Result<Self, Error>, Error>) -> Result<Self, TableError> {
         match attachment {
             Ok(Ok(attachment)) => Ok(attachment),
-            Err(why) | Ok(Err(why)) => Err(TableError::Attachment(why)),
+            Err(why) | Ok(Err(why)) => Err(TableError::QueryError(why)),
         }
     }
 }
@@ -174,12 +173,9 @@ impl Attachment {
                         ",
                         msg.rowid
                     ))
-                })
-                .map_err(TableError::Attachment)?;
+                })?;
 
-            let iter = statement
-                .query_map([], |row| Ok(Attachment::from_row(row)))
-                .map_err(TableError::Attachment)?;
+            let iter = statement.query_map([], |row| Ok(Attachment::from_row(row)))?;
 
             for attachment in iter {
                 let m = Attachment::extract(attachment)?;
@@ -329,17 +325,15 @@ impl Attachment {
                 statement.push_str(&format!("    a.created_date <= {}", end / TIMESTAMP_FACTOR));
             }
 
-            db.prepare(&statement).map_err(TableError::Attachment)?
+            db.prepare(&statement)?
         } else {
             db.prepare(&format!(
                 "SELECT IFNULL(SUM(total_bytes), 0) FROM {ATTACHMENT}"
-            ))
-            .map_err(TableError::Attachment)?
+            ))?
         };
-        bytes_query
+        Ok(bytes_query
             .query_row([], |r| -> Result<i64> { r.get(0) })
-            .map(|res: i64| u64::try_from(res).unwrap_or(0))
-            .map_err(TableError::Attachment)
+            .map(|res: i64| u64::try_from(res).unwrap_or(0))?)
     }
 
     /// Given a platform and database source, resolve the path for the current attachment
@@ -403,12 +397,8 @@ impl Attachment {
         let mut total_attachments = 0;
         let mut null_attachments = 0;
         let mut size_on_disk: u64 = 0;
-        let mut statement_paths = db
-            .prepare(&format!("SELECT filename FROM {ATTACHMENT}"))
-            .map_err(TableError::Attachment)?;
-        let paths = statement_paths
-            .query_map([], |r| Ok(r.get(0)))
-            .map_err(TableError::Attachment)?;
+        let mut statement_paths = db.prepare(&format!("SELECT filename FROM {ATTACHMENT}"))?;
+        let paths = statement_paths.query_map([], |r| Ok(r.get(0)))?;
 
         let missing_files = paths
             .filter_map(Result::ok)

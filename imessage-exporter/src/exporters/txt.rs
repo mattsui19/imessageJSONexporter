@@ -98,7 +98,7 @@ impl<'a> Exporter<'a> for TXT<'a> {
 
         let messages = statement
             .query_map([], |row| Ok(Message::from_row(row)))
-            .map_err(|err| RuntimeError::DatabaseError(TableError::Messages(err)))?;
+            .map_err(|err| RuntimeError::DatabaseError(TableError::QueryError(err)))?;
 
         for message in messages {
             let mut msg = Message::extract(message)?;

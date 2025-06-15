@@ -6,7 +6,10 @@ use std::{collections::HashMap, fs::metadata, path::Path};
 
 use rusqlite::{Connection, Error, OpenFlags, Result, Row, Statement, blob::Blob};
 
-use crate::{error::table::TableError, tables::messages::models::BubbleComponent};
+use crate::{
+    error::table::{TableConnectError, TableError},
+    tables::messages::models::BubbleComponent,
+};
 
 /// Defines behavior for SQL Table data
 pub trait Table {
@@ -117,24 +120,22 @@ pub fn get_connection(path: &Path) -> Result<Connection, TableError> {
             OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX,
         ) {
             Ok(res) => Ok(res),
-            Err(why) => Err(TableError::CannotConnect(format!(
-                "Unable to read from chat database: {why}\nEnsure full disk access is enabled for your terminal emulator in System Settings > Privacy & Security > Full Disk Access"
+            Err(why) => Err(TableError::CannotConnect(TableConnectError::Permissions(
+                why,
             ))),
         };
     }
 
     // Path does not point to a file
     if path.exists() && !path.is_file() {
-        return Err(TableError::CannotConnect(format!(
-            "Specified path `{}` is not a database!",
-            &path.to_str().unwrap_or("Unknown")
+        return Err(TableError::CannotConnect(TableConnectError::NotAFile(
+            path.to_path_buf(),
         )));
     }
 
     // File is missing
-    Err(TableError::CannotConnect(format!(
-        "Database not found at {}",
-        &path.to_str().unwrap_or("Unknown")
+    Err(TableError::CannotConnect(TableConnectError::DoesNotExist(
+        path.to_path_buf(),
     )))
 }
 
@@ -151,7 +152,7 @@ pub fn get_connection(path: &Path) -> Result<Connection, TableError> {
 /// let database_size_in_bytes = get_db_size(&db_path);
 /// ```
 pub fn get_db_size(path: &Path) -> Result<u64, TableError> {
-    Ok(metadata(path).map_err(TableError::CannotRead)?.len())
+    Ok(metadata(path)?.len())
 }
 
 // Table Names
