@@ -3,10 +3,10 @@
 
  # Iterating over Message Data
 
- Generally, use [`Message::get()`] or [`Message::stream_rows()`] to iterate over message rows.
+ Generally, use [`Message::stream()`] to iterate over message rows.
 
  ## Example
- ```rust
+ ```no_run
  use imessage_database::{
      tables::{
          messages::Message,
@@ -15,14 +15,20 @@
      util::dirs::default_db_path,
  };
 
+ // Your custom error type
+ struct ProgramError;
+
+ // Get the default database path and connect to it
  let db_path = default_db_path();
  let conn = get_connection(&db_path).unwrap();
 
- let mut statement = Message::get(&conn).unwrap();
-
- let messages = statement.query_map([], |row| Ok(Message::from_row(row))).unwrap();
-
- messages.map(|msg| println!("{:#?}", Message::extract(msg)));
+ Message::stream(&conn, |message_result| {
+    match message_result {
+        Ok(message) => println!("Message: {:#?}", message),
+        Err(e) => eprintln!("Error: {:?}", e),
+    }
+    Ok::<(), ProgramError>(())
+ }).unwrap();
  ```
 
  # Making Custom Message Queries
@@ -75,7 +81,7 @@
  The following will return an iterator over messages that have an associated emoji:
 
 
- ```rust
+ ```no_run
  use imessage_database::{
      tables::{
          messages::Message,
@@ -105,7 +111,7 @@
 
  let messages = statement.query_map([], |row| Ok(Message::from_row(row))).unwrap();
 
- messages.map(|msg| println!("{:#?}", Message::extract(msg)));
+ messages.for_each(|msg| println!("{:#?}", Message::extract(msg)));
  ```
 */
 

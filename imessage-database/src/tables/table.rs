@@ -1,5 +1,34 @@
 /*!
  This module defines traits for table representations and stores some shared table constants.
+
+ # Zero-Allocation Streaming API
+
+ This module provides zero-allocation streaming capabilities for all database tables through a callback-based API.
+ This allows processing large tables without loading them entirely into memory, which is crucial for performance and memory efficiency.
+
+ ```no_run
+ use imessage_database::{
+    error::table::TableError,
+    tables::{
+        table::{get_connection, Table},
+        messages::Message,
+    },
+    util::dirs::default_db_path
+ };
+
+ let db_path = default_db_path();
+ let db = get_connection(&db_path).unwrap();
+
+ Message::stream(&db, |message_result| {
+     match message_result {
+         Ok(message) => println!("Message: {:#?}", message),
+         Err(e) => eprintln!("Error: {:?}", e),
+     }
+    Ok::<(), TableError>(())
+ }).unwrap();
+ ```
+
+ Note: you can substitute `TableError` with your own error type if you want to handle errors differently. See the [`Table::stream`] method for more details.
 */
 
 use std::{collections::HashMap, fs::metadata, path::Path};
@@ -12,18 +41,69 @@ use crate::{
 };
 
 /// Defines behavior for SQL Table data
-pub trait Table {
-    /// Deserializes a single row of data into an instance of the struct that implements this Trait
-    fn from_row(row: &Row) -> Result<Self>
-    where
-        Self: Sized;
-    /// Gets a statement we can execute to iterate over the data in the table
+pub trait Table: Sized {
+    /// Deserialize a single row into Self, returning a rusqlite::Result
+    fn from_row(row: &Row) -> Result<Self>;
+
+    /// Prepare SELECT * statement
     fn get(db: &Connection) -> Result<Statement, TableError>;
 
-    /// Extract valid row data while handling both types of query errors
-    fn extract(item: Result<Result<Self, Error>, Error>) -> Result<Self, TableError>
+    /// Map a `rusqlite::Result<Self>` into our `TableError`
+    fn extract(item: Result<Result<Self, Error>, Error>) -> Result<Self, TableError>;
+
+    /// Process all rows from the table using a callback.
+    /// This is the most memory-efficient approach for large tables.
+    ///
+    /// Uses the default `Table` implementation to prepare the statement and query the rows.
+    ///
+    /// To execute custom queries, see the [`message`](crate::tables::messages::message) module docs for examples.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use imessage_database::{
+    ///    error::table::TableError,
+    ///    tables::{
+    ///        table::{get_connection, Table},
+    ///        handle::Handle,
+    ///    },
+    ///    util::dirs::default_db_path
+    /// };
+    ///
+    /// // Get a connection to the database
+    /// let db_path = default_db_path();
+    /// let db = get_connection(&db_path).unwrap();
+    ///
+    /// // Stream the Handle table, processing each row with a callback
+    /// Handle::stream(&db, |handle_result| {
+    ///     match handle_result {
+    ///         Ok(handle) => println!("Handle: {}", handle.id),
+    ///         Err(e) => eprintln!("Error: {:?}", e),
+    ///     }
+    ///     Ok::<(), TableError>(())
+    /// }).unwrap();
+    /// ```
+    fn stream<F, E>(db: &Connection, callback: F) -> Result<(), TableError>
     where
-        Self: Sized;
+        F: FnMut(Result<Self, TableError>) -> Result<(), E>,
+    {
+        stream_table_callback::<Self, F, E>(db, callback)
+    }
+}
+
+fn stream_table_callback<T, F, E>(db: &Connection, mut callback: F) -> Result<(), TableError>
+where
+    T: Table + Sized,
+    F: FnMut(Result<T, TableError>) -> Result<(), E>,
+{
+    let mut stmt = T::get(db)?;
+    let rows = stmt.query_map([], |row| Ok(T::from_row(row)))?;
+
+    for row_result in rows {
+        let item_result = T::extract(row_result);
+        let _ = callback(item_result);
+    }
+    Ok(())
 }
 
 /// Defines behavior for table data that can be cached in memory
