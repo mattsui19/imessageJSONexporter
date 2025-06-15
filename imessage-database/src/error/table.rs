@@ -23,7 +23,7 @@ pub enum TableError {
 pub enum TableConnectError {
     /// The database file could not be opened due to lack of full disk access
     Permissions(rusqlite::Error),
-    /// The database file is not a valid SQLite database
+    /// The database file is not a valid `SQLite` database
     NotAFile(PathBuf),
     /// The database file does not exist
     DoesNotExist(PathBuf),
