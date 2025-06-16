@@ -349,7 +349,7 @@ impl<'a> TypedStreamReader<'a> {
     fn get_type(&mut self, embedded: bool) -> Result<Option<usize>, TypedStreamError> {
         match self.get_current_byte()? {
             START => {
-                // Ignore repeated types, for example in a dict
+                // Skip the start byte
                 self.idx += 1;
 
                 let object_types = self.read_type()?;
@@ -372,11 +372,6 @@ impl<'a> TypedStreamReader<'a> {
                 Ok(None)
             }
             _ => {
-                // Ignore repeated types, for example in a dict
-                while self.get_current_byte()? == self.get_next_byte()? {
-                    self.idx += 1;
-                }
-
                 let ref_tag = self.read_pointer()?;
 
                 if ref_tag as usize >= self.types_table.len() {
