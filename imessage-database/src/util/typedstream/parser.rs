@@ -400,7 +400,7 @@ impl<'a> TypedStreamReader<'a> {
             return Err(TypedStreamError::InvalidPointer(type_index));
         }
 
-        let mut out_v = Vec::with_capacity(8); // Pre-allocate for better performance
+        let mut out_v = Vec::with_capacity(8);
         let mut is_obj: bool = false;
 
         // Process types one by one to avoid borrowing conflicts
