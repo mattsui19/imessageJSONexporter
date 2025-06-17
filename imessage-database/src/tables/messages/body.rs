@@ -1304,6 +1304,45 @@ mod typedstream_tests {
             ]),]
         );
     }
+
+    #[test]
+    fn can_get_message_body_text_emoji() {
+        let mut m = Message::blank();
+        m.text = Some("🅱️Bold_Underline".to_string());
+
+        let typedstream_path = current_dir()
+            .unwrap()
+            .as_path()
+            .join("test_data/typedstream/EmojiBoldUnderline");
+        let mut file = File::open(typedstream_path).unwrap();
+        let mut bytes = vec![];
+        file.read_to_end(&mut bytes).unwrap();
+
+        let mut parser = TypedStreamReader::from(&bytes);
+        m.components = parser.parse().ok();
+
+        m.components
+            .as_ref()
+            .unwrap()
+            .iter()
+            .enumerate()
+            .for_each(|(idx, item)| println!("\t{idx}: {item:?}"));
+
+        assert_eq!(
+            parse_body_typedstream(
+                m.components.as_ref(),
+                m.text.as_deref(),
+                m.edited_parts.as_ref()
+            )
+            .unwrap(),
+            vec![BubbleComponent::Text(vec![
+                TextAttributes::new(0, 7, TextEffect::Default),
+                TextAttributes::new(7, 11, TextEffect::Styles(vec![Style::Bold])),
+                TextAttributes::new(11, 12, TextEffect::Default),
+                TextAttributes::new(12, 21, TextEffect::Styles(vec![Style::Underline])),
+            ]),]
+        );
+    }
 }
 
 #[cfg(test)]
