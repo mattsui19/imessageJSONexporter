@@ -37,7 +37,7 @@ pub(crate) fn parse_body_typedstream<'a>(
 
         // We want to index into the message text, so we need a table to align
         // Apple's indexes with the actual chars, not the bytes
-        let char_index_table: Vec<usize> = text.as_ref()?.char_indices().map(|(a, _)| a).collect();
+        let char_index_table: Vec<usize> = build_utf16_to_byte_map(text.as_ref()?);
 
         while idx < components.len() {
             // The first part of the range sometimes indicates the part number, but not always
@@ -108,9 +108,26 @@ fn get_range(component: &Archivable) -> Option<(&i64, &u64)> {
     None
 }
 
-/// Given the attributedBody range indexes, get the substring from the Rust representations `char_indices()`
-fn get_char_idx(text: &str, idx: usize, char_indices: &[usize]) -> usize {
-    char_indices.get(idx).map_or(text.len(), |i| *i)
+/// Build a table so that `utf16_to_byte[n]` gives the byte offset
+/// that corresponds to the *n*-th UTF-16 code-unit of `s`.
+fn build_utf16_to_byte_map(s: &str) -> Vec<usize> {
+    let mut map = Vec::with_capacity(s.encode_utf16().count() + 1);
+    let mut byte = 0;
+    for ch in s.chars() {
+        // how many UTF-16 units does this scalar use (1 or 2)
+        let units = ch.len_utf16();
+        for _ in 0..units {
+            map.push(byte);
+        }
+        byte += ch.len_utf8();
+    }
+    map.push(byte);
+    map
+}
+
+/// Given the `attributedBody` range indexes, get the substring indexes from the `UTF-16` representation.
+fn utf16_idx(text: &str, idx: usize, map: &[usize]) -> usize {
+    *map.get(idx).unwrap_or(&text.len())
 }
 
 /// Get the number of key/value object pairs in a `NSDictionary`
@@ -152,8 +169,8 @@ fn get_bubble_type<'a>(
     char_indices: &[usize],
 ) -> Option<BubbleResult<'a>> {
     // The start and end indexes are based on the `char_indices` of the text, so we need to convert them
-    let range_start = get_char_idx(text.as_ref()?, start, char_indices);
-    let range_end = get_char_idx(text.as_ref()?, end, char_indices);
+    let range_start = utf16_idx(text.as_ref()?, start, char_indices);
+    let range_end = utf16_idx(text.as_ref()?, end, char_indices);
 
     // Check for attachment first, because this is a different bubble type
     if has_attribute(components, "__kIMFileTransferGUIDAttributeName") {
