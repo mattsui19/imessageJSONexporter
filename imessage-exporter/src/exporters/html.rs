@@ -3528,6 +3528,38 @@ mod text_effect_tests {
 
         assert_eq!(actual, expected);
     }
+
+    #[test]
+    fn can_format_html_text_styled_emoji_bold_underline() {
+        // Create exporter
+        let options = Options::fake_options(crate::app::export_type::ExportType::Html);
+        let config = Config::fake_app(options);
+        let exporter = HTML::new(&config).unwrap();
+
+        let mut message = Config::fake_message();
+        // May 17, 2022  8:29:42 PM
+        message.date = 674526582885055488;
+        message.text = Some("🅱️Bold_Underline".to_string());
+        message.is_from_me = true;
+        message.chat_id = Some(0);
+
+        let typedstream_path = current_dir()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("imessage-database/test_data/typedstream/EmojiBoldUnderline");
+        let mut file = File::open(typedstream_path).unwrap();
+        let mut bytes = vec![];
+        file.read_to_end(&mut bytes).unwrap();
+
+        let mut parser = TypedStreamReader::from(&bytes);
+        message.components = parser.parse().ok();
+
+        let actual = exporter.format_message(&message, 0).unwrap();
+        let expected = "<div class=\"message\">\n<div class=\"sent iMessage\">\n<p><span class=\"timestamp\"><a title=\"Reveal in Messages app\" href=\"sms://open?message-guid=\">May 17, 2022  5:29:42 PM</a> </span>\n<span class=\"sender\">Me</span></p>\n<hr><div class=\"message_part\">\n<span class=\"bubble\">🅱\u{fe0f}<b>Bold</b>_<u>Underline</u></span>\n</div>\n</div>\n</div>\n";
+
+        assert_eq!(actual, expected);
+    }
 }
 
 #[cfg(test)]

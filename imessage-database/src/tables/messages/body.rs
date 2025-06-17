@@ -37,7 +37,7 @@ pub(crate) fn parse_body_typedstream<'a>(
 
         // We want to index into the message text, so we need a table to align
         // Apple's indexes with the actual chars, not the bytes
-        let char_index_table: Vec<usize> = text.as_ref()?.char_indices().map(|(a, _)| a).collect();
+        let utf16_to_byte: Vec<usize> = build_utf16_to_byte_map(text.as_ref()?);
 
         while idx < components.len() {
             // The first part of the range sometimes indicates the part number, but not always
@@ -64,7 +64,7 @@ pub(crate) fn parse_body_typedstream<'a>(
 
             // Determine the type of the bubble and add it to the body parts vec
             if let Some(bubble) =
-                get_bubble_type(slice, text, current_start, current_end, &char_index_table)
+                get_bubble_type(slice, text, current_start, current_end, &utf16_to_byte)
             {
                 match bubble {
                     BubbleResult::New(item) => out_v.push(item),
@@ -108,9 +108,26 @@ fn get_range(component: &Archivable) -> Option<(&i64, &u64)> {
     None
 }
 
-/// Given the attributedBody range indexes, get the substring from the Rust representations `char_indices()`
-fn get_char_idx(text: &str, idx: usize, char_indices: &[usize]) -> usize {
-    char_indices.get(idx).map_or(text.len(), |i| *i)
+/// Build a table so that `utf16_to_byte[n]` gives the byte offset
+/// that corresponds to the *n*-th UTF-16 code-unit of `s`.
+fn build_utf16_to_byte_map(s: &str) -> Vec<usize> {
+    let mut map = Vec::with_capacity(s.encode_utf16().count() + 1);
+    let mut byte = 0;
+    for ch in s.chars() {
+        // how many UTF-16 units does this scalar use (1 or 2)
+        let units = ch.len_utf16();
+        for _ in 0..units {
+            map.push(byte);
+        }
+        byte += ch.len_utf8();
+    }
+    map.push(byte);
+    map
+}
+
+/// Given the `attributedBody` range indexes, get the substring indexes from the `UTF-16` representation.
+fn utf16_idx(text: &str, idx: usize, map: &[usize]) -> usize {
+    *map.get(idx).unwrap_or(&text.len())
 }
 
 /// Get the number of key/value object pairs in a `NSDictionary`
@@ -149,11 +166,11 @@ fn get_bubble_type<'a>(
     text: Option<&str>,
     start: usize,
     end: usize,
-    char_indices: &[usize],
+    utf16_to_byte: &[usize],
 ) -> Option<BubbleResult<'a>> {
-    // The start and end indexes are based on the `char_indices` of the text, so we need to convert them
-    let range_start = get_char_idx(text.as_ref()?, start, char_indices);
-    let range_end = get_char_idx(text.as_ref()?, end, char_indices);
+    // The start and end indexes are based on the `UTF-16` char indexes of the text, so we need to convert them
+    let range_start = utf16_idx(text.as_ref()?, start, utf16_to_byte);
+    let range_end = utf16_idx(text.as_ref()?, end, utf16_to_byte);
 
     // Check for attachment first, because this is a different bubble type
     if has_attribute(components, "__kIMFileTransferGUIDAttributeName") {
@@ -1284,6 +1301,45 @@ mod typedstream_tests {
                         "https://github.com/ReagentX/imessage-exporter/discussions/553"
                     )
                 )
+            ]),]
+        );
+    }
+
+    #[test]
+    fn can_get_message_body_text_emoji() {
+        let mut m = Message::blank();
+        m.text = Some("🅱️Bold_Underline".to_string());
+
+        let typedstream_path = current_dir()
+            .unwrap()
+            .as_path()
+            .join("test_data/typedstream/EmojiBoldUnderline");
+        let mut file = File::open(typedstream_path).unwrap();
+        let mut bytes = vec![];
+        file.read_to_end(&mut bytes).unwrap();
+
+        let mut parser = TypedStreamReader::from(&bytes);
+        m.components = parser.parse().ok();
+
+        m.components
+            .as_ref()
+            .unwrap()
+            .iter()
+            .enumerate()
+            .for_each(|(idx, item)| println!("\t{idx}: {item:?}"));
+
+        assert_eq!(
+            parse_body_typedstream(
+                m.components.as_ref(),
+                m.text.as_deref(),
+                m.edited_parts.as_ref()
+            )
+            .unwrap(),
+            vec![BubbleComponent::Text(vec![
+                TextAttributes::new(0, 7, TextEffect::Default),
+                TextAttributes::new(7, 11, TextEffect::Styles(vec![Style::Bold])),
+                TextAttributes::new(11, 12, TextEffect::Default),
+                TextAttributes::new(12, 21, TextEffect::Styles(vec![Style::Underline])),
             ]),]
         );
     }
