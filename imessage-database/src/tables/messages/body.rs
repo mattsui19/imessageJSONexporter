@@ -37,7 +37,7 @@ pub(crate) fn parse_body_typedstream<'a>(
 
         // We want to index into the message text, so we need a table to align
         // Apple's indexes with the actual chars, not the bytes
-        let char_index_table: Vec<usize> = build_utf16_to_byte_map(text.as_ref()?);
+        let utf16_to_byte: Vec<usize> = build_utf16_to_byte_map(text.as_ref()?);
 
         while idx < components.len() {
             // The first part of the range sometimes indicates the part number, but not always
@@ -64,7 +64,7 @@ pub(crate) fn parse_body_typedstream<'a>(
 
             // Determine the type of the bubble and add it to the body parts vec
             if let Some(bubble) =
-                get_bubble_type(slice, text, current_start, current_end, &char_index_table)
+                get_bubble_type(slice, text, current_start, current_end, &utf16_to_byte)
             {
                 match bubble {
                     BubbleResult::New(item) => out_v.push(item),
@@ -166,11 +166,11 @@ fn get_bubble_type<'a>(
     text: Option<&str>,
     start: usize,
     end: usize,
-    char_indices: &[usize],
+    utf16_to_byte: &[usize],
 ) -> Option<BubbleResult<'a>> {
-    // The start and end indexes are based on the `char_indices` of the text, so we need to convert them
-    let range_start = utf16_idx(text.as_ref()?, start, char_indices);
-    let range_end = utf16_idx(text.as_ref()?, end, char_indices);
+    // The start and end indexes are based on the `UTF-16` char indexes of the text, so we need to convert them
+    let range_start = utf16_idx(text.as_ref()?, start, utf16_to_byte);
+    let range_end = utf16_idx(text.as_ref()?, end, utf16_to_byte);
 
     // Check for attachment first, because this is a different bubble type
     if has_attribute(components, "__kIMFileTransferGUIDAttributeName") {
