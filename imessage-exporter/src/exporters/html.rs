@@ -1,7 +1,7 @@
 use std::{
     borrow::Cow,
     cmp::{
-        Ordering::{Greater, Less},
+        Ordering::{Equal, Greater, Less},
         min,
     },
     collections::{
@@ -1018,7 +1018,7 @@ impl<'a> Writer<'a> for HTML<'a> {
             a.0.cmp(&b.0).then_with(|| match (&a.1, &b.1) {
                 (EventType::End(_), EventType::Start(_, _)) => Less,
                 (EventType::Start(_, _), EventType::End(_)) => Greater,
-                _ => std::cmp::Ordering::Equal,
+                _ => Equal,
             })
         });
 
