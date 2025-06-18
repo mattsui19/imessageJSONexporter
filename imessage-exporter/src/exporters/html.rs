@@ -1645,22 +1645,23 @@ impl HTML<'_> {
         )
     }
 
-    fn apply_active_attributes(
-        &self,
-        text: &str,
-        active_attrs: &[(usize, &TextAttributes)],
-    ) -> String {
+    fn apply_active_attributes<'a>(
+        &'a self,
+        text: &'a str,
+        active_attrs: &'a [(usize, &TextAttributes)],
+    ) -> Cow<'a, str> {
         if active_attrs.is_empty() {
-            return text.to_string();
+            return Cow::Borrowed(text);
         }
 
-        // Apply all active attributes, layering them
-        let mut result = text.to_string();
+        let mut result = Cow::Borrowed(text);
 
         for (_, attr) in active_attrs {
-            // Skip Default effects as they don't modify the text
             if !matches!(attr.effect, TextEffect::Default) {
-                result = self.format_effect(&result, &attr.effect).to_string();
+                // Once we need to modify, convert to owned and stay owned
+                let owned_text = result.into_owned();
+                let formatted = self.format_effect(&owned_text, &attr.effect);
+                result = Cow::Owned(formatted.into_owned());
             }
         }
 
