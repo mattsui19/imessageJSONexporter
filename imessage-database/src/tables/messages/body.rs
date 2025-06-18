@@ -49,7 +49,8 @@ pub(crate) fn parse_body_typedstream<'a>(
         let utf16_to_byte: Vec<usize> = build_utf16_to_byte_map(text.as_ref()?);
 
         while idx < components.len() {
-            // The first part of the range sometimes indicates the part number, but not always
+            // The first part of the range represents the index in the format cache
+            // the second part is the length of the range in UTF-16 code units
             if let Some((range_id, length)) = get_range(components.get(idx)?) {
                 current_start = current_end;
                 current_end += *length as usize;
