@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::{
     message_types::{
         edited::{EditStatus, EditedMessage},
@@ -28,10 +30,17 @@ pub(crate) fn parse_body_typedstream<'a>(
     // Create the output data
     let mut out_v = vec![];
 
+    // Format ranges are only stored once and then referenced by order of appearance (starting at 1),
+    // so we need cache them to properly apply styles and attributes.
+    // The key is the range ID, and the value is a slice of `Archivable` that
+    // contains the attributes for that range.
+    let mut format_range_cache: HashMap<i64, &[Archivable]> = HashMap::new();
+
     // Start to iterate over the ranges
     if let Some(components) = components {
         // The first item is the text itself, so skip over it when iterating
         let mut idx = 1;
+        let mut current_range_id;
         let mut current_start;
         let mut current_end = 0;
 
@@ -41,26 +50,35 @@ pub(crate) fn parse_body_typedstream<'a>(
 
         while idx < components.len() {
             // The first part of the range sometimes indicates the part number, but not always
-            if let Some((_, length)) = get_range(components.get(idx)?) {
+            if let Some((range_id, length)) = get_range(components.get(idx)?) {
                 current_start = current_end;
                 current_end += *length as usize;
+                current_range_id = *range_id;
             } else {
                 idx += 1;
                 continue;
             }
 
-            // The range is followed by a dictionary of attributes that map to that range
-            idx += 1;
-            let num_attrs = get_attribute_dict_length(components.get(idx));
-
-            // The next set of values alternate between key and value pairs for the dictionary, if there are any
-            if num_attrs > 0 {
+            // If the range is already cached, use it
+            let slice = if let Some(components) = format_range_cache.get(&current_range_id) {
+                // Advance the index by 1 to skip to the next range
                 idx += 1;
-            }
+                components
+            } else {
+                // The range is followed by a dictionary of attributes that map to that range
+                idx += 1;
+                let num_attrs = get_attribute_dict_length(components.get(idx));
 
-            // If there are no attributes, the default bubble will be applied
-            // Otherwise, determine the bubble based on the attributes
-            let slice: &[Archivable] = get_n_dict_objects(components, idx, num_attrs);
+                // The next set of values alternate between key and value pairs for the dictionary, if there are any
+                if num_attrs > 0 {
+                    idx += 1;
+                }
+                let dict_items = get_n_dict_objects(components, idx, num_attrs);
+                format_range_cache.insert(current_range_id, dict_items);
+                // Advance the iterator by the number of attributes we just consumed
+                idx += dict_items.len();
+                dict_items
+            };
 
             // Determine the type of the bubble and add it to the body parts vec
             if let Some(bubble) =
@@ -74,9 +92,6 @@ pub(crate) fn parse_body_typedstream<'a>(
                     },
                 }
             }
-
-            // Advance the iterator by the number of attributes we just consumed
-            idx += slice.len();
         }
     }
 
@@ -95,6 +110,8 @@ pub(crate) fn parse_body_typedstream<'a>(
     (!out_v.is_empty()).then_some(out_v)
 }
 
+/// Get the range of a component, if it is a range.
+/// The first item in the range is the ID of the set of styles, and the second item is the length of the range.
 fn get_range(component: &Archivable) -> Option<(&i64, &u64)> {
     if let Archivable::Data(items) = component {
         if items.len() == 2 {
@@ -1054,14 +1071,14 @@ mod typedstream_tests {
                 TextAttributes::new(3, 4, TextEffect::Default),
                 TextAttributes::new(4, 10, TextEffect::Animated(Animation::Small)),
                 TextAttributes::new(10, 15, TextEffect::Animated(Animation::Shake)),
-                TextAttributes::new(15, 16, TextEffect::Default),
+                TextAttributes::new(15, 16, TextEffect::Animated(Animation::Small)),
                 TextAttributes::new(16, 19, TextEffect::Animated(Animation::Nod)),
-                TextAttributes::new(19, 20, TextEffect::Default),
+                TextAttributes::new(19, 20, TextEffect::Animated(Animation::Small)),
                 TextAttributes::new(20, 28, TextEffect::Animated(Animation::Explode)),
                 TextAttributes::new(28, 34, TextEffect::Animated(Animation::Ripple)),
-                TextAttributes::new(34, 35, TextEffect::Default),
+                TextAttributes::new(34, 35, TextEffect::Animated(Animation::Explode)),
                 TextAttributes::new(35, 40, TextEffect::Animated(Animation::Bloom)),
-                TextAttributes::new(40, 41, TextEffect::Default),
+                TextAttributes::new(40, 41, TextEffect::Animated(Animation::Explode)),
                 TextAttributes::new(41, 47, TextEffect::Animated(Animation::Jitter)),
             ]),]
         );
@@ -1340,6 +1357,49 @@ mod typedstream_tests {
                 TextAttributes::new(7, 11, TextEffect::Styles(vec![Style::Bold])),
                 TextAttributes::new(11, 12, TextEffect::Default),
                 TextAttributes::new(12, 21, TextEffect::Styles(vec![Style::Underline])),
+            ]),]
+        );
+    }
+
+    #[test]
+    fn can_get_message_body_text_overlapping_format_ranges() {
+        let mut m = Message::blank();
+        m.text = Some("8:00 pm".to_string());
+
+        let typedstream_path = current_dir()
+            .unwrap()
+            .as_path()
+            .join("test_data/typedstream/OverlappingFormat");
+        let mut file = File::open(typedstream_path).unwrap();
+        let mut bytes = vec![];
+        file.read_to_end(&mut bytes).unwrap();
+
+        let mut parser = TypedStreamReader::from(&bytes);
+        m.components = parser.parse().ok();
+
+        m.components
+            .as_ref()
+            .unwrap()
+            .iter()
+            .enumerate()
+            .for_each(|(idx, item)| println!("\t{idx}: {item:?}"));
+
+        assert_eq!(
+            parse_body_typedstream(
+                m.components.as_ref(),
+                m.text.as_deref(),
+                m.edited_parts.as_ref()
+            )
+            .unwrap(),
+            vec![BubbleComponent::Text(vec![
+                TextAttributes::new(0, 1, TextEffect::Conversion(Unit::Timezone)),
+                TextAttributes::new(0, 1, TextEffect::Styles(vec![Style::Bold])),
+                TextAttributes::new(1, 2, TextEffect::Conversion(Unit::Timezone)),
+                TextAttributes::new(2, 4, TextEffect::Conversion(Unit::Timezone)),
+                TextAttributes::new(2, 4, TextEffect::Styles(vec![Style::Underline])),
+                TextAttributes::new(4, 5, TextEffect::Conversion(Unit::Timezone)),
+                TextAttributes::new(5, 7, TextEffect::Conversion(Unit::Timezone)),
+                TextAttributes::new(5, 7, TextEffect::Styles(vec![Style::Italic])),
             ]),]
         );
     }
