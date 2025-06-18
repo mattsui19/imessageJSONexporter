@@ -61,8 +61,12 @@ const FOOTER: &str = "</body></html>";
 const STYLE: &str = include_str!("resources/style.css");
 
 #[derive(Debug, Clone)]
+/// EventType is used to track the start and end of HTML text attributes
+/// so we can render them correctly in the HTML output.
 enum EventType<'a> {
+    /// Start event for text attributes, contains the index of the text part
     Start(usize, &'a TextAttributes<'a>),
+    /// End event for text attributes, contains the index of the text part
     End(usize),
 }
 
@@ -1003,6 +1007,7 @@ impl<'a> Writer<'a> for HTML<'a> {
         // Create events for attribute starts and ends
         let mut events = Vec::new();
 
+        // Create events for each attribute, marking start and end positions. The ID is the index of the attribute in the list.
         for (attr_id, attr) in attributes.iter().enumerate() {
             events.push((attr.start, EventType::Start(attr_id, attr)));
             events.push((attr.end, EventType::End(attr_id)));
@@ -1018,23 +1023,29 @@ impl<'a> Writer<'a> for HTML<'a> {
         });
 
         let mut result = String::new();
+        // The currently active attributes, stored as (attribute ID, TextAttributes)
         let mut active_attrs: Vec<(usize, &TextAttributes)> = Vec::new();
         let mut last_pos = events.first().map(|(pos, _)| *pos).unwrap_or(0);
 
         for (pos, event) in events {
             // Add text before this event with current active attributes
             if pos > last_pos && last_pos < text.len() {
+                // Get the text slice from last position to current position
                 let end_pos = min(pos, text.len());
                 let text_slice = &text[last_pos..end_pos];
+                // Sanitize the text slice
                 let sanitized_text = sanitize_html(text_slice);
                 result.push_str(&self.apply_active_attributes(&sanitized_text, &active_attrs));
             }
 
+            // Update active attributes based on the event
             match event {
                 EventType::Start(attr_id, attr) => {
+                    // Add the attribute that starts
                     active_attrs.push((attr_id, attr));
                 }
                 EventType::End(attr_id) => {
+                    // Remove the attribute that ends
                     active_attrs.retain(|(id, _)| *id != attr_id);
                 }
             }
@@ -1650,13 +1661,19 @@ impl HTML<'_> {
         text: &'a str,
         active_attrs: &'a [(usize, &TextAttributes)],
     ) -> Cow<'a, str> {
+        // If there are no active attributes, return the original text
         if active_attrs.is_empty() {
             return Cow::Borrowed(text);
         }
 
+        // If there are active attributes, we need to format the text
         let mut result = Cow::Borrowed(text);
 
+        // Iterate through the active attributes and apply their effects
+        // If we encounter a TextEffect that modifies the text, we will convert it to an owned type
+        // to ensure we can modify it.
         for (_, attr) in active_attrs {
+            // If the effect is `Default`, we can skip it, because it does not modify the text
             if !matches!(attr.effect, TextEffect::Default) {
                 // Once we need to modify, convert to owned and stay owned
                 let owned_text = result.into_owned();
