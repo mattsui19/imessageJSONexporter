@@ -222,11 +222,11 @@ fn has_attribute(components: &[Archivable], attribute_name: &str) -> bool {
 }
 
 /// Collect all text effects from the component attributes
-fn collect_text_effects<'a>(
-    components: &'a [Archivable],
+fn collect_text_effects(
+    components: &[Archivable],
     range_start: usize,
     range_end: usize,
-) -> Vec<TextAttributes<'a>> {
+) -> Vec<TextAttributes<'_>> {
     let mut effects = vec![];
     let mut style_attributes = vec![];
 
@@ -280,7 +280,7 @@ fn collect_text_effects<'a>(
                 "__kIMTextUnderlineAttributeName" => style_attributes.push(Style::Underline),
                 "__kIMTextItalicAttributeName" => style_attributes.push(Style::Italic),
                 "__kIMTextStrikethroughAttributeName" => {
-                    style_attributes.push(Style::Strikethrough)
+                    style_attributes.push(Style::Strikethrough);
                 }
                 _ => {}
             }
