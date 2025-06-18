@@ -30,7 +30,10 @@ pub(crate) fn parse_body_typedstream<'a>(
     // Create the output data
     let mut out_v = vec![];
 
-    // Cache for ranges to avoid re-parsing the same range multiple times
+    // Format ranges are only stored once and then referenced by order of appearance (starting at 1),
+    // so we need cache them to properly apply styles and attributes.
+    // The key is the range ID, and the value is a slice of `Archivable` that
+    // contains the attributes for that range.
     let mut format_range_cache: HashMap<i64, &[Archivable]> = HashMap::new();
 
     // Start to iterate over the ranges
@@ -108,7 +111,7 @@ pub(crate) fn parse_body_typedstream<'a>(
 }
 
 /// Get the range of a component, if it is a range.
-/// The first item in the range is the ID of the ID of the unique styles, and the second item is the length of the range.
+/// The first item in the range is the ID of the set of styles, and the second item is the length of the range.
 fn get_range(component: &Archivable) -> Option<(&i64, &u64)> {
     if let Archivable::Data(items) = component {
         if items.len() == 2 {
