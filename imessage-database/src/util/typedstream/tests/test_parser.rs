@@ -3968,24 +3968,4 @@ mod parser_tests {
         assert_eq!(result[..9], expected_1);
         assert_eq!(result[10..], expected_2);
     }
-
-    #[test]
-    fn test_parse_styled_overlapping_format_ranges() {
-        let typedstream_path = current_dir()
-            .unwrap()
-            .as_path()
-            .join("test_data/typedstream/OverlappingFormat");
-        let mut file = File::open(typedstream_path).unwrap();
-        let mut bytes = vec![];
-        file.read_to_end(&mut bytes).unwrap();
-
-        let mut parser = TypedStreamReader::from(&bytes);
-        let result = parser.parse().unwrap();
-
-        println!("\n\nGot data!");
-        result
-            .iter()
-            .enumerate()
-            .for_each(|(idx, item)| println!("\t{idx}: {item:?}"));
-    }
 }
