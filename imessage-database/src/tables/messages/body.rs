@@ -108,7 +108,7 @@ pub(crate) fn parse_body_typedstream<'a>(
 }
 
 /// Get the range of a component, if it is a range.
-/// The first item in the range is teh ID of the ID of the unique styles, and the second item is the length of the range.
+/// The first item in the range is the ID of the ID of the unique styles, and the second item is the length of the range.
 fn get_range(component: &Archivable) -> Option<(&i64, &u64)> {
     if let Archivable::Data(items) = component {
         if items.len() == 2 {
