@@ -1343,6 +1343,49 @@ mod typedstream_tests {
             ]),]
         );
     }
+
+    #[test]
+    fn can_get_message_body_text_overlapping_format_ranges() {
+        let mut m = Message::blank();
+        m.text = Some("8:00 pm".to_string());
+
+        let typedstream_path = current_dir()
+            .unwrap()
+            .as_path()
+            .join("test_data/typedstream/OverlappingFormat");
+        let mut file = File::open(typedstream_path).unwrap();
+        let mut bytes = vec![];
+        file.read_to_end(&mut bytes).unwrap();
+
+        let mut parser = TypedStreamReader::from(&bytes);
+        m.components = parser.parse().ok();
+
+        m.components
+            .as_ref()
+            .unwrap()
+            .iter()
+            .enumerate()
+            .for_each(|(idx, item)| println!("\t{idx}: {item:?}"));
+
+        assert_eq!(
+            parse_body_typedstream(
+                m.components.as_ref(),
+                m.text.as_deref(),
+                m.edited_parts.as_ref()
+            )
+            .unwrap(),
+            vec![BubbleComponent::Text(vec![
+                TextAttributes::new(0, 1, TextEffect::Conversion(Unit::Timezone)),
+                TextAttributes::new(0, 1, TextEffect::Styles(vec![Style::Bold])),
+                TextAttributes::new(1, 2, TextEffect::Conversion(Unit::Timezone)),
+                TextAttributes::new(2, 4, TextEffect::Conversion(Unit::Timezone)),
+                TextAttributes::new(2, 4, TextEffect::Styles(vec![Style::Underline])),
+                TextAttributes::new(4, 5, TextEffect::Default),
+                TextAttributes::new(5, 7, TextEffect::Conversion(Unit::Timezone)),
+                TextAttributes::new(5, 7, TextEffect::Styles(vec![Style::Italic])),
+            ]),]
+        );
+    }
 }
 
 #[cfg(test)]
