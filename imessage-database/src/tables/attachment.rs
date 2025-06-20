@@ -39,15 +39,15 @@ const COLS: &str = "a.rowid, a.filename, a.uti, a.mime_type, a.transfer_name, a.
 /// The interior `str` contains the subtype, i.e. `x-m4a` for `audio/x-m4a`
 #[derive(Debug, PartialEq, Eq)]
 pub enum MediaType<'a> {
-    /// Image MIME type, such as `"image/png"`` or `"image/jpeg"`
+    /// Image MIME type, such as `"image/png"` or `"image/jpeg"`
     Image(&'a str),
-    /// Video MIME type, such as `"video/mp4"`` or `"video/quicktime"`
+    /// Video MIME type, such as `"video/mp4"` or `"video/quicktime"`
     Video(&'a str),
-    /// Audio MIME type, such as `"audio/mp3"`` or `"audio/x-m4a`"
+    /// Audio MIME type, such as `"audio/mp3"` or `"audio/x-m4a`"
     Audio(&'a str),
-    /// Text MIME type, such as `"text/plain"`` or `"text/html"`
+    /// Text MIME type, such as `"text/plain"` or `"text/html"`
     Text(&'a str),
-    /// Application MIME type, such as `"application/pdf"`` or `"application/json"`
+    /// Application MIME type, such as `"application/pdf"` or `"application/json"`
     Application(&'a str),
     /// Other MIME types that don't fit the standard categories
     Other(&'a str),
