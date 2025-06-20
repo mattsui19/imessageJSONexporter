@@ -1,6 +1,7 @@
 /*!
  Defines routines common across all converters.
 */
+use filetime::{FileTime, set_file_times};
 use std::{
     fs::{copy, create_dir_all, metadata, read_dir},
     path::Path,
@@ -8,8 +9,6 @@ use std::{
 };
 
 use imessage_database::tables::messages::Message;
-
-use filetime::{FileTime, set_file_times};
 
 use crate::app::runtime::Config;
 

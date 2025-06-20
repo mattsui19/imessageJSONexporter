@@ -33,7 +33,6 @@ pub struct Properties {
 impl Properties {
     /// Create a new `Properties` given a `plist` blob
     pub(self) fn from_plist(plist: &Value) -> Result<Self, PlistParseError> {
-        // println!("Parsing chat properties from plist: {plist:?}");
         Ok(Self {
             read_receipts_enabled: get_bool_from_dict(plist, "EnableReadReceiptForChat")
                 .unwrap_or(false),

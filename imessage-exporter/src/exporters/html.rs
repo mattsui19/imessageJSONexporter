@@ -1,7 +1,7 @@
 use std::{
     borrow::Cow,
     cmp::{
-        Ordering::{Greater, Less},
+        Ordering::{Equal, Greater, Less},
         min,
     },
     collections::{
@@ -61,7 +61,7 @@ const FOOTER: &str = "</body></html>";
 const STYLE: &str = include_str!("resources/style.css");
 
 #[derive(Debug, Clone)]
-/// EventType is used to track the start and end of HTML text attributes
+/// [`EventType`] is used to track the start and end of HTML text attributes
 /// so we can render them correctly in the HTML output.
 enum EventType<'a> {
     /// Start event for text attributes, contains the index of the text part
@@ -1018,14 +1018,14 @@ impl<'a> Writer<'a> for HTML<'a> {
             a.0.cmp(&b.0).then_with(|| match (&a.1, &b.1) {
                 (EventType::End(_), EventType::Start(_, _)) => Less,
                 (EventType::Start(_, _), EventType::End(_)) => Greater,
-                _ => std::cmp::Ordering::Equal,
+                _ => Equal,
             })
         });
 
         let mut result = String::new();
         // The currently active attributes, stored as (attribute ID, TextAttributes)
         let mut active_attrs: Vec<(usize, &TextAttributes)> = Vec::new();
-        let mut last_pos = events.first().map(|(pos, _)| *pos).unwrap_or(0);
+        let mut last_pos = events.first().map_or(0, |(pos, _)| *pos);
 
         for (pos, event) in events {
             // Add text before this event with current active attributes

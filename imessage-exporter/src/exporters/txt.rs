@@ -2485,7 +2485,7 @@ mod text_effect_tests {
     #[test]
     fn can_format_txt_text_styled_emoji_bold_underline() {
         // Create exporter
-        let options = Options::fake_options(crate::app::export_type::ExportType::Html);
+        let options = Options::fake_options(crate::app::export_type::ExportType::Txt);
         let config = Config::fake_app(options);
         let exporter = TXT::new(&config).unwrap();
 
@@ -2510,6 +2510,38 @@ mod text_effect_tests {
 
         let actual = exporter.format_message(&message, 0).unwrap();
         let expected = "May 17, 2022  5:29:42 PM\nMe\n🅱️Bold_Underline\n\n";
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn can_format_html_text_styled_overlapping_ranges() {
+        // Create exporter
+        let options = Options::fake_options(crate::app::export_type::ExportType::Txt);
+        let config = Config::fake_app(options);
+        let exporter = TXT::new(&config).unwrap();
+
+        let mut message = Config::fake_message();
+        // May 17, 2022  8:29:42 PM
+        message.date = 674526582885055488;
+        message.text = Some("8:00 pm".to_string());
+        message.is_from_me = true;
+        message.chat_id = Some(0);
+
+        let typedstream_path = current_dir()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("imessage-database/test_data/typedstream/OverlappingFormat");
+        let mut file = File::open(typedstream_path).unwrap();
+        let mut bytes = vec![];
+        file.read_to_end(&mut bytes).unwrap();
+
+        let mut parser = TypedStreamReader::from(&bytes);
+        message.components = parser.parse().ok();
+
+        let actual = exporter.format_message(&message, 0).unwrap();
+        let expected = "May 17, 2022  5:29:42 PM\nMe\n8:00 pm\n\n";
 
         assert_eq!(actual, expected);
     }
