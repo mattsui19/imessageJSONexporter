@@ -176,6 +176,7 @@ mod tests {
 
     #[test]
     fn test_parse_text_app() {
+        // This test removed a block of text so the pointers become misaligned during parsing
         let plist_path = current_dir()
             .unwrap()
             .as_path()

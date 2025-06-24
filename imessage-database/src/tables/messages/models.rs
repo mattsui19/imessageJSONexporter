@@ -4,9 +4,12 @@
 
 use std::fmt::{Display, Formatter, Result};
 
+use crabstep::{PropertyIterator, deserializer::iter::Property};
+
 use crate::{
-    message_types::text_effects::TextEffect, tables::messages::message::Message,
-    util::typedstream::models::Archivable,
+    message_types::text_effects::TextEffect,
+    tables::messages::message::Message,
+    util::typedstream_helpers::{as_float, as_nsstring},
 };
 
 /// Defines the parts of a message bubble, i.e. the content that can exist in a single message.
@@ -16,12 +19,12 @@ use crate::{
 /// A single iMessage contains data that may be represented across multiple bubbles.
 ///
 /// iMessage bubbles can only contain data of one variant of this enum at a time.
-#[derive(Debug, PartialEq)]
-pub enum BubbleComponent<'a> {
+#[derive(Debug, PartialEq, Clone)]
+pub enum BubbleComponent {
     /// A text message with associated formatting, generally representing ranges present in a `NSAttributedString`
-    Text(Vec<TextAttributes<'a>>),
+    Text(TextAttributes),
     /// An attachment
-    Attachment(AttachmentMeta<'a>),
+    Attachment(AttachmentMeta),
     /// An [app integration](crate::message_types::app)
     App,
     /// A component that was retracted, found by parsing the [`EditedMessage`](crate::message_types::edited::EditedMessage)
@@ -96,106 +99,82 @@ impl Display for Service<'_> {
 ///     TextAttributes::new(22, 23, TextEffect::Default)  // `?`
 /// ])];
 /// ```
-#[derive(Debug, PartialEq, Eq)]
-pub struct TextAttributes<'a> {
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct TextAttributes {
     /// The start index of the affected range of message text
     pub start: usize,
     /// The end index of the affected range of message text
     pub end: usize,
     /// The effects applied to the specified range
-    pub effect: TextEffect<'a>,
+    pub effects: Vec<TextEffect>,
 }
 
-impl<'a> TextAttributes<'a> {
+impl TextAttributes {
     /// Creates a new [`TextAttributes`] with the specified start index, end index, and text effect.
     #[must_use]
-    pub fn new(start: usize, end: usize, effect: TextEffect<'a>) -> Self {
-        Self { start, end, effect }
+    pub fn new(start: usize, end: usize, effects: Vec<TextEffect>) -> Self {
+        Self {
+            start,
+            end,
+            effects,
+        }
     }
 }
 
 /// Representation of attachment metadata used for rendering message body in a conversation feed.
-#[derive(Debug, PartialEq, Default)]
-pub struct AttachmentMeta<'a> {
+#[derive(Debug, PartialEq, Default, Clone)]
+pub struct AttachmentMeta {
     /// GUID of the attachment in the `attachment` table
-    pub guid: Option<&'a str>,
+    pub guid: Option<String>,
     /// The transcription, if the attachment was an [audio message](https://support.apple.com/guide/iphone/send-and-receive-audio-messages-iph2e42d3117/ios) sent from or received on a [supported platform](https://www.apple.com/ios/feature-availability/#messages-audio-message-transcription).
-    pub transcription: Option<&'a str>,
+    pub transcription: Option<String>,
     /// The height of the attachment in points
-    pub height: Option<&'a f64>,
+    pub height: Option<f64>,
     /// The width of the attachment in points
-    pub width: Option<&'a f64>,
+    pub width: Option<f64>,
     /// The attachment's original filename
-    pub name: Option<&'a str>,
+    pub name: Option<String>,
 }
 
-impl<'a> AttachmentMeta<'a> {
+impl AttachmentMeta {
     /// Given a slice of parsed [`typedstream`](crate::util::typedstream) data, populate the attachment's metadata fields.
-    ///
-    /// # Example
-    /// ```
-    /// use imessage_database::util::typedstream::models::{Archivable, Class, OutputData};
-    /// use imessage_database::tables::messages::models::AttachmentMeta;
-    ///
-    /// // Sample components
-    /// let components = vec![
-    ///    Archivable::Object(
-    ///        Class {
-    ///            name: "NSString".to_string(),
-    ///            version: 1,
-    ///        },
-    ///        vec![OutputData::String(
-    ///            "__kIMFileTransferGUIDAttributeName".to_string(),
-    ///        )],
-    ///    ),
-    ///    Archivable::Object(
-    ///        Class {
-    ///            name: "NSString".to_string(),
-    ///            version: 1,
-    ///        },
-    ///        vec![OutputData::String(
-    ///            "4C339597-EBBB-4978-9B87-521C0471A848".to_string(),
-    ///        )],
-    ///    ),
-    /// ];
-    /// let meta = AttachmentMeta::from_components(&components);
-    /// ```
     #[must_use]
-    pub fn from_components(components: &'a [Archivable]) -> Option<Self> {
-        let mut guid = None;
-        let mut transcription = None;
-        let mut height = None;
-        let mut width = None;
-        let mut name = None;
+    pub fn from_components<'a>(
+        first_key: &str,
+        components: &'a mut PropertyIterator<'a, 'a>,
+    ) -> Self {
+        let mut meta = Self::default();
 
-        for (idx, key) in components.iter().enumerate() {
-            if let Some(key_name) = key.as_nsstring() {
-                match key_name {
-                    "__kIMFileTransferGUIDAttributeName" => {
-                        guid = components.get(idx + 1)?.as_nsstring();
-                    }
-                    "IMAudioTranscription" => {
-                        transcription = components.get(idx + 1)?.as_nsstring();
-                    }
-                    "__kIMInlineMediaHeightAttributeName" => {
-                        height = components.get(idx + 1)?.as_nsnumber_float();
-                    }
-                    "__kIMInlineMediaWidthAttributeName" => {
-                        width = components.get(idx + 1)?.as_nsnumber_float();
-                    }
-                    "__kIMFilenameAttributeName" => name = components.get(idx + 1)?.as_nsstring(),
-                    _ => {}
+        if let Some(mut prop) = components.next() {
+            meta.set_from_key_value(first_key, &mut prop);
+        }
+
+        while let Some(mut key) = components.next() {
+            if let Some(key_name) = as_nsstring(&mut key) {
+                if let Some(mut value) = components.next() {
+                    meta.set_from_key_value(key_name, &mut value);
                 }
             }
         }
 
-        Some(Self {
-            guid,
-            transcription,
-            height,
-            width,
-            name,
-        })
+        for component in components {
+            println!("{:?}", component);
+        }
+
+        meta
+    }
+
+    fn set_from_key_value<'a>(&'a mut self, key: &'a str, value: &'a mut Property<'a, 'a>) {
+        match key {
+            "__kIMFileTransferGUIDAttributeName" => {
+                self.guid = as_nsstring(value).map(String::from)
+            }
+            "IMAudioTranscription" => self.transcription = as_nsstring(value).map(String::from),
+            "__kIMInlineMediaHeightAttributeName" => self.height = as_float(value),
+            "__kIMInlineMediaWidthAttributeName" => self.width = as_float(value),
+            "__kIMFilenameAttributeName" => self.name = as_nsstring(value).map(String::from),
+            _ => {}
+        }
     }
 }
 

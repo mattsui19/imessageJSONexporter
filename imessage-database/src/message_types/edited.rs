@@ -9,10 +9,7 @@ use crate::{
     error::plist::PlistParseError,
     message_types::variants::BalloonProvider,
     tables::{
-        messages::{
-            body::{parse_body_legacy, parse_body_typedstream},
-            models::BubbleComponent,
-        },
+        messages::{body::parse_body_legacy, models::BubbleComponent},
         table::AttributedBody,
     },
     util::{
@@ -71,11 +68,11 @@ impl AttributedBody for EditedEvent {
     ///
     /// For more detail see the trait documentation [here](crate::tables::table::AttributedBody).
     fn body(&self) -> Vec<BubbleComponent> {
-        if let Some(body) =
-            parse_body_typedstream(self.components.as_ref(), self.text.as_deref(), None)
-        {
-            return body;
-        }
+        // if let Some(body) =
+        //     parse_body_typedstream(self.components.as_ref(), self.text.as_deref(), None)
+        // {
+        //     return body;
+        // }
         parse_body_legacy(&self.text)
     }
 }
@@ -1176,26 +1173,26 @@ mod test_gen {
         let parsed = EditedMessage::from_map(&plist).unwrap();
 
         let expected_attrs = [
-            vec![BubbleComponent::Text(vec![TextAttributes::new(
+            vec![BubbleComponent::Text(TextAttributes::new(
                 0,
                 15,
-                TextEffect::Default,
-            )])],
-            vec![BubbleComponent::Text(vec![TextAttributes::new(
+                vec![TextEffect::Default],
+            ))],
+            vec![BubbleComponent::Text(TextAttributes::new(
                 0,
                 6,
-                TextEffect::Default,
-            )])],
-            vec![BubbleComponent::Text(vec![TextAttributes::new(
+                vec![TextEffect::Default],
+            ))],
+            vec![BubbleComponent::Text(TextAttributes::new(
                 0,
                 6,
-                TextEffect::Default,
-            )])],
-            vec![BubbleComponent::Text(vec![TextAttributes::new(
+                vec![TextEffect::Default],
+            ))],
+            vec![BubbleComponent::Text(TextAttributes::new(
                 0,
                 14,
-                TextEffect::Default,
-            )])],
+                vec![TextEffect::Default],
+            ))],
         ];
 
         for event in parsed.parts {
@@ -1216,16 +1213,16 @@ mod test_gen {
         let parsed = EditedMessage::from_map(&plist).unwrap();
 
         let expected_attrs = [
-            vec![BubbleComponent::Text(vec![TextAttributes::new(
+            vec![BubbleComponent::Text(TextAttributes::new(
                 0,
                 11,
-                TextEffect::Default,
-            )])],
-            vec![BubbleComponent::Text(vec![TextAttributes::new(
+                vec![TextEffect::Default],
+            ))],
+            vec![BubbleComponent::Text(TextAttributes::new(
                 0,
                 55,
-                TextEffect::Default,
-            )])],
+                vec![TextEffect::Default],
+            ))],
         ];
 
         for event in parsed.parts {
@@ -1246,21 +1243,21 @@ mod test_gen {
         let parsed = EditedMessage::from_map(&plist).unwrap();
 
         let expected_attrs = [
-            vec![BubbleComponent::Text(vec![TextAttributes::new(
+            vec![BubbleComponent::Text(TextAttributes::new(
                 0,
                 24,
-                TextEffect::Default,
-            )])],
-            vec![BubbleComponent::Text(vec![TextAttributes::new(
+                vec![TextEffect::Default],
+            ))],
+            vec![BubbleComponent::Text(TextAttributes::new(
                 0,
                 69,
-                TextEffect::Default,
-            )])],
-            vec![BubbleComponent::Text(vec![TextAttributes::new(
+                vec![TextEffect::Default],
+            ))],
+            vec![BubbleComponent::Text(TextAttributes::new(
                 0,
                 39,
-                TextEffect::Default,
-            )])],
+                vec![TextEffect::Default],
+            ))],
         ];
 
         for event in parsed.parts {
@@ -1280,7 +1277,7 @@ mod test_gen {
         let plist = Value::from_reader(plist_data).unwrap();
         let parsed = EditedMessage::from_map(&plist).unwrap();
 
-        let expected_attrs: [Vec<BubbleComponent<'_>>; 0] = [];
+        let expected_attrs: [Vec<BubbleComponent>; 0] = [];
 
         for event in parsed.parts {
             for (idx, part) in event.edit_history.iter().enumerate() {
@@ -1299,7 +1296,7 @@ mod test_gen {
         let plist = Value::from_reader(plist_data).unwrap();
         let parsed = EditedMessage::from_map(&plist).unwrap();
 
-        let expected_attrs: [Vec<BubbleComponent<'_>>; 0] = [];
+        let expected_attrs: [Vec<BubbleComponent>; 0] = [];
 
         for event in parsed.parts {
             for (idx, part) in event.edit_history.iter().enumerate() {
@@ -1319,16 +1316,16 @@ mod test_gen {
         let parsed = EditedMessage::from_map(&plist).unwrap();
 
         let expected_attrs = [
-            vec![BubbleComponent::Text(vec![TextAttributes::new(
+            vec![BubbleComponent::Text(TextAttributes::new(
                 0,
                 14,
-                TextEffect::Default,
-            )])],
-            vec![BubbleComponent::Text(vec![TextAttributes::new(
+                vec![TextEffect::Default],
+            ))],
+            vec![BubbleComponent::Text(TextAttributes::new(
                 0,
                 26,
-                TextEffect::Default,
-            )])],
+                vec![TextEffect::Default],
+            ))],
         ];
 
         for event in parsed.parts {
@@ -1354,17 +1351,17 @@ mod test_gen {
             }
         }
 
-        let expected_attrs: [Vec<BubbleComponent<'_>>; 2] = [
-            vec![BubbleComponent::Text(vec![TextAttributes::new(
+        let expected_attrs: [Vec<BubbleComponent>; 2] = [
+            vec![BubbleComponent::Text(TextAttributes::new(
                 0,
                 11,
-                TextEffect::Default,
-            )])],
-            vec![BubbleComponent::Text(vec![TextAttributes::new(
+                vec![TextEffect::Default],
+            ))],
+            vec![BubbleComponent::Text(TextAttributes::new(
                 0,
                 23,
-                TextEffect::Default,
-            )])],
+                vec![TextEffect::Default],
+            ))],
         ];
 
         for event in parsed.parts {
@@ -1384,17 +1381,17 @@ mod test_gen {
         let plist = Value::from_reader(plist_data).unwrap();
         let parsed = EditedMessage::from_map(&plist).unwrap();
 
-        let expected_attrs: [Vec<BubbleComponent<'_>>; 2] = [
-            vec![BubbleComponent::Text(vec![TextAttributes::new(
+        let expected_attrs: [Vec<BubbleComponent>; 2] = [
+            vec![BubbleComponent::Text(TextAttributes::new(
                 0,
                 4,
-                TextEffect::Default,
-            )])],
-            vec![BubbleComponent::Text(vec![TextAttributes::new(
+                vec![TextEffect::Default],
+            ))],
+            vec![BubbleComponent::Text(TextAttributes::new(
                 0,
                 4,
-                TextEffect::Styles(vec![Style::Strikethrough]),
-            )])],
+                vec![TextEffect::Styles(vec![Style::Strikethrough])],
+            ))],
         ];
 
         for event in parsed.parts {

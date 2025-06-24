@@ -130,7 +130,7 @@ use crate::{
     },
     tables::{
         messages::{
-            body::{parse_body_legacy, parse_body_typedstream},
+            body::parse_body_legacy,
             models::{BubbleComponent, GroupAction, Service},
             query_parts::{ios_13_older_query, ios_14_15_query, ios_16_newer_query},
         },
@@ -455,13 +455,13 @@ impl AttributedBody for Message {
             return vec![BubbleComponent::App];
         }
 
-        if let Some(body) = parse_body_typedstream(
-            self.components.as_ref(),
-            self.text.as_deref(),
-            self.edited_parts.as_ref(),
-        ) {
-            return body;
-        }
+        // if let Some(body) = parse_body_typedstream(
+        //     self.components.as_ref(),
+        //     self.text.as_deref(),
+        //     self.edited_parts.as_ref(),
+        // ) {
+        //     return body;
+        // }
 
         // Naive logic for when `typedstream` component parsing fails
         parse_body_legacy(&self.text)
