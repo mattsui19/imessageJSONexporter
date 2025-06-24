@@ -157,17 +157,13 @@ impl AttachmentMeta {
             }
         }
 
-        for component in components {
-            println!("{:?}", component);
-        }
-
         meta
     }
 
     fn set_from_key_value<'a>(&'a mut self, key: &'a str, value: &'a mut Property<'a, 'a>) {
         match key {
             "__kIMFileTransferGUIDAttributeName" => {
-                self.guid = as_nsstring(value).map(String::from)
+                self.guid = as_nsstring(value).map(String::from);
             }
             "IMAudioTranscription" => self.transcription = as_nsstring(value).map(String::from),
             "__kIMInlineMediaHeightAttributeName" => self.height = as_float(value),

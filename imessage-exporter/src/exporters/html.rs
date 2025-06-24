@@ -1678,7 +1678,7 @@ impl HTML<'_> {
                 if !matches!(effect, TextEffect::Default) {
                     // Once we need to modify, convert to owned and stay owned
                     let owned_text = result.into_owned();
-                    let formatted = self.format_effect(&owned_text, &effect);
+                    let formatted = self.format_effect(&owned_text, effect);
                     result = Cow::Owned(formatted.into_owned());
                 }
             }

@@ -31,7 +31,7 @@ pub fn as_type_length_pair<'a>(property: &'a mut Property<'a, 'a>) -> Option<Typ
 }
 
 /// Converts a `Property` to an `Option<i64>` if it is a signed integer or similar structure.
-pub fn as_signed_integer(property: &Property<'_, '_>) -> Option<i64> {
+#[must_use] pub fn as_signed_integer(property: &Property<'_, '_>) -> Option<i64> {
     if let Property::Group(group) = property {
         let mut iter = group.iter();
         let val = iter.next()?;
@@ -49,7 +49,7 @@ pub fn as_signed_integer(property: &Property<'_, '_>) -> Option<i64> {
 }
 
 /// Converts a `Property` to an `Option<u64>` if it is an unsigned integer or similar structure.
-pub fn as_unsigned_integer<'a>(property: &'a Property<'a, 'a>) -> Option<u64> {
+#[must_use] pub fn as_unsigned_integer<'a>(property: &'a Property<'a, 'a>) -> Option<u64> {
     if let Property::Group(group) = property {
         let mut iter = group.iter();
         let val = iter.next()?;
@@ -67,7 +67,7 @@ pub fn as_unsigned_integer<'a>(property: &'a Property<'a, 'a>) -> Option<u64> {
 }
 
 /// Converts a `Property` to an `Option<f32>` if it is an unsigned integer or similar structure.
-pub fn as_float<'a>(property: &'a Property<'a, 'a>) -> Option<f64> {
+#[must_use] pub fn as_float<'a>(property: &'a Property<'a, 'a>) -> Option<f64> {
     if let Property::Group(group) = property {
         let mut iter = group.iter();
         let val = iter.next()?;
@@ -122,7 +122,7 @@ pub fn as_ns_dictionary<'a>(
     None
 }
 
-/// Given a mutable reference to a resolved `Property`,  
+/// Given a mutable reference to a resolved `Property`,\
 /// walks 2 levels of nested groups under an NSURL→NSString and returns the inner &str.
 pub fn as_nsurl<'a>(property: &'a mut Property<'a, 'a>) -> Option<&'a str> {
     // only care about top‐level Group
@@ -141,7 +141,7 @@ pub fn as_nsurl<'a>(property: &'a mut Property<'a, 'a>) -> Option<&'a str> {
                 // first level under NSURL
                 for level2 in url_data {
                     if let Property::Group(mut inner) = level2 {
-                        for level3 in inner.iter_mut() {
+                        for level3 in &mut inner {
                             // look for Object(name="NSString", data=...)
                             if let Property::Object {
                                 name,

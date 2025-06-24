@@ -16,7 +16,7 @@ use crate::{
     },
 };
 
-/// NSDictionary keys that are used to identify attachment metadata
+/// `NSDictionary` keys that are used to identify attachment metadata
 /// If any of these keys are present in the message body, it is considered an attachment
 /// and the `AttachmentMeta` struct will be populated with the relevant data.
 static ATTACHMENT_META_KEYS: LazyLock<HashSet<&'static str>> = LazyLock::new(|| {
@@ -172,7 +172,7 @@ pub fn parse_body_typedstream<'a>(
                         }
                         _ => {}
                     }
-                };
+                }
             }
         }
     }
