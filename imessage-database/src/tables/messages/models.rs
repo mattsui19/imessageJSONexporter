@@ -22,7 +22,7 @@ use crate::{
 #[derive(Debug, PartialEq, Clone)]
 pub enum BubbleComponent {
     /// A text message with associated formatting, generally representing ranges present in a `NSAttributedString`
-    Text(TextAttributes),
+    Text(Vec<TextAttributes>),
     /// An attachment
     Attachment(AttachmentMeta),
     /// An [app integration](crate::message_types::app)

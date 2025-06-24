@@ -84,9 +84,13 @@ pub fn parse_body_typedstream<'a>(
                         Some(formatted_range) => {
                             if let Some(mut bubble) = out_v.get(*formatted_range).cloned() {
                                 if let BubbleComponent::Text(attrs) = &mut bubble {
-                                    // If the bubble is a text bubble, we can append the new attributes
-                                    attrs.start = utf16_idx(text, current_start, &utf16_to_byte);
-                                    attrs.end = utf16_idx(text, current_end, &utf16_to_byte);
+                                    let start = utf16_idx(text, current_start, &utf16_to_byte);
+                                    let end = utf16_idx(text, current_end, &utf16_to_byte);
+                                    for attr in attrs {
+                                        // If the bubble is a text bubble, we can append the new attributes
+                                        attr.start = start;
+                                        attr.end = end;
+                                    }
                                 }
                                 out_v.push(bubble);
                             }
@@ -104,7 +108,20 @@ pub fn parse_body_typedstream<'a>(
                                     &utf16_to_byte,
                                 ) {
                                     let inserted_idx = out_v.len();
-                                    out_v.push(bubble);
+
+                                    match (out_v.last_mut(), bubble) {
+                                        (
+                                            Some(BubbleComponent::Text(attrs)),
+                                            BubbleComponent::Text(current),
+                                        ) => {
+                                            // last is Text and new bubble is Text: merge
+                                            attrs.extend(current);
+                                        }
+                                        (_, b) => {
+                                            // everything else: push the new bubble
+                                            out_v.push(b);
+                                        }
+                                    }
                                     // Cache the range index for future reference
                                     format_range_cache.insert(current_range_id, inserted_idx);
                                 }
@@ -214,7 +231,7 @@ fn get_bubble_type<'a>(
         attributes.effects.push(format_styles);
     }
 
-    Some(BubbleComponent::Text(attributes))
+    Some(BubbleComponent::Text(vec![attributes]))
 }
 
 /// Collect all text effects from the component attributes
@@ -268,11 +285,11 @@ pub(crate) fn parse_body_legacy(text: &Option<String>) -> Vec<BubbleComponent> {
             for (idx, char) in text.char_indices() {
                 if REPLACEMENT_CHARS.contains(&char) {
                     if start < end {
-                        out_v.push(BubbleComponent::Text(TextAttributes::new(
+                        out_v.push(BubbleComponent::Text(vec![TextAttributes::new(
                             start,
                             idx,
                             vec![TextEffect::Default],
-                        )));
+                        )]));
                     }
                     start = idx + 1;
                     end = idx;
@@ -291,11 +308,11 @@ pub(crate) fn parse_body_legacy(text: &Option<String>) -> Vec<BubbleComponent> {
                 }
             }
             if start <= end && start < text.len() {
-                out_v.push(BubbleComponent::Text(TextAttributes::new(
+                out_v.push(BubbleComponent::Text(vec![TextAttributes::new(
                     start,
                     text.len(),
                     vec![TextEffect::Default],
-                )));
+                )]));
             }
             out_v
         }
@@ -341,11 +358,11 @@ mod typedstream_tests {
         let parsed = parse_body_typedstream(iter, m.edited_parts.as_ref()).unwrap();
         assert_eq!(
             parsed.components,
-            vec![BubbleComponent::Text(TextAttributes::new(
+            vec![BubbleComponent::Text(vec![TextAttributes::new(
                 0,
                 10,
                 vec![TextEffect::Default]
-            ))]
+            )])]
         );
     }
 
@@ -399,11 +416,11 @@ mod typedstream_tests {
         let parsed = parse_body_typedstream(iter, m.edited_parts.as_ref()).unwrap();
         assert_eq!(
             parsed.components,
-            vec![BubbleComponent::Text(TextAttributes::new(
+            vec![BubbleComponent::Text(vec![TextAttributes::new(
                 0,
                 6,
                 vec![TextEffect::Default]
-            ))]
+            )])]
         );
     }
 
@@ -435,7 +452,7 @@ mod typedstream_tests {
                     width: None,
                     name: None
                 }),
-                BubbleComponent::Text(TextAttributes::new(3, 9, vec![TextEffect::Default])),
+                BubbleComponent::Text(vec![TextAttributes::new(3, 9, vec![TextEffect::Default])]),
                 BubbleComponent::Attachment(AttachmentMeta {
                     guid: Some("at_2_F0668F79-20C2-49C9-A87F-1B007ABB0CED".to_string()),
                     transcription: None,
@@ -443,7 +460,7 @@ mod typedstream_tests {
                     width: None,
                     name: None
                 }),
-                BubbleComponent::Text(TextAttributes::new(12, 19, vec![TextEffect::Default])),
+                BubbleComponent::Text(vec![TextAttributes::new(12, 19, vec![TextEffect::Default])]),
                 BubbleComponent::Attachment(AttachmentMeta {
                     guid: Some("at_4_F0668F79-20C2-49C9-A87F-1B007ABB0CED".to_string()),
                     transcription: None,
@@ -451,7 +468,7 @@ mod typedstream_tests {
                     width: None,
                     name: None
                 }),
-                BubbleComponent::Text(TextAttributes::new(22, 28, vec![TextEffect::Default])),
+                BubbleComponent::Text(vec![TextAttributes::new(22, 28, vec![TextEffect::Default])]),
             ]
         );
     }
@@ -479,7 +496,7 @@ mod typedstream_tests {
         assert_eq!(
             parsed.components,
             vec![
-                BubbleComponent::Text(TextAttributes::new(0, 28, vec![TextEffect::Default])),
+                BubbleComponent::Text(vec![TextAttributes::new(0, 28, vec![TextEffect::Default])]),
                 BubbleComponent::Attachment(AttachmentMeta {
                     guid: Some("D0551D89-4E11-43D0-9A0E-06F19704E97B".to_string()),
                     transcription: None,
@@ -487,7 +504,7 @@ mod typedstream_tests {
                     width: None,
                     name: None
                 }),
-                BubbleComponent::Text(TextAttributes::new(31, 63, vec![TextEffect::Default])),
+                BubbleComponent::Text(vec![TextAttributes::new(31, 63, vec![TextEffect::Default])]),
             ]
         );
     }
@@ -549,7 +566,7 @@ mod typedstream_tests {
         assert_eq!(
             parsed.components,
             vec![
-                BubbleComponent::Text(TextAttributes::new(0, 28, vec![TextEffect::Default])),
+                BubbleComponent::Text(vec![TextAttributes::new(0, 28, vec![TextEffect::Default])]),
                 BubbleComponent::Attachment(AttachmentMeta {
                     guid: Some("D0551D89-4E11-43D0-9A0E-06F19704E97B".to_string()),
                     transcription: None,
@@ -557,7 +574,7 @@ mod typedstream_tests {
                     width: None,
                     name: None
                 }),
-                BubbleComponent::Text(TextAttributes::new(31, 63, vec![TextEffect::Default])),
+                BubbleComponent::Text(vec![TextAttributes::new(31, 63, vec![TextEffect::Default])]),
                 BubbleComponent::Retracted,
             ]
         );
@@ -624,7 +641,7 @@ mod typedstream_tests {
                     width: Some(952.0),
                     name: Some("Messages Image(785748029).png".to_string())
                 }),
-                BubbleComponent::Text(TextAttributes::new(3, 80, vec![TextEffect::Default])),
+                BubbleComponent::Text(vec![TextAttributes::new(3, 80, vec![TextEffect::Default])]),
             ]
         );
     }
@@ -679,13 +696,13 @@ mod typedstream_tests {
         let parsed = parse_body_typedstream(iter, m.edited_parts.as_ref()).unwrap();
         assert_eq!(
             parsed.components,
-            vec![BubbleComponent::Text(TextAttributes::new(
+            vec![BubbleComponent::Text(vec![TextAttributes::new(
                 0,
                 56,
                 vec![TextEffect::Link(
                     "https://twitter.com/xxxxxxxxx/status/0000223300009216128".to_string()
                 )]
-            )),]
+            )]),]
         );
     }
 
@@ -710,13 +727,13 @@ mod typedstream_tests {
         assert_eq!(
             parsed.components,
             vec![
-                BubbleComponent::Text(TextAttributes::new(0, 5, vec![TextEffect::Default])),
-                BubbleComponent::Text(TextAttributes::new(
+                BubbleComponent::Text(vec![TextAttributes::new(0, 5, vec![TextEffect::Default])]),
+                BubbleComponent::Text(vec![TextAttributes::new(
                     5,
                     8,
                     vec![TextEffect::Mention("+15558675309".to_string())]
-                )),
-                BubbleComponent::Text(TextAttributes::new(8, 9, vec![TextEffect::Default]))
+                )]),
+                BubbleComponent::Text(vec![TextAttributes::new(8, 9, vec![TextEffect::Default])])
             ]
         );
     }
@@ -742,8 +759,8 @@ mod typedstream_tests {
         assert_eq!(
             parsed.components,
             vec![
-                BubbleComponent::Text(TextAttributes::new(0, 6, vec![TextEffect::OTP])),
-                BubbleComponent::Text(TextAttributes::new(6, 52, vec![TextEffect::Default])),
+                BubbleComponent::Text(vec![TextAttributes::new(0, 6, vec![TextEffect::OTP])]),
+                BubbleComponent::Text(vec![TextAttributes::new(6, 52, vec![TextEffect::Default])]),
             ]
         );
     }
@@ -769,12 +786,12 @@ mod typedstream_tests {
         assert_eq!(
             parsed.components,
             vec![
-                BubbleComponent::Text(TextAttributes::new(0, 11, vec![TextEffect::Default])),
-                BubbleComponent::Text(TextAttributes::new(
+                BubbleComponent::Text(vec![TextAttributes::new(0, 11, vec![TextEffect::Default])]),
+                BubbleComponent::Text(vec![TextAttributes::new(
                     11,
                     21,
                     vec![TextEffect::Link("tel:0000000000".to_string())]
-                )),
+                )]),
             ]
         );
     }
@@ -800,12 +817,12 @@ mod typedstream_tests {
         assert_eq!(
             parsed.components,
             vec![
-                BubbleComponent::Text(TextAttributes::new(
+                BubbleComponent::Text(vec![TextAttributes::new(
                     0,
                     20,
-                    vec![TextEffect::Link("mailto:asdfghjklq@gmail.com".to_string())]
-                )),
-                BubbleComponent::Text(TextAttributes::new(20, 31, vec![TextEffect::Default])),
+                    vec![TextEffect::Link("mailto:asdfghjklq@gmail.com".to_string())],
+                ),],),
+                BubbleComponent::Text(vec![TextAttributes::new(20, 31, vec![TextEffect::Default])]),
             ]
         );
     }
@@ -831,13 +848,13 @@ mod typedstream_tests {
         assert_eq!(
             parsed.components,
             vec![
-                BubbleComponent::Text(TextAttributes::new(0, 17, vec![TextEffect::Default])),
-                BubbleComponent::Text(TextAttributes::new(
+                BubbleComponent::Text(vec![TextAttributes::new(0, 17, vec![TextEffect::Default])]),
+                BubbleComponent::Text(vec![TextAttributes::new(
                     17,
                     25,
                     vec![TextEffect::Conversion(Unit::Timezone)]
-                )),
-                BubbleComponent::Text(TextAttributes::new(25, 26, vec![TextEffect::Default])),
+                )]),
+                BubbleComponent::Text(vec![TextAttributes::new(25, 26, vec![TextEffect::Default])]),
             ]
         );
     }
@@ -863,7 +880,7 @@ mod typedstream_tests {
         assert_eq!(
             parsed.components,
             vec![
-                BubbleComponent::Text(TextAttributes::new(0, 79, vec![TextEffect::Default])),
+                BubbleComponent::Text(vec![TextAttributes::new(0, 79, vec![TextEffect::Default])]),
                 BubbleComponent::Attachment(AttachmentMeta {
                     guid: Some("41C4376E-397E-4C42-84E2-B16F7801F638".to_string()),
                     transcription: None,
@@ -914,31 +931,31 @@ mod typedstream_tests {
         assert_eq!(
             parsed.components,
             vec![
-                BubbleComponent::Text(TextAttributes::new(
+                BubbleComponent::Text(vec![TextAttributes::new(
                     0,
                     4,
                     vec![TextEffect::Styles(vec![Style::Bold])]
-                )),
-                BubbleComponent::Text(TextAttributes::new(4, 5, vec![TextEffect::Default])),
-                BubbleComponent::Text(TextAttributes::new(
+                )]),
+                BubbleComponent::Text(vec![TextAttributes::new(4, 5, vec![TextEffect::Default])]),
+                BubbleComponent::Text(vec![TextAttributes::new(
                     5,
                     14,
                     vec![TextEffect::Styles(vec![Style::Underline])]
-                )),
-                BubbleComponent::Text(TextAttributes::new(14, 15, vec![TextEffect::Default])),
-                BubbleComponent::Text(TextAttributes::new(
+                )]),
+                BubbleComponent::Text(vec![TextAttributes::new(14, 15, vec![TextEffect::Default])]),
+                BubbleComponent::Text(vec![TextAttributes::new(
                     15,
                     21,
                     vec![TextEffect::Styles(vec![Style::Italic])]
-                )),
-                BubbleComponent::Text(TextAttributes::new(21, 22, vec![TextEffect::Default])),
-                BubbleComponent::Text(TextAttributes::new(
+                )]),
+                BubbleComponent::Text(vec![TextAttributes::new(21, 22, vec![TextEffect::Default])]),
+                BubbleComponent::Text(vec![TextAttributes::new(
                     22,
                     35,
                     vec![TextEffect::Styles(vec![Style::Strikethrough])]
-                )),
-                BubbleComponent::Text(TextAttributes::new(35, 40, vec![TextEffect::Default])),
-                BubbleComponent::Text(TextAttributes::new(
+                )]),
+                BubbleComponent::Text(vec![TextAttributes::new(35, 40, vec![TextEffect::Default])]),
+                BubbleComponent::Text(vec![TextAttributes::new(
                     40,
                     44,
                     vec![TextEffect::Styles(vec![
@@ -947,7 +964,7 @@ mod typedstream_tests {
                         Style::Underline,
                         Style::Italic
                     ])]
-                )),
+                )]),
             ],
         );
     }
@@ -973,67 +990,67 @@ mod typedstream_tests {
         assert_eq!(
             parsed.components,
             vec![
-                BubbleComponent::Text(TextAttributes::new(
+                BubbleComponent::Text(vec![TextAttributes::new(
                     0,
                     3,
                     vec![TextEffect::Animated(Animation::Big)]
-                )),
-                BubbleComponent::Text(TextAttributes::new(3, 4, vec![TextEffect::Default])),
-                BubbleComponent::Text(TextAttributes::new(
+                )]),
+                BubbleComponent::Text(vec![TextAttributes::new(3, 4, vec![TextEffect::Default])]),
+                BubbleComponent::Text(vec![TextAttributes::new(
                     4,
                     10,
                     vec![TextEffect::Animated(Animation::Small)]
-                )),
-                BubbleComponent::Text(TextAttributes::new(
+                )]),
+                BubbleComponent::Text(vec![TextAttributes::new(
                     10,
                     15,
                     vec![TextEffect::Animated(Animation::Shake)]
-                )),
-                BubbleComponent::Text(TextAttributes::new(
+                )]),
+                BubbleComponent::Text(vec![TextAttributes::new(
                     15,
                     16,
                     vec![TextEffect::Animated(Animation::Small)]
-                )),
-                BubbleComponent::Text(TextAttributes::new(
+                )]),
+                BubbleComponent::Text(vec![TextAttributes::new(
                     16,
                     19,
                     vec![TextEffect::Animated(Animation::Nod)]
-                )),
-                BubbleComponent::Text(TextAttributes::new(
+                )]),
+                BubbleComponent::Text(vec![TextAttributes::new(
                     19,
                     20,
                     vec![TextEffect::Animated(Animation::Small)]
-                )),
-                BubbleComponent::Text(TextAttributes::new(
+                )]),
+                BubbleComponent::Text(vec![TextAttributes::new(
                     20,
                     28,
                     vec![TextEffect::Animated(Animation::Explode)]
-                )),
-                BubbleComponent::Text(TextAttributes::new(
+                )]),
+                BubbleComponent::Text(vec![TextAttributes::new(
                     28,
                     34,
                     vec![TextEffect::Animated(Animation::Ripple)]
-                )),
-                BubbleComponent::Text(TextAttributes::new(
+                )]),
+                BubbleComponent::Text(vec![TextAttributes::new(
                     34,
                     35,
                     vec![TextEffect::Animated(Animation::Explode)]
-                )),
-                BubbleComponent::Text(TextAttributes::new(
+                )]),
+                BubbleComponent::Text(vec![TextAttributes::new(
                     35,
                     40,
                     vec![TextEffect::Animated(Animation::Bloom)]
-                )),
-                BubbleComponent::Text(TextAttributes::new(
+                )]),
+                BubbleComponent::Text(vec![TextAttributes::new(
                     40,
                     41,
                     vec![TextEffect::Animated(Animation::Explode)]
-                )),
-                BubbleComponent::Text(TextAttributes::new(
+                )]),
+                BubbleComponent::Text(vec![TextAttributes::new(
                     41,
                     47,
                     vec![TextEffect::Animated(Animation::Jitter)]
-                )),
+                )]),
             ],
         );
     }
@@ -1059,18 +1076,18 @@ mod typedstream_tests {
         assert_eq!(
             parsed.components,
             vec![
-                BubbleComponent::Text(TextAttributes::new(
+                BubbleComponent::Text(vec![TextAttributes::new(
                     0,
                     9,
                     vec![TextEffect::Styles(vec![Style::Underline])]
-                )),
-                BubbleComponent::Text(TextAttributes::new(9, 17, vec![TextEffect::Default])),
-                BubbleComponent::Text(TextAttributes::new(
+                )]),
+                BubbleComponent::Text(vec![TextAttributes::new(9, 17, vec![TextEffect::Default])]),
+                BubbleComponent::Text(vec![TextAttributes::new(
                     17,
                     23,
                     vec![TextEffect::Animated(Animation::Jitter)]
-                )),
-                BubbleComponent::Text(TextAttributes::new(23, 30, vec![TextEffect::Default])),
+                )]),
+                BubbleComponent::Text(vec![TextAttributes::new(23, 30, vec![TextEffect::Default])]),
             ],
         );
     }
@@ -1095,7 +1112,7 @@ mod typedstream_tests {
         let parsed = parse_body_typedstream(iter, m.edited_parts.as_ref()).unwrap();
         assert_eq!(
             parsed.components,
-            vec![BubbleComponent::Text(TextAttributes::new(
+            vec![BubbleComponent::Text(vec![TextAttributes::new(
                 0,
                 10,
                 vec![TextEffect::Styles(vec![
@@ -1104,7 +1121,7 @@ mod typedstream_tests {
                     Style::Underline,
                     Style::Italic
                 ])]
-            ))],
+            )])],
         );
     }
 
@@ -1158,13 +1175,13 @@ mod typedstream_tests {
         let parsed = parse_body_typedstream(iter, m.edited_parts.as_ref()).unwrap();
         assert_eq!(
             parsed.components,
-            vec![BubbleComponent::Text(TextAttributes::new(
+            vec![BubbleComponent::Text(vec![TextAttributes::new(
                 0,
                 145,
                 vec![TextEffect::Link(
                     "https://music.apple.com/us/lyrics/1329891623?ts=11.108&te=16.031&l=en&tk=2.v1.VsuX9f%2BaT1PyrgMgIT7ANQ%3D%3D&itsct=sharing_msg_lyrics&itscg=50401".to_string()
                 )]
-            ),)]
+            )],)]
         );
     }
 
@@ -1249,7 +1266,7 @@ mod typedstream_tests {
         let parsed = parse_body_typedstream(iter, m.edited_parts.as_ref()).unwrap();
         assert_eq!(
             parsed.components,
-            vec![BubbleComponent::Text(TextAttributes::new(
+            vec![BubbleComponent::Text(vec![TextAttributes::new(
                 0,
                 61,
                 vec![
@@ -1258,7 +1275,7 @@ mod typedstream_tests {
                         "https://github.com/ReagentX/imessage-exporter/discussions/553".to_string()
                     )
                 ]
-            )),]
+            )]),]
         );
     }
 
@@ -1283,18 +1300,18 @@ mod typedstream_tests {
         assert_eq!(
             parsed.components,
             vec![
-                BubbleComponent::Text(TextAttributes::new(0, 7, vec![TextEffect::Default])),
-                BubbleComponent::Text(TextAttributes::new(
+                BubbleComponent::Text(vec![TextAttributes::new(0, 7, vec![TextEffect::Default])]),
+                BubbleComponent::Text(vec![TextAttributes::new(
                     7,
                     11,
                     vec![TextEffect::Styles(vec![Style::Bold])]
-                )),
-                BubbleComponent::Text(TextAttributes::new(11, 12, vec![TextEffect::Default])),
-                BubbleComponent::Text(TextAttributes::new(
+                )]),
+                BubbleComponent::Text(vec![TextAttributes::new(11, 12, vec![TextEffect::Default])]),
+                BubbleComponent::Text(vec![TextAttributes::new(
                     12,
                     21,
                     vec![TextEffect::Styles(vec![Style::Underline])]
-                )),
+                )]),
             ],
         );
     }
@@ -1320,40 +1337,40 @@ mod typedstream_tests {
         assert_eq!(
             parsed.components,
             vec![
-                BubbleComponent::Text(TextAttributes::new(
+                BubbleComponent::Text(vec![TextAttributes::new(
                     0,
                     1,
                     vec![
                         TextEffect::Conversion(Unit::Timezone),
                         TextEffect::Styles(vec![Style::Bold])
                     ]
-                ),),
-                BubbleComponent::Text(TextAttributes::new(
+                )],),
+                BubbleComponent::Text(vec![TextAttributes::new(
                     1,
                     2,
                     vec![TextEffect::Conversion(Unit::Timezone)]
-                )),
-                BubbleComponent::Text(TextAttributes::new(
+                )]),
+                BubbleComponent::Text(vec![TextAttributes::new(
                     2,
                     4,
                     vec![
                         TextEffect::Conversion(Unit::Timezone),
                         TextEffect::Styles(vec![Style::Underline])
                     ]
-                )),
-                BubbleComponent::Text(TextAttributes::new(
+                )]),
+                BubbleComponent::Text(vec![TextAttributes::new(
                     4,
                     5,
                     vec![TextEffect::Conversion(Unit::Timezone)]
-                )),
-                BubbleComponent::Text(TextAttributes::new(
+                )]),
+                BubbleComponent::Text(vec![TextAttributes::new(
                     5,
                     7,
                     vec![
                         TextEffect::Conversion(Unit::Timezone),
                         TextEffect::Styles(vec![Style::Italic])
                     ]
-                ),),
+                )],),
             ]
         );
     }
@@ -1379,22 +1396,22 @@ mod typedstream_tests {
         assert_eq!(
             parsed.components,
             vec![
-                BubbleComponent::Text(TextAttributes {
-                    start: 0,
-                    end: 6,
-                    effects: vec![
+                BubbleComponent::Text(vec![TextAttributes::new(
+                    0,
+                    6,
+                    vec![
                         TextEffect::Link("tel:0123456789".to_string()),
                         TextEffect::Styles(vec![Style::Strikethrough])
                     ]
-                }),
-                BubbleComponent::Text(TextAttributes {
-                    start: 6,
-                    end: 10,
-                    effects: vec![
+                )]),
+                BubbleComponent::Text(vec![TextAttributes::new(
+                    6,
+                    10,
+                    vec![
                         TextEffect::Link("tel:0123456789".to_string()),
                         TextEffect::Styles(vec![Style::Italic])
                     ]
-                })
+                )]),
             ]
         );
     }
@@ -1420,41 +1437,41 @@ mod typedstream_tests {
         assert_eq!(
             parsed.components,
             vec![
-                BubbleComponent::Text(TextAttributes {
+                BubbleComponent::Text(vec![TextAttributes {
                     start: 0,
                     end: 5,
                     effects: vec![
                         TextEffect::Link("tel:0123456789".to_string()),
                         TextEffect::Styles(vec![Style::Underline])
                     ]
-                }),
-                BubbleComponent::Text(TextAttributes {
+                }]),
+                BubbleComponent::Text(vec![TextAttributes {
                     start: 5,
                     end: 7,
                     effects: vec![
                         TextEffect::Link("tel:0123456789".to_string()),
                         TextEffect::Styles(vec![Style::Underline, Style::Strikethrough])
                     ]
-                }),
-                BubbleComponent::Text(TextAttributes {
+                }]),
+                BubbleComponent::Text(vec![TextAttributes {
                     start: 7,
                     end: 10,
                     effects: vec![
                         TextEffect::Link("tel:0123456789".to_string()),
                         TextEffect::Styles(vec![Style::Strikethrough])
                     ]
-                }),
-                BubbleComponent::Text(TextAttributes {
+                }]),
+                BubbleComponent::Text(vec![TextAttributes {
                     start: 10,
                     end: 16,
                     effects: vec![TextEffect::Styles(vec![Style::Bold])]
-                }),
-                BubbleComponent::Text(TextAttributes {
+                }]),
+                BubbleComponent::Text(vec![TextAttributes {
                     start: 16,
                     end: 24,
                     effects: vec![TextEffect::Styles(vec![Style::Bold, Style::Italic])]
-                }),
-                BubbleComponent::Text(TextAttributes {
+                }]),
+                BubbleComponent::Text(vec![TextAttributes {
                     start: 24,
                     end: 34,
                     effects: vec![TextEffect::Styles(vec![
@@ -1462,8 +1479,8 @@ mod typedstream_tests {
                         Style::Underline,
                         Style::Italic
                     ])]
-                }),
-                BubbleComponent::Text(TextAttributes {
+                }]),
+                BubbleComponent::Text(vec![TextAttributes {
                     start: 34,
                     end: 47,
                     effects: vec![TextEffect::Styles(vec![
@@ -1472,82 +1489,82 @@ mod typedstream_tests {
                         Style::Strikethrough,
                         Style::Underline
                     ])]
-                }),
-                BubbleComponent::Text(TextAttributes {
+                }]),
+                BubbleComponent::Text(vec![TextAttributes {
                     start: 47,
                     end: 51,
                     effects: vec![TextEffect::Default]
-                }),
-                BubbleComponent::Text(TextAttributes {
+                }]),
+                BubbleComponent::Text(vec![TextAttributes {
                     start: 51,
                     end: 55,
                     effects: vec![TextEffect::Animated(Animation::Big)]
-                }),
-                BubbleComponent::Text(TextAttributes {
+                }]),
+                BubbleComponent::Text(vec![TextAttributes {
                     start: 55,
                     end: 60,
                     effects: vec![TextEffect::Animated(Animation::Small)]
-                }),
-                BubbleComponent::Text(TextAttributes {
+                }]),
+                BubbleComponent::Text(vec![TextAttributes {
                     start: 60,
                     end: 61,
                     effects: vec![TextEffect::Default]
-                }),
-                BubbleComponent::Text(TextAttributes {
+                }]),
+                BubbleComponent::Text(vec![TextAttributes {
                     start: 61,
                     end: 66,
                     effects: vec![TextEffect::Animated(Animation::Shake)]
-                }),
-                BubbleComponent::Text(TextAttributes {
+                }]),
+                BubbleComponent::Text(vec![TextAttributes {
                     start: 66,
                     end: 67,
                     effects: vec![TextEffect::Default]
-                }),
-                BubbleComponent::Text(TextAttributes {
+                }]),
+                BubbleComponent::Text(vec![TextAttributes {
                     start: 67,
                     end: 70,
                     effects: vec![TextEffect::Animated(Animation::Nod)]
-                }),
-                BubbleComponent::Text(TextAttributes {
+                }]),
+                BubbleComponent::Text(vec![TextAttributes {
                     start: 70,
                     end: 71,
                     effects: vec![TextEffect::Default]
-                }),
-                BubbleComponent::Text(TextAttributes {
+                }]),
+                BubbleComponent::Text(vec![TextAttributes {
                     start: 71,
                     end: 78,
                     effects: vec![TextEffect::Animated(Animation::Explode)]
-                }),
-                BubbleComponent::Text(TextAttributes {
+                }]),
+                BubbleComponent::Text(vec![TextAttributes {
                     start: 78,
                     end: 79,
                     effects: vec![TextEffect::Default]
-                }),
-                BubbleComponent::Text(TextAttributes {
+                }]),
+                BubbleComponent::Text(vec![TextAttributes {
                     start: 79,
                     end: 85,
                     effects: vec![TextEffect::Animated(Animation::Ripple)]
-                }),
-                BubbleComponent::Text(TextAttributes {
+                }]),
+                BubbleComponent::Text(vec![TextAttributes {
                     start: 85,
                     end: 86,
                     effects: vec![TextEffect::Default]
-                }),
-                BubbleComponent::Text(TextAttributes {
+                }]),
+                BubbleComponent::Text(vec![TextAttributes {
                     start: 86,
                     end: 91,
                     effects: vec![TextEffect::Animated(Animation::Bloom)]
-                }),
-                BubbleComponent::Text(TextAttributes {
+                }]),
+                BubbleComponent::Text(vec![TextAttributes {
                     start: 91,
                     end: 92,
                     effects: vec![TextEffect::Default]
-                }),
-                BubbleComponent::Text(TextAttributes {
+                }]),
+                BubbleComponent::Text(vec![TextAttributes {
                     start: 92,
                     end: 98,
                     effects: vec![TextEffect::Animated(Animation::Jitter)]
-                })
+                }])
             ]
         );
     }
@@ -1570,11 +1587,11 @@ mod legacy_tests {
         m.text = Some("🙈".to_string());
         assert_eq!(
             parse_body_legacy(&m.text),
-            vec![BubbleComponent::Text(TextAttributes::new(
+            vec![BubbleComponent::Text(vec![TextAttributes::new(
                 0,
                 4,
                 vec![TextEffect::Default]
-            ),)]
+            )],)]
         );
     }
 
@@ -1584,11 +1601,11 @@ mod legacy_tests {
         m.text = Some("🙈🙈🙈".to_string());
         assert_eq!(
             parse_body_legacy(&m.text),
-            vec![BubbleComponent::Text(TextAttributes::new(
+            vec![BubbleComponent::Text(vec![TextAttributes::new(
                 0,
                 12,
                 vec![TextEffect::Default]
-            ),)]
+            )],)]
         );
     }
 
@@ -1598,11 +1615,11 @@ mod legacy_tests {
         m.text = Some("Hello world".to_string());
         assert_eq!(
             parse_body_legacy(&m.text),
-            vec![BubbleComponent::Text(TextAttributes::new(
+            vec![BubbleComponent::Text(vec![TextAttributes::new(
                 0,
                 11,
                 vec![TextEffect::Default]
-            ),)]
+            )],)]
         );
     }
 
@@ -1614,7 +1631,7 @@ mod legacy_tests {
             parse_body_legacy(&m.text),
             vec![
                 BubbleComponent::Attachment(AttachmentMeta::default()),
-                BubbleComponent::Text(TextAttributes::new(3, 14, vec![TextEffect::Default]))
+                BubbleComponent::Text(vec![TextAttributes::new(3, 14, vec![TextEffect::Default])])
             ]
         );
     }
@@ -1627,7 +1644,7 @@ mod legacy_tests {
             parse_body_legacy(&m.text),
             vec![
                 BubbleComponent::App,
-                BubbleComponent::Text(TextAttributes::new(3, 14, vec![TextEffect::Default]))
+                BubbleComponent::Text(vec![TextAttributes::new(3, 14, vec![TextEffect::Default])])
             ]
         );
     }
@@ -1639,14 +1656,14 @@ mod legacy_tests {
         assert_eq!(
             parse_body_legacy(&m.text),
             vec![
-                BubbleComponent::Text(TextAttributes::new(0, 3, vec![TextEffect::Default])),
+                BubbleComponent::Text(vec![TextAttributes::new(0, 3, vec![TextEffect::Default])]),
                 BubbleComponent::App,
                 BubbleComponent::Attachment(AttachmentMeta::default()),
-                BubbleComponent::Text(TextAttributes::new(9, 12, vec![TextEffect::Default])),
+                BubbleComponent::Text(vec![TextAttributes::new(9, 12, vec![TextEffect::Default])]),
                 BubbleComponent::Attachment(AttachmentMeta::default()),
-                BubbleComponent::Text(TextAttributes::new(15, 20, vec![TextEffect::Default])),
+                BubbleComponent::Text(vec![TextAttributes::new(15, 20, vec![TextEffect::Default])]),
                 BubbleComponent::Attachment(AttachmentMeta::default()),
-                BubbleComponent::Text(TextAttributes::new(23, 27, vec![TextEffect::Default])),
+                BubbleComponent::Text(vec![TextAttributes::new(23, 27, vec![TextEffect::Default])]),
             ]
         );
     }
@@ -1660,9 +1677,9 @@ mod legacy_tests {
             vec![
                 BubbleComponent::App,
                 BubbleComponent::Attachment(AttachmentMeta::default()),
-                BubbleComponent::Text(TextAttributes::new(6, 9, vec![TextEffect::Default])),
+                BubbleComponent::Text(vec![TextAttributes::new(6, 9, vec![TextEffect::Default])]),
                 BubbleComponent::Attachment(AttachmentMeta::default()),
-                BubbleComponent::Text(TextAttributes::new(12, 17, vec![TextEffect::Default])),
+                BubbleComponent::Text(vec![TextAttributes::new(12, 17, vec![TextEffect::Default])]),
                 BubbleComponent::Attachment(AttachmentMeta::default()),
             ]
         );

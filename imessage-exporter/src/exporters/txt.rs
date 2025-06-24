@@ -731,17 +731,17 @@ impl<'a> Writer<'a> for TXT<'a> {
         None
     }
 
-    fn format_attributes(&'a self, text: &'a str, attributes: &'a TextAttributes) -> String {
+    fn format_attributes(&'a self, text: &'a str, attributes: &'a [TextAttributes]) -> String {
         let mut formatted_text = String::with_capacity(text.len());
         let mut prev_start = 0;
         let mut prev_end = 0;
 
-        for effect in &attributes.effects {
-            if prev_start == attributes.start && prev_end == attributes.end {
+        for effect in attributes {
+            if prev_start == effect.start && prev_end == effect.end {
                 continue;
-            } else if let Some(message_content) = text.get(attributes.start..attributes.end) {
-                prev_start = attributes.start;
-                prev_end = attributes.end;
+            } else if let Some(message_content) = text.get(effect.start..effect.end) {
+                prev_start = effect.start;
+                prev_end = effect.end;
                 // There isn't really a way to represent formatted text in a plain text export
                 formatted_text.push_str(message_content);
             }
@@ -2437,18 +2437,18 @@ mod text_effect_tests {
         message.chat_id = Some(0);
 
         message.components = vec![
-            BubbleComponent::Text(TextAttributes::new(
+            BubbleComponent::Text(vec![TextAttributes::new(
                 0,
                 9,
                 vec![TextEffect::Styles(vec![Style::Underline])],
-            )),
-            BubbleComponent::Text(TextAttributes::new(9, 17, vec![TextEffect::Default])),
-            BubbleComponent::Text(TextAttributes::new(
+            )]),
+            BubbleComponent::Text(vec![TextAttributes::new(9, 17, vec![TextEffect::Default])]),
+            BubbleComponent::Text(vec![TextAttributes::new(
                 17,
                 23,
                 vec![TextEffect::Animated(Animation::Jitter)],
-            )),
-            BubbleComponent::Text(TextAttributes::new(23, 30, vec![TextEffect::Default])),
+            )]),
+            BubbleComponent::Text(vec![TextAttributes::new(23, 30, vec![TextEffect::Default])]),
         ];
 
         let actual = exporter.format_message(&message, 0).unwrap();
@@ -2472,7 +2472,7 @@ mod text_effect_tests {
         message.is_from_me = true;
         message.chat_id = Some(0);
 
-        message.components = vec![BubbleComponent::Text(TextAttributes::new(
+        message.components = vec![BubbleComponent::Text(vec![TextAttributes::new(
             0,
             61,
             vec![
@@ -2481,7 +2481,7 @@ mod text_effect_tests {
                     "https://github.com/ReagentX/imessage-exporter/discussions/553".to_string(),
                 ),
             ],
-        ))];
+        )])];
 
         let actual = exporter.format_message(&message, 0).unwrap();
         let expected = "May 17, 2022  5:29:42 PM\nMe\nhttps://github.com/ReagentX/imessage-exporter/discussions/553\n\n";
@@ -2504,18 +2504,18 @@ mod text_effect_tests {
         message.chat_id = Some(0);
 
         message.components = vec![
-            BubbleComponent::Text(TextAttributes::new(0, 7, vec![TextEffect::Default])),
-            BubbleComponent::Text(TextAttributes::new(
+            BubbleComponent::Text(vec![TextAttributes::new(0, 7, vec![TextEffect::Default])]),
+            BubbleComponent::Text(vec![TextAttributes::new(
                 7,
                 11,
                 vec![TextEffect::Styles(vec![Style::Bold])],
-            )),
-            BubbleComponent::Text(TextAttributes::new(11, 12, vec![TextEffect::Default])),
-            BubbleComponent::Text(TextAttributes::new(
+            )]),
+            BubbleComponent::Text(vec![TextAttributes::new(11, 12, vec![TextEffect::Default])]),
+            BubbleComponent::Text(vec![TextAttributes::new(
                 12,
                 21,
                 vec![TextEffect::Styles(vec![Style::Underline])],
-            )),
+            )]),
         ];
 
         let actual = exporter.format_message(&message, 0).unwrap();
@@ -2539,40 +2539,40 @@ mod text_effect_tests {
         message.chat_id = Some(0);
 
         message.components = vec![
-            BubbleComponent::Text(TextAttributes::new(
+            BubbleComponent::Text(vec![TextAttributes::new(
                 0,
                 1,
                 vec![
                     TextEffect::Conversion(Unit::Timezone),
                     TextEffect::Styles(vec![Style::Bold]),
                 ],
-            )),
-            BubbleComponent::Text(TextAttributes::new(
+            )]),
+            BubbleComponent::Text(vec![TextAttributes::new(
                 1,
                 2,
                 vec![TextEffect::Conversion(Unit::Timezone)],
-            )),
-            BubbleComponent::Text(TextAttributes::new(
+            )]),
+            BubbleComponent::Text(vec![TextAttributes::new(
                 2,
                 4,
                 vec![
                     TextEffect::Conversion(Unit::Timezone),
                     TextEffect::Styles(vec![Style::Underline]),
                 ],
-            )),
-            BubbleComponent::Text(TextAttributes::new(
+            )]),
+            BubbleComponent::Text(vec![TextAttributes::new(
                 4,
                 5,
                 vec![TextEffect::Conversion(Unit::Timezone)],
-            )),
-            BubbleComponent::Text(TextAttributes::new(
+            )]),
+            BubbleComponent::Text(vec![TextAttributes::new(
                 5,
                 7,
                 vec![
                     TextEffect::Conversion(Unit::Timezone),
                     TextEffect::Styles(vec![Style::Italic]),
                 ],
-            )),
+            )]),
         ];
 
         let actual = exporter.format_message(&message, 0).unwrap();
@@ -2643,7 +2643,7 @@ mod edited_tests {
         file.read_to_end(&mut bytes).unwrap();
 
         message.components = vec![
-            BubbleComponent::Text(TextAttributes::new(0, 28, vec![TextEffect::Default])),
+            BubbleComponent::Text(vec![TextAttributes::new(0, 28, vec![TextEffect::Default])]),
             BubbleComponent::Attachment(AttachmentMeta {
                 guid: Some("D0551D89-4E11-43D0-9A0E-06F19704E97B".to_string()),
                 transcription: None,
@@ -2651,7 +2651,7 @@ mod edited_tests {
                 width: None,
                 name: None,
             }),
-            BubbleComponent::Text(TextAttributes::new(31, 63, vec![TextEffect::Default])),
+            BubbleComponent::Text(vec![TextAttributes::new(31, 63, vec![TextEffect::Default])]),
         ];
 
         let actual = exporter.format_message(&message, 0).unwrap();
@@ -2677,7 +2677,7 @@ mod edited_tests {
         message.chat_id = Some(0);
 
         message.components = vec![
-            BubbleComponent::Text(TextAttributes::new(0, 28, vec![TextEffect::Default])),
+            BubbleComponent::Text(vec![TextAttributes::new(0, 28, vec![TextEffect::Default])]),
             BubbleComponent::Attachment(AttachmentMeta {
                 guid: Some("D0551D89-4E11-43D0-9A0E-06F19704E97B".to_string()),
                 transcription: None,
@@ -2685,7 +2685,7 @@ mod edited_tests {
                 width: None,
                 name: None,
             }),
-            BubbleComponent::Text(TextAttributes::new(31, 63, vec![TextEffect::Default])),
+            BubbleComponent::Text(vec![TextAttributes::new(31, 63, vec![TextEffect::Default])]),
             BubbleComponent::Retracted,
         ];
 

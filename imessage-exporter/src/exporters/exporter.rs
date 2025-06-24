@@ -81,7 +81,7 @@ pub(super) trait Writer<'a> {
         indent: &str,
     ) -> Option<String>;
     /// Format all [`TextAttributes`]s applied to a given set of text
-    fn format_attributes(&'a self, text: &'a str, attributes: &'a TextAttributes) -> String;
+    fn format_attributes(&'a self, text: &'a str, attributes: &'a [TextAttributes]) -> String;
     fn write_to_file(file: &mut BufWriter<File>, text: &str) -> Result<(), RuntimeError>;
 }
 
