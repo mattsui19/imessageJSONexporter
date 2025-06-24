@@ -136,9 +136,9 @@ use crate::{
             query_parts::{ios_13_older_query, ios_14_15_query, ios_16_newer_query},
         },
         table::{
-            ATTRIBUTED_BODY, AttributedBody, CHAT_MESSAGE_JOIN, Cacheable, Diagnostic, GetBlob,
-            MESSAGE, MESSAGE_ATTACHMENT_JOIN, MESSAGE_PAYLOAD, MESSAGE_SUMMARY_INFO,
-            RECENTLY_DELETED, Table,
+            ATTRIBUTED_BODY, CHAT_MESSAGE_JOIN, Cacheable, Diagnostic, GetBlob, MESSAGE,
+            MESSAGE_ATTACHMENT_JOIN, MESSAGE_PAYLOAD, MESSAGE_SUMMARY_INFO, RECENTLY_DELETED,
+            Table,
         },
     },
     util::{
@@ -147,7 +147,6 @@ use crate::{
         output::{done_processing, processing},
         query_context::QueryContext,
         streamtyped,
-        typedstream::{models::Archivable, parser::TypedStreamReader},
     },
 };
 
@@ -220,7 +219,7 @@ pub struct Message {
     pub deleted_from: Option<i32>,
     /// The number of replies to the message
     pub num_replies: i32,
-    /// The components of the message body, parsed by [`TypedStreamReader`]
+    /// The components of the message body, parsed by a [`TypedStreamDeserializer`] or [`streamtyped::parse()`]
     pub components: Vec<BubbleComponent>,
     /// The components of the message that may or may not have been edited or unsent
     pub edited_parts: Option<EditedMessage>,

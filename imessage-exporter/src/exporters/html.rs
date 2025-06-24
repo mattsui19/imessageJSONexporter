@@ -3773,9 +3773,8 @@ mod edited_tests {
     use std::{env::current_dir, fs::File, io::Read};
 
     use crate::{Config, Exporter, HTML, Options, exporters::exporter::Writer};
-    use imessage_database::{
-        message_types::edited::{EditStatus, EditedEvent, EditedMessage, EditedMessagePart},
-        util::typedstream::models::{Archivable, Class, OutputData},
+    use imessage_database::message_types::edited::{
+        EditStatus, EditedEvent, EditedMessage, EditedMessagePart,
     };
 
     #[test]

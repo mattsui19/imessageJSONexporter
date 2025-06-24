@@ -9,7 +9,7 @@ use crabstep::{PropertyIterator, deserializer::iter::Property};
 use crate::{
     message_types::text_effects::TextEffect,
     tables::messages::message::Message,
-    util::typedstream_helpers::{as_float, as_nsstring},
+    util::typedstream::{as_float, as_nsstring},
 };
 
 /// Defines the parts of a message bubble, i.e. the content that can exist in a single message.

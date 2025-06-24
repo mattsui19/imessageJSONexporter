@@ -12,7 +12,7 @@ use crate::{
         text_effects::{Animation, Style, TextEffect, Unit},
     },
     tables::messages::models::{AttachmentMeta, BubbleComponent, TextAttributes},
-    util::typedstream_helpers::{
+    util::typedstream::{
         as_ns_dictionary, as_nsstring, as_nsurl, as_signed_integer, as_type_length_pair,
     },
 };
