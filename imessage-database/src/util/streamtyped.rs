@@ -53,7 +53,7 @@ const END_PATTERN: [u8; 2] = [0x0086, 0x0084];
 ///  
 /// let result = vec![
 ///     BubbleComponent::Attachment(AttachmentMeta::default()),
-///     BubbleComponent::Text(vec![TextAttributes::new(3, 24, TextEffect::Default)]),
+///     BubbleComponent::Text(vec![TextAttributes::new(3, 24, vec![TextEffect::Default])]),
 /// ];
 /// ```
 pub fn parse(mut stream: Vec<u8>) -> Result<String, StreamTypedError> {

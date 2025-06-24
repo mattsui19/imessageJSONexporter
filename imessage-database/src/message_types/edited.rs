@@ -9,20 +9,13 @@ use plist::Value;
 use crate::{
     error::plist::PlistParseError,
     message_types::variants::BalloonProvider,
-    tables::{
-        messages::{
-            body::{parse_body_legacy, parse_body_typedstream},
-            models::BubbleComponent,
-        },
-        table::AttributedBody,
-    },
+    tables::messages::{body::parse_body_typedstream, models::BubbleComponent},
     util::{
         dates::TIMESTAMP_FACTOR,
         plist::{
             extract_array_key, extract_bytes_key, extract_dictionary, extract_int_key,
             plist_as_dictionary,
         },
-        streamtyped::parse,
     },
 };
 

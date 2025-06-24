@@ -94,9 +94,9 @@ impl Display for Service<'_> {
 /// use imessage_database::tables::messages::models::{TextAttributes, BubbleComponent};
 ///  
 /// let result = vec![BubbleComponent::Text(vec![
-///     TextAttributes::new(0, 11, TextEffect::Default),  // `What's up, `
-///     TextAttributes::new(11, 22, TextEffect::Mention("+5558675309")), // `Christopher`
-///     TextAttributes::new(22, 23, TextEffect::Default)  // `?`
+///     TextAttributes::new(0, 11, vec![TextEffect::Default]),  // `What's up, `
+///     TextAttributes::new(11, 22, vec![TextEffect::Mention("+5558675309".to_string())]), // `Christopher`
+///     TextAttributes::new(22, 23, vec![TextEffect::Default])  // `?`
 /// ])];
 /// ```
 #[derive(Debug, PartialEq, Eq, Clone)]

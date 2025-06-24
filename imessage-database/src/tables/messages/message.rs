@@ -490,6 +490,29 @@ impl Message {
         }
     }
 
+    /// Generates the text using the legacy parser only, ignoring any typedstream data.
+    /// This is useful for messages that do not have typedstream data, such as those from older iOS versions.
+    ///
+    /// Warning: This method does not handle typedstream data and will not parse all message types correctly.
+    pub fn generate_text_legacy<'a>(
+        &'a mut self,
+        db: &'a Connection,
+    ) -> Result<&'a str, MessageError> {
+        // If the text is missing, try and query for it
+        if self.text.is_none() {
+            if let Some(body) = self.attributed_body(db) {
+                self.text = Some(streamtyped::parse(body)?);
+            }
+        }
+
+        // Fallback component parser as well
+        if self.components.is_empty() {
+            self.components = parse_body_legacy(&self.text);
+        }
+
+        self.text.as_deref().ok_or(MessageError::NoText)
+    }
+
     /// Calculates the date a message was written to the database.
     ///
     /// This field is stored as a unix timestamp with an epoch of `2001-01-01 00:00:00` in the local time zone

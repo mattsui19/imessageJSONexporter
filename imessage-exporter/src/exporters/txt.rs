@@ -41,7 +41,7 @@ use imessage_database::{
             Message,
             models::{AttachmentMeta, BubbleComponent, GroupAction, TextAttributes},
         },
-        table::{AttributedBody, FITNESS_RECEIVER, ME, ORPHANED, Table, YOU},
+        table::{FITNESS_RECEIVER, ME, ORPHANED, Table, YOU},
     },
     util::{
         dates::{TIMESTAMP_FACTOR, format, get_local_time, readable_diff},
@@ -1225,6 +1225,7 @@ mod tests {
         message.text = Some("Hello world".to_string());
         message.is_from_me = true;
         message.chat_id = Some(0);
+        message.generate_text_legacy(config.db()).unwrap();
 
         let actual = exporter.format_message(&message, 0).unwrap();
         let expected = "May 17, 2022  5:29:42 PM\nMe\nHello world\n\n";
@@ -1245,6 +1246,7 @@ mod tests {
         message.date = 674526582885055488;
         message.is_from_me = true;
         message.deleted_from = Some(0);
+        message.generate_text_legacy(config.db()).unwrap();
 
         let actual = exporter.format_message(&message, 0).unwrap();
         let expected = "May 17, 2022  5:29:42 PM\nMe\nThis message was deleted from the conversation!\nHello world\n\n";
@@ -1266,6 +1268,7 @@ mod tests {
         // May 17, 2022  9:30:31 PM
         message.date_delivered = 674530231992568192;
         message.is_from_me = true;
+        message.generate_text_legacy(config.db()).unwrap();
 
         let actual = exporter.format_message(&message, 0).unwrap();
         let expected =
@@ -1289,6 +1292,7 @@ mod tests {
         message.date = 674526582885055488;
         message.text = Some("Hello world".to_string());
         message.handle_id = Some(999999);
+        message.generate_text_legacy(config.db()).unwrap();
 
         let actual = exporter.format_message(&message, 0).unwrap();
         let expected = "May 17, 2022  5:29:42 PM\nSample Contact\nHello world\n\n";
@@ -1315,6 +1319,7 @@ mod tests {
         message.date_delivered = 674526582885055488;
         // May 17, 2022  9:30:31 PM
         message.date_read = 674530231992568192;
+        message.generate_text_legacy(config.db()).unwrap();
 
         let actual = exporter.format_message(&message, 0).unwrap();
         let expected = "May 17, 2022  5:29:42 PM (Read by you after 1 hour, 49 seconds)\nSample Contact\nHello world\n\n";
@@ -1342,6 +1347,7 @@ mod tests {
         message.date_delivered = 674526582885055488;
         // May 17, 2022  9:30:31 PM
         message.date_read = 674530231992568192;
+        message.generate_text_legacy(config.db()).unwrap();
 
         let actual = exporter.format_message(&message, 0).unwrap();
         let expected = "May 17, 2022  5:29:42 PM (Read by Name after 1 hour, 49 seconds)\nSample Contact\nHello world\n\n";
@@ -2436,20 +2442,12 @@ mod text_effect_tests {
         message.is_from_me = true;
         message.chat_id = Some(0);
 
-        message.components = vec![
-            BubbleComponent::Text(vec![TextAttributes::new(
-                0,
-                9,
-                vec![TextEffect::Styles(vec![Style::Underline])],
-            )]),
-            BubbleComponent::Text(vec![TextAttributes::new(9, 17, vec![TextEffect::Default])]),
-            BubbleComponent::Text(vec![TextAttributes::new(
-                17,
-                23,
-                vec![TextEffect::Animated(Animation::Jitter)],
-            )]),
-            BubbleComponent::Text(vec![TextAttributes::new(23, 30, vec![TextEffect::Default])]),
-        ];
+        message.components = vec![BubbleComponent::Text(vec![
+            TextAttributes::new(0, 9, vec![TextEffect::Styles(vec![Style::Underline])]),
+            TextAttributes::new(9, 17, vec![TextEffect::Default]),
+            TextAttributes::new(17, 23, vec![TextEffect::Animated(Animation::Jitter)]),
+            TextAttributes::new(23, 30, vec![TextEffect::Default]),
+        ])];
 
         let actual = exporter.format_message(&message, 0).unwrap();
         let expected = "May 17, 2022  5:29:42 PM\nMe\nUnderline normal jitter normal\n\n";
@@ -2503,20 +2501,12 @@ mod text_effect_tests {
         message.is_from_me = true;
         message.chat_id = Some(0);
 
-        message.components = vec![
-            BubbleComponent::Text(vec![TextAttributes::new(0, 7, vec![TextEffect::Default])]),
-            BubbleComponent::Text(vec![TextAttributes::new(
-                7,
-                11,
-                vec![TextEffect::Styles(vec![Style::Bold])],
-            )]),
-            BubbleComponent::Text(vec![TextAttributes::new(11, 12, vec![TextEffect::Default])]),
-            BubbleComponent::Text(vec![TextAttributes::new(
-                12,
-                21,
-                vec![TextEffect::Styles(vec![Style::Underline])],
-            )]),
-        ];
+        message.components = vec![BubbleComponent::Text(vec![
+            TextAttributes::new(0, 7, vec![TextEffect::Default]),
+            TextAttributes::new(7, 11, vec![TextEffect::Styles(vec![Style::Bold])]),
+            TextAttributes::new(11, 12, vec![TextEffect::Default]),
+            TextAttributes::new(12, 21, vec![TextEffect::Styles(vec![Style::Underline])]),
+        ])];
 
         let actual = exporter.format_message(&message, 0).unwrap();
         let expected = "May 17, 2022  5:29:42 PM\nMe\n🅱️Bold_Underline\n\n";
@@ -2538,42 +2528,34 @@ mod text_effect_tests {
         message.is_from_me = true;
         message.chat_id = Some(0);
 
-        message.components = vec![
-            BubbleComponent::Text(vec![TextAttributes::new(
+        message.components = vec![BubbleComponent::Text(vec![
+            TextAttributes::new(
                 0,
                 1,
                 vec![
                     TextEffect::Conversion(Unit::Timezone),
                     TextEffect::Styles(vec![Style::Bold]),
                 ],
-            )]),
-            BubbleComponent::Text(vec![TextAttributes::new(
-                1,
-                2,
-                vec![TextEffect::Conversion(Unit::Timezone)],
-            )]),
-            BubbleComponent::Text(vec![TextAttributes::new(
+            ),
+            TextAttributes::new(1, 2, vec![TextEffect::Conversion(Unit::Timezone)]),
+            TextAttributes::new(
                 2,
                 4,
                 vec![
                     TextEffect::Conversion(Unit::Timezone),
                     TextEffect::Styles(vec![Style::Underline]),
                 ],
-            )]),
-            BubbleComponent::Text(vec![TextAttributes::new(
-                4,
-                5,
-                vec![TextEffect::Conversion(Unit::Timezone)],
-            )]),
-            BubbleComponent::Text(vec![TextAttributes::new(
+            ),
+            TextAttributes::new(4, 5, vec![TextEffect::Conversion(Unit::Timezone)]),
+            TextAttributes::new(
                 5,
                 7,
                 vec![
                     TextEffect::Conversion(Unit::Timezone),
                     TextEffect::Styles(vec![Style::Italic]),
                 ],
-            )]),
-        ];
+            ),
+        ])];
 
         let actual = exporter.format_message(&message, 0).unwrap();
         let expected = "May 17, 2022  5:29:42 PM\nMe\n8:00 pm\n\n";
@@ -2584,8 +2566,6 @@ mod text_effect_tests {
 
 #[cfg(test)]
 mod edited_tests {
-    use std::{env::current_dir, fs::File, io::Read};
-
     use imessage_database::{
         message_types::{
             edited::{EditStatus, EditedMessage, EditedMessagePart},
@@ -2633,15 +2613,6 @@ mod edited_tests {
             ],
         });
 
-        let typedstream_path = current_dir()
-            .unwrap()
-            .parent()
-            .unwrap()
-            .join("imessage-database/test_data/typedstream/MultiPartWithDeleted");
-        let mut file = File::open(typedstream_path).unwrap();
-        let mut bytes = vec![];
-        file.read_to_end(&mut bytes).unwrap();
-
         message.components = vec![
             BubbleComponent::Text(vec![TextAttributes::new(0, 28, vec![TextEffect::Default])]),
             BubbleComponent::Attachment(AttachmentMeta {
@@ -2652,6 +2623,7 @@ mod edited_tests {
                 name: None,
             }),
             BubbleComponent::Text(vec![TextAttributes::new(31, 63, vec![TextEffect::Default])]),
+            BubbleComponent::Retracted,
         ];
 
         let actual = exporter.format_message(&message, 0).unwrap();
