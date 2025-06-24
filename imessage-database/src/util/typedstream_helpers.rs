@@ -39,7 +39,6 @@ pub fn as_signed_integer(property: &Property<'_, '_>) -> Option<i64> {
             return Some(*value);
         } else if let Property::Object { name, data, .. } = val {
             if *name == "NSNumber" {
-                println!("as_signed_integer found NSNumber with data: {:?}", data);
                 // Clone the iterator to be able to call next() on it
                 let mut data_iter = data.clone();
                 return as_signed_integer(&data_iter.next()?);
@@ -69,7 +68,6 @@ pub fn as_unsigned_integer<'a>(property: &'a Property<'a, 'a>) -> Option<u64> {
 
 /// Converts a `Property` to an `Option<f32>` if it is an unsigned integer or similar structure.
 pub fn as_float<'a>(property: &'a Property<'a, 'a>) -> Option<f64> {
-    println!("as_float called with property: {:?}", property);
     if let Property::Group(group) = property {
         let mut iter = group.iter();
         let val = iter.next()?;

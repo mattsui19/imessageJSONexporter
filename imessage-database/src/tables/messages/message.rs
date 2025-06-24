@@ -118,6 +118,7 @@
 use std::{collections::HashMap, io::Read};
 
 use chrono::{DateTime, offset::Local};
+use crabstep::TypedStreamDeserializer;
 use plist::Value;
 use rusqlite::{Connection, Error, Result, Row, Statement, blob::Blob};
 
@@ -130,7 +131,7 @@ use crate::{
     },
     tables::{
         messages::{
-            body::parse_body_legacy,
+            body::{parse_body_legacy, parse_body_typedstream},
             models::{BubbleComponent, GroupAction, Service},
             query_parts::{ios_13_older_query, ios_14_15_query, ios_16_newer_query},
         },
@@ -220,7 +221,7 @@ pub struct Message {
     /// The number of replies to the message
     pub num_replies: i32,
     /// The components of the message body, parsed by [`TypedStreamReader`]
-    pub components: Option<Vec<Archivable>>,
+    pub components: Vec<BubbleComponent>,
     /// The components of the message that may or may not have been edited or unsent
     pub edited_parts: Option<EditedMessage>,
 }
@@ -258,7 +259,7 @@ impl Table for Message {
             num_attachments: row.get("num_attachments")?,
             deleted_from: row.get("deleted_from").unwrap_or(None),
             num_replies: row.get("num_replies")?,
-            components: None,
+            components: vec![],
             edited_parts: None,
         })
     }
@@ -445,49 +446,33 @@ impl GetBlob for Message {
     }
 }
 
-impl AttributedBody for Message {
-    /// Get a vector of a message body's components. If the text has not been captured with [`Self::generate_text()`], the vector will be empty.
-    ///
-    /// For more detail see the trait documentation [here](crate::tables::table::AttributedBody).
-    fn body(&self) -> Vec<BubbleComponent> {
-        // If the message is an app, it will be rendered differently, so just escape there
-        if self.balloon_bundle_id.is_some() {
-            return vec![BubbleComponent::App];
-        }
-
-        // if let Some(body) = parse_body_typedstream(
-        //     self.components.as_ref(),
-        //     self.text.as_deref(),
-        //     self.edited_parts.as_ref(),
-        // ) {
-        //     return body;
-        // }
-
-        // Naive logic for when `typedstream` component parsing fails
-        parse_body_legacy(&self.text)
-    }
-}
-
 impl Message {
     /// Generate the text of a message, deserializing it as [`typedstream`](crate::util::typedstream) (and falling back to [`streamtyped`]) data if necessary.
     pub fn generate_text<'a>(&'a mut self, db: &'a Connection) -> Result<&'a str, MessageError> {
         // Grab the body data from the table
         if let Some(body) = self.attributed_body(db) {
             // Attempt to deserialize the typedstream data
-            let mut typedstream = TypedStreamReader::from(&body);
-            self.components = typedstream.parse().ok();
+            let mut typedstream = TypedStreamDeserializer::new(&body);
+            let root = typedstream.oxidize()?;
+            let iter = typedstream.resolve_properties(root).ok();
+            let parsed = parse_body_typedstream(iter, self.edited_parts.as_ref());
 
-            // If we deserialize the typedstream, use that data
-            self.text = self
-                .components
-                .as_ref()
-                .and_then(|items| items.first())
-                .and_then(|item| item.as_nsstring())
-                .map(String::from);
+            if let Some(parsed) = parsed {
+                self.text = parsed.text;
+                if self.balloon_bundle_id.is_some() {
+                    self.components = vec![BubbleComponent::App];
+                }
+                self.components = parsed.components;
+            }
 
             // If the above parsing failed, fall back to the legacy parser instead
             if self.text.is_none() {
                 self.text = Some(streamtyped::parse(body)?);
+
+                // Fallback component parser as well
+                if self.components.is_empty() {
+                    self.components = parse_body_legacy(&self.text);
+                }
             }
         }
 
@@ -1201,6 +1186,8 @@ impl Message {
     #[must_use]
     /// Create a blank test message with default values
     pub fn blank() -> Message {
+        use std::vec;
+
         Message {
             rowid: i32::default(),
             guid: String::default(),
@@ -1232,7 +1219,7 @@ impl Message {
             num_attachments: 0,
             deleted_from: None,
             num_replies: 0,
-            components: None,
+            components: vec![],
             edited_parts: None,
         }
     }
