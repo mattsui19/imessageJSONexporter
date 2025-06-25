@@ -143,18 +143,15 @@ pub trait SqlBlob {
     /// Check if a BLOB exists in the table for a given row ID
     fn has_blob(&self, db: &Connection, table: &str, column: &str, rowid: i64) -> bool {
         let sql = format!(
-            "SELECT ({col} IS NOT NULL) AS not_null
+            "SELECT ({column} IS NOT NULL) AS not_null
          FROM {table}
          WHERE rowid = ?1",
-            table = table,
-            col = column,
         );
 
         // This returns 1 for true, 0 for false.
         db.query_row(&sql, [rowid], |row| row.get(0))
             .ok()
-            .map(|v: i32| v != 0)
-            .unwrap_or(false)
+            .is_some_and(|v: i32| v != 0)
     }
 }
 
