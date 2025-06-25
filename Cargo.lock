@@ -267,9 +267,9 @@ dependencies = [
 
 [[package]]
 name = "crabapple"
-version = "0.4.1"
+version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "36b6bea094e8988005a874292737447fdb061298e6d9030873dc2520590d57d6"
+checksum = "9aee8fe035d4764673dacd6dd4f3c5c750e0e147ddb043528aaa6203524aaa19"
 dependencies = [
  "aes",
  "aes-kw",
@@ -283,9 +283,9 @@ dependencies = [
 
 [[package]]
 name = "crabstep"
-version = "0.1.0"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0248ee2a010588f7044fe35fffb19ff5bcbe0ebc4111c32a6357c18ef48cab70"
+checksum = "9e935f02ef8ff9fbb7450bd5ccf9d585372aa327f85f9182511cfe554cc9791a"
 
 [[package]]
 name = "crc"
