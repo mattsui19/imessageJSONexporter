@@ -469,7 +469,6 @@ impl Message {
 
                 // If the message is a single URL or has a balloon bundle ID
                 // set the components to just the app component
-                // TODO: some kind of check for if the `payload_data` exists
                 if self.balloon_bundle_id.is_some()
                     || is_single_url
                         && self.has_blob(db, MESSAGE, MESSAGE_PAYLOAD, self.rowid.into())
