@@ -127,12 +127,13 @@ use crate::{
     message_types::{
         edited::{EditStatus, EditedMessage},
         expressives::{BubbleEffect, Expressive, ScreenEffect},
+        text_effects::TextEffect,
         variants::{Announcement, BalloonProvider, CustomBalloon, Tapback, TapbackAction, Variant},
     },
     tables::{
         messages::{
             body::{parse_body_legacy, parse_body_typedstream},
-            models::{BubbleComponent, GroupAction, Service},
+            models::{BubbleComponent, GroupAction, Service, TextAttributes},
             query_parts::{ios_13_older_query, ios_14_15_query, ios_16_newer_query},
         },
         table::{
@@ -465,8 +466,22 @@ impl Message {
                 parse_body_typedstream(typedstream.iter_root().ok(), self.edited_parts.as_ref());
 
             if let Some(parsed) = parsed {
+                // Determine if the message is a single URL
+                let is_single_url = match &parsed.components[..] {
+                    [BubbleComponent::Text(text_attrs)] => match &text_attrs[..] {
+                        [TextAttributes { effects, .. }] => {
+                            matches!(&effects[..], [TextEffect::Link(_)])
+                        }
+                        _ => false,
+                    },
+                    _ => false,
+                };
+
                 self.text = parsed.text;
-                if self.balloon_bundle_id.is_some() {
+
+                // If the message is a single URL or has a balloon bundle ID
+                // set the components to just the app component
+                if is_single_url || self.balloon_bundle_id.is_some() {
                     self.components = vec![BubbleComponent::App];
                 } else {
                     self.components = parsed.components;
