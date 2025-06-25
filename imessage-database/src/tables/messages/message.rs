@@ -139,7 +139,7 @@ use crate::{
         table::{
             ATTRIBUTED_BODY, CHAT_MESSAGE_JOIN, Cacheable, Diagnostic, MESSAGE,
             MESSAGE_ATTACHMENT_JOIN, MESSAGE_PAYLOAD, MESSAGE_SUMMARY_INFO, RECENTLY_DELETED,
-            SqlBlob, Table,
+            Table,
         },
     },
     util::{
@@ -433,8 +433,6 @@ impl Cacheable for Message {
     }
 }
 
-impl SqlBlob for Message {}
-
 impl Message {
     /// Generate the text of a message, deserializing it as [`typedstream`](crate::util::typedstream) (and falling back to [`streamtyped`]) data if necessary.
     pub fn generate_text<'a>(&'a mut self, db: &'a Connection) -> Result<&'a str, MessageError> {
@@ -469,10 +467,17 @@ impl Message {
 
                 // If the message is a single URL or has a balloon bundle ID
                 // set the components to just the app component
-                if self.balloon_bundle_id.is_some()
-                    || is_single_url
-                        && self.has_blob(db, MESSAGE, MESSAGE_PAYLOAD, self.rowid.into())
+                if self.balloon_bundle_id.is_some() {
+                    self.components = vec![BubbleComponent::App];
+                } else if is_single_url
+                    && self.has_blob(db, MESSAGE, MESSAGE_PAYLOAD, self.rowid.into())
                 {
+                    // This patch is to handle the case where a message is a single URL
+                    // but the `balloon_bundle_id` is not set.
+                    // This case can only hit if there was payload data provided for the preview,
+                    // but no `balloon_bundle_id` was set.
+                    self.balloon_bundle_id =
+                        Some("com.apple.messages.URLBalloonProvider".to_string());
                     self.components = vec![BubbleComponent::App];
                 } else {
                     self.components = parsed.components;
@@ -942,6 +947,8 @@ impl Message {
             return match associated_message_type {
                 // Standard iMessages with either text or a message payload
                 0 | 2 | 3 => match parse_balloon_bundle_id(self.balloon_bundle_id.as_deref()) {
+                    // This is the most common case
+                    None => Variant::Normal,
                     Some(bundle_id) => match bundle_id {
                         "com.apple.messages.URLBalloonProvider" => Variant::App(CustomBalloon::URL),
                         "com.apple.Handwriting.HandwritingProvider" => {
@@ -965,8 +972,6 @@ impl Message {
                         "com.apple.findmy.FindMyMessagesApp" => Variant::App(CustomBalloon::FindMy),
                         _ => Variant::App(CustomBalloon::Application(bundle_id)),
                     },
-                    // This is the most common case
-                    None => Variant::Normal,
                 },
 
                 // Stickers overlaid on messages

@@ -1132,7 +1132,11 @@ mod tests {
         exporters::exporter::Writer,
     };
     use imessage_database::{
-        tables::{messages::models::AttachmentMeta, table::ME},
+        message_types::text_effects::TextEffect,
+        tables::{
+            messages::models::{AttachmentMeta, BubbleComponent, TextAttributes},
+            table::ME,
+        },
         util::platform::Platform,
     };
 
@@ -2049,6 +2053,42 @@ mod tests {
             .unwrap();
 
         assert_eq!(actual, "Audio Message.caf\nTranscription: Test");
+    }
+
+    #[test]
+    fn can_format_txt_single_url_no_bundle_id() {
+        // Create exporter
+        let options = Options::fake_options(ExportType::Txt);
+        let config = Config::fake_app(options);
+        let exporter = TXT::new(&config).unwrap();
+
+        let mut message = Config::fake_message();
+
+        // Use test message payload from test database
+        // May 17, 2022  8:29:42 PM
+        message.guid = "FAKEGUID-D0C8-4212-AA87-DD8AE4FD1203".to_string();
+        message.rowid = 123445;
+
+        message.date = 674526582885055488;
+        // Set the message components to a single url
+        message.text = Some("https://example.com".to_string());
+        message.components = vec![BubbleComponent::Text(vec![
+                TextAttributes::new(
+                    0,
+                    84,
+                    vec![
+                        TextEffect::Link("https://www.ghacks.net/2020/01/23/lastpass-no-longer-listed-on-the-chrome-web-store/".to_string()),
+                    ]
+                ),
+            ]),];
+        let _ = message.generate_text(config.db());
+
+        let actual = exporter.format_message(&message, 0).unwrap();
+
+        assert_eq!(
+            actual,
+            "May 17, 2022  5:29:42 PM\nUnknown\nhttps://www.ghacks.net/2020/01/23/lastpass-no-longer-listed-on-the-chrome-web-store/\nLastPass no longer listed on the Chrome Web Store - gHacks Tech News\nLastPass customers and new users searching for password managers on Google's Chrome Web Store may have noticed that the LastPass extension for Google Chrome is currently no longer listed on the store.\n\n"
+        );
     }
 }
 
