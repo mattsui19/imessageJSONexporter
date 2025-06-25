@@ -52,13 +52,13 @@ pub fn parse_body_typedstream<'a>(
 ) -> Option<ParseResult> {
     // Create the output data
     let mut message_text = None;
-    let mut out_v = vec![];
+    let mut out_v = Vec::with_capacity(4);
 
     // Format ranges are only stored once and then referenced by order of appearance (starting at 1),
     // so we need cache them to properly apply styles and attributes.
     // The key is the range ID, and the value is the location of the original formatting data
     // in the `out_v` vector.
-    let mut format_range_cache: HashMap<i64, BubbleComponent> = HashMap::new();
+    let mut format_range_cache: HashMap<i64, BubbleComponent> = HashMap::with_capacity(4);
 
     // Start to iterate over the ranges
     let mut current_range_id;
