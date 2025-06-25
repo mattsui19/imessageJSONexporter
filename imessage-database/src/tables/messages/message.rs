@@ -452,9 +452,8 @@ impl Message {
         if let Some(body) = self.attributed_body(db) {
             // Attempt to deserialize the typedstream data
             let mut typedstream = TypedStreamDeserializer::new(&body);
-            let root = typedstream.oxidize()?;
-            let iter = typedstream.resolve_properties(root).ok();
-            let parsed = parse_body_typedstream(iter, self.edited_parts.as_ref());
+            let parsed =
+                parse_body_typedstream(typedstream.iter_root().ok(), self.edited_parts.as_ref());
 
             if let Some(parsed) = parsed {
                 self.text = parsed.text;

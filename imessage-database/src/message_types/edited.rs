@@ -145,13 +145,12 @@ impl<'a> BalloonProvider<'a> for EditedMessage {
                     let data = extract_bytes_key(message_data, "t")?;
 
                     let mut typedstream = TypedStreamDeserializer::new(data);
-                    let root = typedstream.oxidize()?;
-                    let iter = typedstream.resolve_properties(root)?;
-                    let result = parse_body_typedstream(Some(iter), None).ok_or_else(|| {
-                        PlistParseError::InvalidEditedMessage(
-                            "Failed to parse typedstream data".to_string(),
-                        )
-                    })?;
+                    let result = parse_body_typedstream(Some(typedstream.iter_root()?), None)
+                        .ok_or_else(|| {
+                            PlistParseError::InvalidEditedMessage(
+                                "Failed to parse typedstream data".to_string(),
+                            )
+                        })?;
 
                     let text = result.text;
 

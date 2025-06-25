@@ -398,10 +398,9 @@ mod typedstream_tests {
         file.read_to_end(&mut bytes).unwrap();
 
         let mut parser = TypedStreamDeserializer::new(&bytes);
-        let root = parser.oxidize().unwrap();
-        let iter = parser.resolve_properties(root).ok();
+        let iter = parser.iter_root().unwrap();
 
-        let parsed = parse_body_typedstream(iter, m.edited_parts.as_ref()).unwrap();
+        let parsed = parse_body_typedstream(Some(iter), m.edited_parts.as_ref()).unwrap();
         assert_eq!(
             parsed.components,
             vec![BubbleComponent::Text(vec![TextAttributes::new(
@@ -426,10 +425,9 @@ mod typedstream_tests {
         file.read_to_end(&mut bytes).unwrap();
 
         let mut parser = TypedStreamDeserializer::new(&bytes);
-        let root = parser.oxidize().unwrap();
-        let iter = parser.resolve_properties(root).ok();
+        let iter = parser.iter_root().unwrap();
 
-        let parsed = parse_body_typedstream(iter, m.edited_parts.as_ref()).unwrap();
+        let parsed = parse_body_typedstream(Some(iter), m.edited_parts.as_ref()).unwrap();
         assert_eq!(
             parsed.components,
             vec![BubbleComponent::Attachment(AttachmentMeta {
@@ -456,10 +454,9 @@ mod typedstream_tests {
         file.read_to_end(&mut bytes).unwrap();
 
         let mut parser = TypedStreamDeserializer::new(&bytes);
-        let root = parser.oxidize().unwrap();
-        let iter = parser.resolve_properties(root).ok();
+        let iter = parser.iter_root().unwrap();
 
-        let parsed = parse_body_typedstream(iter, m.edited_parts.as_ref()).unwrap();
+        let parsed = parse_body_typedstream(Some(iter), m.edited_parts.as_ref()).unwrap();
         assert_eq!(
             parsed.components,
             vec![BubbleComponent::Text(vec![TextAttributes::new(
@@ -484,10 +481,9 @@ mod typedstream_tests {
         file.read_to_end(&mut bytes).unwrap();
 
         let mut parser = TypedStreamDeserializer::new(&bytes);
-        let root = parser.oxidize().unwrap();
-        let iter = parser.resolve_properties(root).ok();
+        let iter = parser.iter_root().unwrap();
 
-        let parsed = parse_body_typedstream(iter, m.edited_parts.as_ref()).unwrap();
+        let parsed = parse_body_typedstream(Some(iter), m.edited_parts.as_ref()).unwrap();
         assert_eq!(
             parsed.components,
             vec![
@@ -555,10 +551,9 @@ mod typedstream_tests {
         file.read_to_end(&mut bytes).unwrap();
 
         let mut parser = TypedStreamDeserializer::new(&bytes);
-        let root = parser.oxidize().unwrap();
-        let iter = parser.resolve_properties(root).ok();
+        let iter = parser.iter_root().unwrap();
 
-        let parsed = parse_body_typedstream(iter, m.edited_parts.as_ref()).unwrap();
+        let parsed = parse_body_typedstream(Some(iter), m.edited_parts.as_ref()).unwrap();
         assert_eq!(
             parsed.components,
             vec![
@@ -592,8 +587,7 @@ mod typedstream_tests {
         file.read_to_end(&mut bytes).unwrap();
 
         let mut parser = TypedStreamDeserializer::new(&bytes);
-        let root = parser.oxidize().unwrap();
-        let iter = parser.resolve_properties(root).ok();
+        let iter = parser.iter_root().unwrap();
 
         m.edited_parts = Some(EditedMessage {
             parts: vec![
@@ -629,7 +623,7 @@ mod typedstream_tests {
             ],
         });
 
-        let parsed = parse_body_typedstream(iter, m.edited_parts.as_ref()).unwrap();
+        let parsed = parse_body_typedstream(Some(iter), m.edited_parts.as_ref()).unwrap();
         assert_eq!(
             parsed.components,
             vec![
@@ -663,8 +657,7 @@ mod typedstream_tests {
         file.read_to_end(&mut bytes).unwrap();
 
         let mut parser = TypedStreamDeserializer::new(&bytes);
-        let root = parser.oxidize().unwrap();
-        let iter = parser.resolve_properties(root).ok();
+        let iter = parser.iter_root().unwrap();
 
         m.edited_parts = Some(EditedMessage {
             parts: vec![EditedMessagePart {
@@ -673,7 +666,7 @@ mod typedstream_tests {
             }],
         });
 
-        let parsed = parse_body_typedstream(iter, m.edited_parts.as_ref()).unwrap();
+        let parsed = parse_body_typedstream(Some(iter), m.edited_parts.as_ref()).unwrap();
         assert_eq!(parsed.components, vec![BubbleComponent::Retracted,]);
     }
 
@@ -693,8 +686,7 @@ mod typedstream_tests {
         file.read_to_end(&mut bytes).unwrap();
 
         let mut parser = TypedStreamDeserializer::new(&bytes);
-        let root = parser.oxidize().unwrap();
-        let iter = parser.resolve_properties(root).ok();
+        let iter = parser.iter_root().unwrap();
 
         m.edited_parts = Some(EditedMessage {
             parts: vec![EditedMessagePart {
@@ -724,7 +716,7 @@ mod typedstream_tests {
             }],
         });
 
-        let parsed = parse_body_typedstream(iter, m.edited_parts.as_ref()).unwrap();
+        let parsed = parse_body_typedstream(Some(iter), m.edited_parts.as_ref()).unwrap();
         assert_eq!(
             parsed.components,
             vec![BubbleComponent::Text(vec![TextAttributes::new(
@@ -752,10 +744,9 @@ mod typedstream_tests {
         file.read_to_end(&mut bytes).unwrap();
 
         let mut parser = TypedStreamDeserializer::new(&bytes);
-        let root = parser.oxidize().unwrap();
-        let iter = parser.resolve_properties(root).ok();
+        let iter = parser.iter_root().unwrap();
 
-        let parsed = parse_body_typedstream(iter, m.edited_parts.as_ref()).unwrap();
+        let parsed = parse_body_typedstream(Some(iter), m.edited_parts.as_ref()).unwrap();
         assert_eq!(
             parsed.components,
             vec![
@@ -785,10 +776,9 @@ mod typedstream_tests {
         file.read_to_end(&mut bytes).unwrap();
 
         let mut parser = TypedStreamDeserializer::new(&bytes);
-        let root = parser.oxidize().unwrap();
-        let iter = parser.resolve_properties(root).ok();
+        let iter = parser.iter_root().unwrap();
 
-        let parsed = parse_body_typedstream(iter, m.edited_parts.as_ref()).unwrap();
+        let parsed = parse_body_typedstream(Some(iter), m.edited_parts.as_ref()).unwrap();
         assert_eq!(
             parsed.components,
             vec![BubbleComponent::Attachment(AttachmentMeta {
@@ -815,10 +805,9 @@ mod typedstream_tests {
         file.read_to_end(&mut bytes).unwrap();
 
         let mut parser = TypedStreamDeserializer::new(&bytes);
-        let root = parser.oxidize().unwrap();
-        let iter = parser.resolve_properties(root).ok();
+        let iter = parser.iter_root().unwrap();
 
-        let parsed = parse_body_typedstream(iter, m.edited_parts.as_ref()).unwrap();
+        let parsed = parse_body_typedstream(Some(iter), m.edited_parts.as_ref()).unwrap();
         assert_eq!(
             parsed.components,
             vec![BubbleComponent::Text(vec![TextAttributes::new(
@@ -845,10 +834,9 @@ mod typedstream_tests {
         file.read_to_end(&mut bytes).unwrap();
 
         let mut parser = TypedStreamDeserializer::new(&bytes);
-        let root = parser.oxidize().unwrap();
-        let iter = parser.resolve_properties(root).ok();
+        let iter = parser.iter_root().unwrap();
 
-        let parsed = parse_body_typedstream(iter, m.edited_parts.as_ref()).unwrap();
+        let parsed = parse_body_typedstream(Some(iter), m.edited_parts.as_ref()).unwrap();
         assert_eq!(
             parsed.components,
             vec![BubbleComponent::Text(vec![
@@ -873,10 +861,9 @@ mod typedstream_tests {
         file.read_to_end(&mut bytes).unwrap();
 
         let mut parser = TypedStreamDeserializer::new(&bytes);
-        let root = parser.oxidize().unwrap();
-        let iter = parser.resolve_properties(root).ok();
+        let iter = parser.iter_root().unwrap();
 
-        let parsed = parse_body_typedstream(iter, m.edited_parts.as_ref()).unwrap();
+        let parsed = parse_body_typedstream(Some(iter), m.edited_parts.as_ref()).unwrap();
         assert_eq!(
             parsed.components,
             vec![BubbleComponent::Text(vec![
@@ -900,10 +887,9 @@ mod typedstream_tests {
         file.read_to_end(&mut bytes).unwrap();
 
         let mut parser = TypedStreamDeserializer::new(&bytes);
-        let root = parser.oxidize().unwrap();
-        let iter = parser.resolve_properties(root).ok();
+        let iter = parser.iter_root().unwrap();
 
-        let parsed = parse_body_typedstream(iter, m.edited_parts.as_ref()).unwrap();
+        let parsed = parse_body_typedstream(Some(iter), m.edited_parts.as_ref()).unwrap();
         assert_eq!(
             parsed.components,
             vec![BubbleComponent::Text(vec![
@@ -927,10 +913,9 @@ mod typedstream_tests {
         file.read_to_end(&mut bytes).unwrap();
 
         let mut parser = TypedStreamDeserializer::new(&bytes);
-        let root = parser.oxidize().unwrap();
-        let iter = parser.resolve_properties(root).ok();
+        let iter = parser.iter_root().unwrap();
 
-        let parsed = parse_body_typedstream(iter, m.edited_parts.as_ref()).unwrap();
+        let parsed = parse_body_typedstream(Some(iter), m.edited_parts.as_ref()).unwrap();
         assert_eq!(
             parsed.components,
             vec![BubbleComponent::Text(vec![
@@ -958,10 +943,9 @@ mod typedstream_tests {
         file.read_to_end(&mut bytes).unwrap();
 
         let mut parser = TypedStreamDeserializer::new(&bytes);
-        let root = parser.oxidize().unwrap();
-        let iter = parser.resolve_properties(root).ok();
+        let iter = parser.iter_root().unwrap();
 
-        let parsed = parse_body_typedstream(iter, m.edited_parts.as_ref()).unwrap();
+        let parsed = parse_body_typedstream(Some(iter), m.edited_parts.as_ref()).unwrap();
         assert_eq!(
             parsed.components,
             vec![BubbleComponent::Text(vec![
@@ -986,10 +970,9 @@ mod typedstream_tests {
         file.read_to_end(&mut bytes).unwrap();
 
         let mut parser = TypedStreamDeserializer::new(&bytes);
-        let root = parser.oxidize().unwrap();
-        let iter = parser.resolve_properties(root).ok();
+        let iter = parser.iter_root().unwrap();
 
-        let parsed = parse_body_typedstream(iter, m.edited_parts.as_ref()).unwrap();
+        let parsed = parse_body_typedstream(Some(iter), m.edited_parts.as_ref()).unwrap();
         assert_eq!(
             parsed.components,
             vec![
@@ -1037,10 +1020,9 @@ mod typedstream_tests {
         file.read_to_end(&mut bytes).unwrap();
 
         let mut parser = TypedStreamDeserializer::new(&bytes);
-        let root = parser.oxidize().unwrap();
-        let iter = parser.resolve_properties(root).ok();
+        let iter = parser.iter_root().unwrap();
 
-        let parsed = parse_body_typedstream(iter, m.edited_parts.as_ref()).unwrap();
+        let parsed = parse_body_typedstream(Some(iter), m.edited_parts.as_ref()).unwrap();
         assert_eq!(
             parsed.components,
             vec![BubbleComponent::Text(vec![
@@ -1080,10 +1062,9 @@ mod typedstream_tests {
         file.read_to_end(&mut bytes).unwrap();
 
         let mut parser = TypedStreamDeserializer::new(&bytes);
-        let root = parser.oxidize().unwrap();
-        let iter = parser.resolve_properties(root).ok();
+        let iter = parser.iter_root().unwrap();
 
-        let parsed = parse_body_typedstream(iter, m.edited_parts.as_ref()).unwrap();
+        let parsed = parse_body_typedstream(Some(iter), m.edited_parts.as_ref()).unwrap();
         assert_eq!(
             parsed.components,
             vec![BubbleComponent::Text(vec![
@@ -1118,10 +1099,9 @@ mod typedstream_tests {
         file.read_to_end(&mut bytes).unwrap();
 
         let mut parser = TypedStreamDeserializer::new(&bytes);
-        let root = parser.oxidize().unwrap();
-        let iter = parser.resolve_properties(root).ok();
+        let iter = parser.iter_root().unwrap();
 
-        let parsed = parse_body_typedstream(iter, m.edited_parts.as_ref()).unwrap();
+        let parsed = parse_body_typedstream(Some(iter), m.edited_parts.as_ref()).unwrap();
         assert_eq!(
             parsed.components,
             vec![BubbleComponent::Text(vec![
@@ -1147,10 +1127,9 @@ mod typedstream_tests {
         file.read_to_end(&mut bytes).unwrap();
 
         let mut parser = TypedStreamDeserializer::new(&bytes);
-        let root = parser.oxidize().unwrap();
-        let iter = parser.resolve_properties(root).ok();
+        let iter = parser.iter_root().unwrap();
 
-        let parsed = parse_body_typedstream(iter, m.edited_parts.as_ref()).unwrap();
+        let parsed = parse_body_typedstream(Some(iter), m.edited_parts.as_ref()).unwrap();
         assert_eq!(
             parsed.components,
             vec![BubbleComponent::Text(vec![TextAttributes::new(
@@ -1180,10 +1159,9 @@ mod typedstream_tests {
         file.read_to_end(&mut bytes).unwrap();
 
         let mut parser = TypedStreamDeserializer::new(&bytes);
-        let root = parser.oxidize().unwrap();
-        let iter = parser.resolve_properties(root).ok();
+        let iter = parser.iter_root().unwrap();
 
-        let parsed = parse_body_typedstream(iter, m.edited_parts.as_ref()).unwrap();
+        let parsed = parse_body_typedstream(Some(iter), m.edited_parts.as_ref()).unwrap();
         assert_eq!(
             parsed.components,
             vec![BubbleComponent::Attachment(AttachmentMeta {
@@ -1210,10 +1188,9 @@ mod typedstream_tests {
         file.read_to_end(&mut bytes).unwrap();
 
         let mut parser = TypedStreamDeserializer::new(&bytes);
-        let root = parser.oxidize().unwrap();
-        let iter = parser.resolve_properties(root).ok();
+        let iter = parser.iter_root().unwrap();
 
-        let parsed = parse_body_typedstream(iter, m.edited_parts.as_ref()).unwrap();
+        let parsed = parse_body_typedstream(Some(iter), m.edited_parts.as_ref()).unwrap();
         assert_eq!(
             parsed.components,
             vec![BubbleComponent::Text(vec![TextAttributes::new(
@@ -1240,11 +1217,10 @@ mod typedstream_tests {
         file.read_to_end(&mut bytes).unwrap();
 
         let mut parser = TypedStreamDeserializer::new(&bytes);
-        let root = parser.oxidize().unwrap();
-        let iter = parser.resolve_properties(root).ok();
+        let iter = parser.iter_root().unwrap();
 
         assert_eq!(
-            parse_body_typedstream(iter, m.edited_parts.as_ref())
+            parse_body_typedstream(Some(iter), m.edited_parts.as_ref())
                 .unwrap()
                 .components[..5],
             vec![
@@ -1301,10 +1277,9 @@ mod typedstream_tests {
         file.read_to_end(&mut bytes).unwrap();
 
         let mut parser = TypedStreamDeserializer::new(&bytes);
-        let root = parser.oxidize().unwrap();
-        let iter = parser.resolve_properties(root).ok();
+        let iter = parser.iter_root().unwrap();
 
-        let parsed = parse_body_typedstream(iter, m.edited_parts.as_ref()).unwrap();
+        let parsed = parse_body_typedstream(Some(iter), m.edited_parts.as_ref()).unwrap();
         assert_eq!(
             parsed.components,
             vec![BubbleComponent::Text(vec![TextAttributes::new(
@@ -1334,10 +1309,9 @@ mod typedstream_tests {
         file.read_to_end(&mut bytes).unwrap();
 
         let mut parser = TypedStreamDeserializer::new(&bytes);
-        let root = parser.oxidize().unwrap();
-        let iter = parser.resolve_properties(root).ok();
+        let iter = parser.iter_root().unwrap();
 
-        let parsed = parse_body_typedstream(iter, m.edited_parts.as_ref()).unwrap();
+        let parsed = parse_body_typedstream(Some(iter), m.edited_parts.as_ref()).unwrap();
         assert_eq!(
             parsed.components,
             vec![BubbleComponent::Text(vec![
@@ -1363,10 +1337,9 @@ mod typedstream_tests {
         file.read_to_end(&mut bytes).unwrap();
 
         let mut parser = TypedStreamDeserializer::new(&bytes);
-        let root = parser.oxidize().unwrap();
-        let iter = parser.resolve_properties(root).ok();
+        let iter = parser.iter_root().unwrap();
 
-        let parsed = parse_body_typedstream(iter, m.edited_parts.as_ref()).unwrap();
+        let parsed = parse_body_typedstream(Some(iter), m.edited_parts.as_ref()).unwrap();
         assert_eq!(
             parsed.components,
             vec![BubbleComponent::Text(vec![
@@ -1414,10 +1387,9 @@ mod typedstream_tests {
         file.read_to_end(&mut bytes).unwrap();
 
         let mut parser = TypedStreamDeserializer::new(&bytes);
-        let root = parser.oxidize().unwrap();
-        let iter = parser.resolve_properties(root).ok();
+        let iter = parser.iter_root().unwrap();
 
-        let parsed = parse_body_typedstream(iter, m.edited_parts.as_ref()).unwrap();
+        let parsed = parse_body_typedstream(Some(iter), m.edited_parts.as_ref()).unwrap();
         assert_eq!(
             parsed.components,
             vec![BubbleComponent::Text(vec![
@@ -1455,10 +1427,9 @@ mod typedstream_tests {
         file.read_to_end(&mut bytes).unwrap();
 
         let mut parser = TypedStreamDeserializer::new(&bytes);
-        let root = parser.oxidize().unwrap();
-        let iter = parser.resolve_properties(root).ok();
+        let iter = parser.iter_root().unwrap();
 
-        let parsed = parse_body_typedstream(iter, m.edited_parts.as_ref()).unwrap();
+        let parsed = parse_body_typedstream(Some(iter), m.edited_parts.as_ref()).unwrap();
         assert_eq!(
             parsed.components,
             vec![BubbleComponent::Text(vec![
