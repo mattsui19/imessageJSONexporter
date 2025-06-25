@@ -85,6 +85,39 @@ pub trait Table: Sized {
     {
         stream_table_callback::<Self, F, E>(db, callback)
     }
+
+    /// Get a BLOB from the table
+    ///
+    /// # Arguments
+    ///
+    /// * `db` - The database connection
+    /// * `table` - The name of the table
+    /// * `column` - The name of the column containing the BLOB
+    /// * `rowid` - The row ID to retrieve the BLOB from
+    fn get_blob<'a>(
+        &self,
+        db: &'a Connection,
+        table: &str,
+        column: &str,
+        rowid: i64,
+    ) -> Option<Blob<'a>> {
+        db.blob_open(rusqlite::MAIN_DB, table, column, rowid, true)
+            .ok()
+    }
+
+    /// Check if a BLOB exists in the table
+    fn has_blob(&self, db: &Connection, table: &str, column: &str, rowid: i64) -> bool {
+        let sql = std::format!(
+            "SELECT ({column} IS NOT NULL) AS not_null
+         FROM {table}
+         WHERE rowid = ?1",
+        );
+
+        // This returns 1 for true, 0 for false.
+        db.query_row(&sql, [rowid], |row| row.get(0))
+            .ok()
+            .is_some_and(|v: i32| v != 0)
+    }
 }
 
 fn stream_table_callback<T, F, E>(db: &Connection, mut callback: F) -> Result<(), TableError>
@@ -124,35 +157,6 @@ pub trait Deduplicate {
 pub trait Diagnostic {
     /// Emit diagnostic data about the table to `stdout`
     fn run_diagnostic(db: &Connection) -> Result<(), TableError>;
-}
-
-/// Defines behavior for getting BLOB data from from a table
-pub trait SqlBlob {
-    /// Retreive `BLOB` data from a table
-    fn get_blob<'a>(
-        &self,
-        db: &'a Connection,
-        table: &str,
-        column: &str,
-        rowid: i64,
-    ) -> Option<Blob<'a>> {
-        db.blob_open(rusqlite::MAIN_DB, table, column, rowid, true)
-            .ok()
-    }
-
-    /// Check if a BLOB exists in the table for a given row ID
-    fn has_blob(&self, db: &Connection, table: &str, column: &str, rowid: i64) -> bool {
-        let sql = format!(
-            "SELECT ({column} IS NOT NULL) AS not_null
-         FROM {table}
-         WHERE rowid = ?1",
-        );
-
-        // This returns 1 for true, 0 for false.
-        db.query_row(&sql, [rowid], |row| row.get(0))
-            .ok()
-            .is_some_and(|v: i32| v != 0)
-    }
 }
 
 /// Get a connection to the iMessage `SQLite` database
