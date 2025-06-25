@@ -81,47 +81,6 @@ pub fn parse_body_typedstream<'a>(
                     current_end += range.length as usize;
                     current_range_id = range.type_index;
 
-                    // let new_bubble = if let Some(bubble) =
-                    //     format_range_cache.get_mut(&current_range_id)
-                    // {
-                    //     // Cache hit - reuse existing bubble
-
-                    //     if let BubbleComponent::Text(attrs) = &mut bubble {
-                    //         let start = utf16_idx(text, current_start, &utf16_to_byte);
-                    //         let end = utf16_idx(text, current_end, &utf16_to_byte);
-                    //         for attr in attrs {
-                    //             attr.start = start;
-                    //             attr.end = end;
-                    //         }
-                    //     }
-                    //     println!("Reusing bubble {:?}", bubble);
-                    //     Some(bubble)
-                    // } else {
-                    //     // Cache miss - create new bubble
-                    //     println!(
-                    //         "Creating new bubble for range: {}-{}",
-                    //         current_start, current_end
-                    //     );
-                    //     components
-                    //         .next()
-                    //         .as_mut()
-                    //         .and_then(as_ns_dictionary)
-                    //         .and_then(|dict| {
-                    //             get_bubble_type(
-                    //                 dict,
-                    //                 Some(text),
-                    //                 current_start,
-                    //                 current_end,
-                    //                 &utf16_to_byte,
-                    //             )
-                    //             .inspect(|bubble| {
-                    //                 format_range_cache.insert(current_range_id, bubble.clone());
-                    //                 println!("Inserted bubble at index: {:?}", format_range_cache);
-                    //                 bubble
-                    //             })
-                    //         })
-                    // };
-
                     let new_bubble = format_range_cache
                         .get(&current_range_id)
                         .cloned()

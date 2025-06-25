@@ -71,7 +71,7 @@ pub fn as_unsigned_integer<'a>(property: &'a Property<'a, 'a>) -> Option<u64> {
     None
 }
 
-/// Converts a `Property` to an `Option<f32>` if it is an unsigned integer or similar structure.
+/// Converts a `Property` to an `Option<f64>` if it is an unsigned integer or similar structure.
 #[must_use]
 #[inline(always)]
 pub fn as_float<'a>(property: &'a Property<'a, 'a>) -> Option<f64> {
