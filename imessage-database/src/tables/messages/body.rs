@@ -1525,6 +1525,37 @@ mod typedstream_tests {
             ]),]
         );
     }
+
+    #[test]
+    fn can_get_message_body_text_single_link() {
+        let mut m = Message::blank();
+        m.text = Some("8:00 pm".to_string());
+
+        let typedstream_path = current_dir()
+            .unwrap()
+            .as_path()
+            .join("test_data/typedstream/SingleLink");
+        let mut file = File::open(typedstream_path).unwrap();
+        let mut bytes = vec![];
+        file.read_to_end(&mut bytes).unwrap();
+
+        let mut parser = TypedStreamDeserializer::new(&bytes);
+        let iter = parser.iter_root().unwrap();
+
+        let parsed = parse_body_typedstream(Some(iter), m.edited_parts.as_ref()).unwrap();
+        assert_eq!(
+            parsed.components,
+            vec![BubbleComponent::Text(vec![
+                TextAttributes::new(
+                    0,
+                    84,
+                    vec![
+                        TextEffect::Link("https://www.ghacks.net/2020/01/23/lastpass-no-longer-listed-on-the-chrome-web-store/".to_string()),
+                    ]
+                ),
+            ]),]
+        );
+    }
 }
 
 #[cfg(test)]
