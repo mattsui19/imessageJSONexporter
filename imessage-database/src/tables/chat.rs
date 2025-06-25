@@ -11,7 +11,7 @@ use crate::{
     error::{plist::PlistParseError, table::TableError},
     tables::{
         messages::models::Service,
-        table::{CHAT, Cacheable, PROPERTIES, SqlBlob, Table},
+        table::{CHAT, Cacheable, PROPERTIES, Table},
     },
     util::plist::{get_bool_from_dict, get_owned_string_from_dict},
 };
@@ -111,8 +111,6 @@ impl Cacheable for Chat {
         Ok(map)
     }
 }
-
-impl SqlBlob for Chat {}
 
 impl Chat {
     /// Generate a name for a chat, falling back to the default if a custom one is not set

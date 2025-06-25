@@ -17,7 +17,7 @@ use crate::{
     message_types::sticker::{StickerEffect, StickerSource, get_sticker_effect},
     tables::{
         messages::Message,
-        table::{ATTACHMENT, ATTRIBUTION_INFO, STICKER_USER_INFO, SqlBlob, Table},
+        table::{ATTACHMENT, ATTRIBUTION_INFO, STICKER_USER_INFO, Table},
     },
     util::{
         dates::TIMESTAMP_FACTOR,
@@ -131,8 +131,6 @@ impl Table for Attachment {
         }
     }
 }
-
-impl SqlBlob for Attachment {}
 
 impl Attachment {
     /// Gets a Vector of attachments associated with a single message
