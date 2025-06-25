@@ -3,7 +3,7 @@
 */
 
 use plist::Value;
-use rusqlite::{Connection, Error, Result, Row, Statement};
+use rusqlite::{CachedStatement, Connection, Error, Result, Row};
 use sha1::{Digest, Sha1};
 
 use std::{
@@ -120,8 +120,8 @@ impl Table for Attachment {
         })
     }
 
-    fn get(db: &Connection) -> Result<Statement, TableError> {
-        Ok(db.prepare(&format!("SELECT * from {ATTACHMENT}"))?)
+    fn get(db: &Connection) -> Result<CachedStatement, TableError> {
+        Ok(db.prepare_cached(&format!("SELECT * from {ATTACHMENT}"))?)
     }
 
     fn extract(attachment: Result<Result<Self, Error>, Error>) -> Result<Self, TableError> {

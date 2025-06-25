@@ -32,7 +32,7 @@
 
 use std::{collections::HashMap, fs::metadata, path::Path};
 
-use rusqlite::{Connection, Error, OpenFlags, Result, Row, Statement, blob::Blob};
+use rusqlite::{CachedStatement, Connection, Error, OpenFlags, Result, Row, blob::Blob};
 
 use crate::error::table::{TableConnectError, TableError};
 
@@ -42,7 +42,7 @@ pub trait Table: Sized {
     fn from_row(row: &Row) -> Result<Self>;
 
     /// Prepare SELECT * statement
-    fn get(db: &Connection) -> Result<Statement, TableError>;
+    fn get(db: &Connection) -> Result<CachedStatement, TableError>;
 
     /// Map a `rusqlite::Result<Self>` into our `TableError`
     fn extract(item: Result<Result<Self, Error>, Error>) -> Result<Self, TableError>;

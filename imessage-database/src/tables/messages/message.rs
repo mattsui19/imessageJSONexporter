@@ -120,7 +120,7 @@ use std::{collections::HashMap, io::Read};
 use chrono::{DateTime, offset::Local};
 use crabstep::TypedStreamDeserializer;
 use plist::Value;
-use rusqlite::{Connection, Error, Result, Row, Statement};
+use rusqlite::{CachedStatement, Connection, Error, Result, Row};
 
 use crate::{
     error::{message::MessageError, table::TableError},
@@ -267,11 +267,11 @@ impl Table for Message {
 
     /// Convert data from the messages table to native Rust data structures, falling back to
     /// more compatible queries to ensure compatibility with older database schemas
-    fn get(db: &Connection) -> Result<Statement, TableError> {
+    fn get(db: &Connection) -> Result<CachedStatement, TableError> {
         Ok(db
-            .prepare(&ios_16_newer_query(None))
-            .or_else(|_| db.prepare(&ios_14_15_query(None)))
-            .or_else(|_| db.prepare(&ios_13_older_query(None)))?)
+            .prepare_cached(&ios_16_newer_query(None))
+            .or_else(|_| db.prepare_cached(&ios_14_15_query(None)))
+            .or_else(|_| db.prepare_cached(&ios_13_older_query(None)))?)
     }
 
     fn extract(message: Result<Result<Self, Error>, Error>) -> Result<Self, TableError> {
@@ -806,7 +806,7 @@ impl Message {
     /// ```
     pub fn get_count(db: &Connection, context: &QueryContext) -> Result<u64, TableError> {
         let mut statement = if context.has_filters() {
-            db.prepare(&format!(
+            db.prepare_cached(&format!(
                 "SELECT
                      COUNT(*)
                  FROM {MESSAGE} as m
@@ -816,7 +816,7 @@ impl Message {
                 Self::generate_filter_statement(context, true)
             ))
             .or_else(|_| {
-                db.prepare(&format!(
+                db.prepare_cached(&format!(
                     "SELECT
                          COUNT(*)
                      FROM {MESSAGE} as m
@@ -826,7 +826,7 @@ impl Message {
                 ))
             })?
         } else {
-            db.prepare(&format!("SELECT COUNT(*) FROM {MESSAGE}"))?
+            db.prepare_cached(&format!("SELECT COUNT(*) FROM {MESSAGE}"))?
         };
         // Execute query, defaulting to zero if it fails
         let count: u64 = statement.query_row([], |r| r.get(0)).unwrap_or(0);
@@ -857,21 +857,21 @@ impl Message {
     pub fn stream_rows<'a>(
         db: &'a Connection,
         context: &'a QueryContext,
-    ) -> Result<Statement<'a>, TableError> {
+    ) -> Result<CachedStatement<'a>, TableError> {
         if !context.has_filters() {
             return Self::get(db);
         }
         Ok(db
-            .prepare(&ios_16_newer_query(Some(&Self::generate_filter_statement(
+            .prepare_cached(&ios_16_newer_query(Some(&Self::generate_filter_statement(
                 context, true,
             ))))
             .or_else(|_| {
-                db.prepare(&ios_14_15_query(Some(&Self::generate_filter_statement(
+                db.prepare_cached(&ios_14_15_query(Some(&Self::generate_filter_statement(
                     context, false,
                 ))))
             })
             .or_else(|_| {
-                db.prepare(&ios_13_older_query(Some(&Self::generate_filter_statement(
+                db.prepare_cached(&ios_13_older_query(Some(&Self::generate_filter_statement(
                     context, false,
                 ))))
             })?)

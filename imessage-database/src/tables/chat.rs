@@ -5,7 +5,7 @@
 use std::collections::HashMap;
 
 use plist::Value;
-use rusqlite::{Connection, Error, Result, Row, Statement};
+use rusqlite::{CachedStatement, Connection, Error, Result, Row};
 
 use crate::{
     error::{plist::PlistParseError, table::TableError},
@@ -66,8 +66,8 @@ impl Table for Chat {
         })
     }
 
-    fn get(db: &Connection) -> Result<Statement, TableError> {
-        Ok(db.prepare(&format!("SELECT * from {CHAT}"))?)
+    fn get(db: &Connection) -> Result<CachedStatement, TableError> {
+        Ok(db.prepare_cached(&format!("SELECT * from {CHAT}"))?)
     }
 
     fn extract(chat: Result<Result<Self, Error>, Error>) -> Result<Self, TableError> {
