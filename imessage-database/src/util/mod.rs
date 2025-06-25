@@ -11,5 +11,4 @@ pub mod plist;
 pub mod query_context;
 pub mod size;
 pub mod streamtyped;
-// TODO: Rename
 pub mod typedstream;
