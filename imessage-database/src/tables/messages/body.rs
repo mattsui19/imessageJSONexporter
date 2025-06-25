@@ -1,3 +1,5 @@
+//! Routines for working with `typedstream` data, focussing specifically on [`NSAttributedString`](https://developer.apple.com/documentation/foundation/nsattributedstring).
+
 use std::{
     collections::{HashMap, HashSet},
     sync::LazyLock,
