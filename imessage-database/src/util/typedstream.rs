@@ -14,6 +14,7 @@ pub struct TypeLengthPair {
 }
 
 /// Converts a `Property` to a range pair used to denote a type index and a length
+#[inline(always)]
 pub fn as_type_length_pair<'a>(property: &'a mut Property<'a, 'a>) -> Option<TypeLengthPair> {
     if let Property::Group(group) = property {
         let mut iter = group.iter();
@@ -31,7 +32,9 @@ pub fn as_type_length_pair<'a>(property: &'a mut Property<'a, 'a>) -> Option<Typ
 }
 
 /// Converts a `Property` to an `Option<i64>` if it is a signed integer or similar structure.
-#[must_use] pub fn as_signed_integer(property: &Property<'_, '_>) -> Option<i64> {
+#[must_use]
+#[inline(always)]
+pub fn as_signed_integer(property: &Property<'_, '_>) -> Option<i64> {
     if let Property::Group(group) = property {
         let mut iter = group.iter();
         let val = iter.next()?;
@@ -49,7 +52,9 @@ pub fn as_type_length_pair<'a>(property: &'a mut Property<'a, 'a>) -> Option<Typ
 }
 
 /// Converts a `Property` to an `Option<u64>` if it is an unsigned integer or similar structure.
-#[must_use] pub fn as_unsigned_integer<'a>(property: &'a Property<'a, 'a>) -> Option<u64> {
+#[must_use]
+#[inline(always)]
+pub fn as_unsigned_integer<'a>(property: &'a Property<'a, 'a>) -> Option<u64> {
     if let Property::Group(group) = property {
         let mut iter = group.iter();
         let val = iter.next()?;
@@ -67,7 +72,9 @@ pub fn as_type_length_pair<'a>(property: &'a mut Property<'a, 'a>) -> Option<Typ
 }
 
 /// Converts a `Property` to an `Option<f32>` if it is an unsigned integer or similar structure.
-#[must_use] pub fn as_float<'a>(property: &'a Property<'a, 'a>) -> Option<f64> {
+#[must_use]
+#[inline(always)]
+pub fn as_float<'a>(property: &'a Property<'a, 'a>) -> Option<f64> {
     if let Property::Group(group) = property {
         let mut iter = group.iter();
         let val = iter.next()?;
@@ -85,6 +92,7 @@ pub fn as_type_length_pair<'a>(property: &'a mut Property<'a, 'a>) -> Option<Typ
 }
 
 /// Converts a `Property` to an `Option<&str>` if it is a `NSString` or similar structure.
+#[inline(always)]
 pub fn as_nsstring<'a>(property: &'a mut Property<'a, 'a>) -> Option<&'a str> {
     if let Property::Group(group) = property {
         let mut iter = group.iter_mut();
@@ -102,6 +110,7 @@ pub fn as_nsstring<'a>(property: &'a mut Property<'a, 'a>) -> Option<&'a str> {
 }
 
 /// Converts a `Property` to Vec<Property> if it is a `NSDictionary`
+#[inline(always)]
 pub fn as_ns_dictionary<'a>(
     property: &'a mut Property<'a, 'a>,
 ) -> Option<&'a mut PropertyIterator<'a, 'a>> {
@@ -124,6 +133,7 @@ pub fn as_ns_dictionary<'a>(
 
 /// Given a mutable reference to a resolved `Property`,\
 /// walks 2 levels of nested groups under an NSURL→NSString and returns the inner &str.
+#[inline(always)]
 pub fn as_nsurl<'a>(property: &'a mut Property<'a, 'a>) -> Option<&'a str> {
     // only care about top‐level Group
     if let Property::Group(groups) = property {
