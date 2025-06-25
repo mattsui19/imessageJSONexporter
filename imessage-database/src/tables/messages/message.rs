@@ -459,8 +459,9 @@ impl Message {
                 self.text = parsed.text;
                 if self.balloon_bundle_id.is_some() {
                     self.components = vec![BubbleComponent::App];
+                } else {
+                    self.components = parsed.components;
                 }
-                self.components = parsed.components;
             }
 
             // If the above parsing failed, fall back to the legacy parser instead
