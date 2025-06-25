@@ -96,7 +96,7 @@ On my M1 Max MacBook Pro, approximate performance is as follows:
 
 | `--copy-method` | Messages exported per second |
 |---|---|
-| `disabled` | 70,000 |
+| `disabled` | 95,000 |
 | `clone` | 33,000 |
 | `basic` | ≈ 350 |
 | `full` | ≈ 250 |
