@@ -120,7 +120,7 @@ use std::{collections::HashMap, io::Read};
 use chrono::{DateTime, offset::Local};
 use crabstep::TypedStreamDeserializer;
 use plist::Value;
-use rusqlite::{Connection, Error, Result, Row, Statement, blob::Blob};
+use rusqlite::{Connection, Error, Result, Row, Statement};
 
 use crate::{
     error::{message::MessageError, table::TableError},
@@ -137,9 +137,9 @@ use crate::{
             query_parts::{ios_13_older_query, ios_14_15_query, ios_16_newer_query},
         },
         table::{
-            ATTRIBUTED_BODY, CHAT_MESSAGE_JOIN, Cacheable, Diagnostic, GetBlob, MESSAGE,
+            ATTRIBUTED_BODY, CHAT_MESSAGE_JOIN, Cacheable, Diagnostic, MESSAGE,
             MESSAGE_ATTACHMENT_JOIN, MESSAGE_PAYLOAD, MESSAGE_SUMMARY_INFO, RECENTLY_DELETED,
-            Table,
+            SqlBlob, Table,
         },
     },
     util::{
@@ -433,19 +433,7 @@ impl Cacheable for Message {
     }
 }
 
-impl GetBlob for Message {
-    /// Extract a blob of data that belongs to a single message from a given column
-    fn get_blob<'a>(&self, db: &'a Connection, column: &str) -> Option<Blob<'a>> {
-        db.blob_open(
-            rusqlite::MAIN_DB,
-            MESSAGE,
-            column,
-            i64::from(self.rowid),
-            true,
-        )
-        .ok()
-    }
-}
+impl SqlBlob for Message {}
 
 impl Message {
     /// Generate the text of a message, deserializing it as [`typedstream`](crate::util::typedstream) (and falling back to [`streamtyped`]) data if necessary.
@@ -481,7 +469,11 @@ impl Message {
 
                 // If the message is a single URL or has a balloon bundle ID
                 // set the components to just the app component
-                if is_single_url || self.balloon_bundle_id.is_some() {
+                // TODO: some kind of check for if the `payload_data` exists
+                if self.balloon_bundle_id.is_some()
+                    || is_single_url
+                        && self.has_blob(db, MESSAGE, MESSAGE_PAYLOAD, self.rowid.into())
+                {
                     self.components = vec![BubbleComponent::App];
                 } else {
                     self.components = parsed.components;
@@ -1098,7 +1090,7 @@ impl Message {
     /// This column contains data used by iMessage app balloons and can be parsed with
     /// [`parse_ns_keyed_archiver()`](crate::util::plist::parse_ns_keyed_archiver).
     pub fn payload_data(&self, db: &Connection) -> Option<Value> {
-        Value::from_reader(self.get_blob(db, MESSAGE_PAYLOAD)?).ok()
+        Value::from_reader(self.get_blob(db, MESSAGE, MESSAGE_PAYLOAD, self.rowid.into())?).ok()
     }
 
     /// Get a message's raw data from the [`MESSAGE_PAYLOAD`] BLOB column
@@ -1109,7 +1101,7 @@ impl Message {
     /// This column contains data used by [`HandwrittenMessage`](crate::message_types::handwriting::HandwrittenMessage)s.
     pub fn raw_payload_data(&self, db: &Connection) -> Option<Vec<u8>> {
         let mut buf = Vec::new();
-        self.get_blob(db, MESSAGE_PAYLOAD)?
+        self.get_blob(db, MESSAGE, MESSAGE_PAYLOAD, self.rowid.into())?
             .read_to_end(&mut buf)
             .ok()?;
         Some(buf)
@@ -1122,7 +1114,8 @@ impl Message {
     ///
     /// This column contains data used by [`edited`](crate::message_types::edited) iMessages.
     pub fn message_summary_info(&self, db: &Connection) -> Option<Value> {
-        Value::from_reader(self.get_blob(db, MESSAGE_SUMMARY_INFO)?).ok()
+        Value::from_reader(self.get_blob(db, MESSAGE, MESSAGE_SUMMARY_INFO, self.rowid.into())?)
+            .ok()
     }
 
     /// Get a message's [typedstream](crate::util::typedstream) from the [`ATTRIBUTED_BODY`] BLOB column
@@ -1133,7 +1126,7 @@ impl Message {
     /// This column contains the message's body text with any other attributes.
     pub fn attributed_body(&self, db: &Connection) -> Option<Vec<u8>> {
         let mut body = vec![];
-        self.get_blob(db, ATTRIBUTED_BODY)?
+        self.get_blob(db, MESSAGE, ATTRIBUTED_BODY, self.rowid.into())?
             .read_to_end(&mut body)
             .ok();
         Some(body)

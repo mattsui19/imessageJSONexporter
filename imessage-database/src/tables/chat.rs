@@ -5,13 +5,13 @@
 use std::collections::HashMap;
 
 use plist::Value;
-use rusqlite::{Connection, Error, Result, Row, Statement, blob::Blob};
+use rusqlite::{Connection, Error, Result, Row, Statement};
 
 use crate::{
     error::{plist::PlistParseError, table::TableError},
     tables::{
         messages::models::Service,
-        table::{CHAT, Cacheable, GetBlob, PROPERTIES, Table},
+        table::{CHAT, Cacheable, PROPERTIES, SqlBlob, Table},
     },
     util::plist::{get_bool_from_dict, get_owned_string_from_dict},
 };
@@ -112,13 +112,7 @@ impl Cacheable for Chat {
     }
 }
 
-impl GetBlob for Chat {
-    /// Extract a blob of data that belongs to a single message from a given column
-    fn get_blob<'a>(&self, db: &'a Connection, column: &str) -> Option<Blob<'a>> {
-        db.blob_open(rusqlite::MAIN_DB, CHAT, column, i64::from(self.rowid), true)
-            .ok()
-    }
-}
+impl SqlBlob for Chat {}
 
 impl Chat {
     /// Generate a name for a chat, falling back to the default if a custom one is not set
@@ -156,7 +150,7 @@ impl Chat {
     /// only get invoked when needed.
     #[must_use]
     pub fn properties(&self, db: &Connection) -> Option<Properties> {
-        match Value::from_reader(self.get_blob(db, PROPERTIES)?) {
+        match Value::from_reader(self.get_blob(db, CHAT, PROPERTIES, self.rowid.into())?) {
             Ok(plist) => Properties::from_plist(&plist).ok(),
             Err(_) => None,
         }

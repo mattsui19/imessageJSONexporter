@@ -127,9 +127,35 @@ pub trait Diagnostic {
 }
 
 /// Defines behavior for getting BLOB data from from a table
-pub trait GetBlob {
+pub trait SqlBlob {
     /// Retreive `BLOB` data from a table
-    fn get_blob<'a>(&self, db: &'a Connection, column: &str) -> Option<Blob<'a>>;
+    fn get_blob<'a>(
+        &self,
+        db: &'a Connection,
+        table: &str,
+        column: &str,
+        rowid: i64,
+    ) -> Option<Blob<'a>> {
+        db.blob_open(rusqlite::MAIN_DB, table, column, rowid, true)
+            .ok()
+    }
+
+    /// Check if a BLOB exists in the table for a given row ID
+    fn has_blob(&self, db: &Connection, table: &str, column: &str, rowid: i64) -> bool {
+        let sql = format!(
+            "SELECT ({col} IS NOT NULL) AS not_null
+         FROM {table}
+         WHERE rowid = ?1",
+            table = table,
+            col = column,
+        );
+
+        // This returns 1 for true, 0 for false.
+        db.query_row(&sql, [rowid], |row| row.get(0))
+            .ok()
+            .map(|v: i32| v != 0)
+            .unwrap_or(false)
+    }
 }
 
 /// Get a connection to the iMessage `SQLite` database
