@@ -448,6 +448,14 @@ impl GetBlob for Message {
 impl Message {
     /// Generate the text of a message, deserializing it as [`typedstream`](crate::util::typedstream) (and falling back to [`streamtyped`]) data if necessary.
     pub fn generate_text<'a>(&'a mut self, db: &'a Connection) -> Result<&'a str, MessageError> {
+        // Generate the edited message data
+        self.edited_parts = self
+            .is_edited()
+            .then(|| self.message_summary_info(db))
+            .flatten()
+            .as_ref()
+            .and_then(|payload| EditedMessage::from_map(payload).ok());
+
         // Grab the body data from the table
         if let Some(body) = self.attributed_body(db) {
             // Attempt to deserialize the typedstream data
@@ -474,14 +482,6 @@ impl Message {
                 }
             }
         }
-
-        // Generate the edited message data
-        self.edited_parts = self
-            .is_edited()
-            .then(|| self.message_summary_info(db))
-            .flatten()
-            .as_ref()
-            .and_then(|payload| EditedMessage::from_map(payload).ok());
 
         if let Some(t) = &self.text {
             Ok(t)
