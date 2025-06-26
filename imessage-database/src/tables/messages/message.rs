@@ -198,7 +198,7 @@ pub struct Message {
     pub group_action_type: i32,
     /// The message GUID of a message associated with this one
     pub associated_message_guid: Option<String>,
-    /// Intermediate data for determining the [`Variant`] of a message
+    /// The numeric type code for the associated message, used to determine message variant
     pub associated_message_type: Option<i32>,
     /// The [bundle ID](https://developer.apple.com/help/app-store-connect/reference/app-bundle-information) of the app that generated the [`AppMessage`](crate::message_types::app::AppMessage)
     pub balloon_bundle_id: Option<String>,
@@ -285,7 +285,7 @@ impl Table for Message {
 impl Diagnostic for Message {
     /// Emit diagnostic data for the Messages table
     ///
-    /// # Example:
+    /// # Example
     ///
     /// ```
     /// use imessage_database::util::dirs::default_db_path;
@@ -791,7 +791,7 @@ impl Message {
 
     /// Get the number of messages in the database
     ///
-    /// # Example:
+    /// # Example
     ///
     /// ```
     /// use imessage_database::util::dirs::default_db_path;
@@ -836,7 +836,7 @@ impl Message {
 
     /// Stream messages from the database with optional filters.
     ///
-    /// # Example:
+    /// # Example
     ///
     /// ```
     /// use imessage_database::util::dirs::default_db_path;
@@ -877,7 +877,9 @@ impl Message {
             })?)
     }
 
-    /// See [`Tapback`] for details on this data.
+    /// Clean and parse the associated message GUID for tapbacks and replies.
+    ///
+    /// Returns a tuple of (component index, message GUID) if present.
     #[must_use]
     pub fn clean_associated_guid(&self) -> Option<(usize, &str)> {
         if let Some(guid) = &self.associated_message_guid {
