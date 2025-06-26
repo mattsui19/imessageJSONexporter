@@ -400,6 +400,7 @@ impl Cacheable for Message {
 }
 
 impl Message {
+    /// Create a new [`Message`] from a [`Row`], using the fast indexed access method.
     fn from_row_idx(row: &Row) -> Result<Message> {
         Ok(Message {
             rowid: row.get(0)?,
@@ -437,6 +438,7 @@ impl Message {
         })
     }
 
+    /// Create a new [`Message`] from a [`Row`], using the slower, but more compatible, named access method.
     fn from_row_named(row: &Row) -> Result<Message> {
         Ok(Message {
             rowid: row.get("rowid")?,
