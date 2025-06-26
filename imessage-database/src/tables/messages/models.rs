@@ -17,8 +17,6 @@ use crate::{
 /// # Component Types
 ///
 /// A single iMessage contains data that may be represented across multiple bubbles.
-///
-/// iMessage bubbles can only contain data of one variant of this enum at a time.
 #[derive(Debug, PartialEq, Clone)]
 pub enum BubbleComponent {
     /// A text message with associated formatting, generally representing ranges present in a `NSAttributedString`
