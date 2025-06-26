@@ -37,17 +37,33 @@ const APP_CHAR: char = '\u{FFFD}';
 /// A collection of characters that represent non-text content within body text
 const REPLACEMENT_CHARS: [char; 2] = [ATTACHMENT_CHAR, APP_CHAR];
 
+/// Indicates the outcome of parsing an attributed range: either an optional text effect or a style change.
 pub enum RangeResult {
     Effect(Option<TextEffect>),
     Style(Style),
 }
 
+/// The result of parsing a message body, containing its components and optional plain text.
 pub struct ParseResult {
     pub components: Vec<BubbleComponent>,
     pub text: Option<String>,
 }
 
-/// Logic to use deserialized typedstream data to parse the message body
+/// Logic to use deserialized `typedstream` data to parse the message body
+///
+/// Parses `typedstream` components and optional edited parts into message body components and text.
+///
+/// Takes an optional [`PropertyIterator`] over `typedstream` data and optional edited parts,
+/// returning `Some(ParseResult)` when parsing yields components, otherwise `None`.
+///
+/// # Parameters
+///
+/// - `components`: Iterator over `typedstream` properties representing an `NSAttributedString`.
+/// - `edited_parts`: Optional edited message parts to mark unsent components.
+///
+/// # Returns
+///
+/// `Option<ParseResult>` containing parsed components and text, or `None` if no components found.
 pub fn parse_body_typedstream<'a>(
     components: Option<PropertyIterator<'a, 'a>>,
     edited_parts: Option<&'a EditedMessage>,
@@ -179,9 +195,10 @@ fn utf16_idx(text: &str, idx: usize, map: &[usize]) -> usize {
     *map.get(idx).unwrap_or(&text.len())
 }
 
-/// Determine the type of bubble the current range represents
+/// Determines the type of bubble component for a given typedstream range.
 ///
-/// App messages are handled in [`body()`](crate::tables::table::AttributedBody); they are detected by the presence of data in the `balloon_bundle_id` column.
+/// This inspects typedstream properties to classify a range as text, attachment, or app content,
+/// returning `Some(BubbleComponent)` when a valid component is detected.
 fn get_bubble_type<'a>(
     components: &'a mut PropertyIterator<'a, 'a>,
     text: Option<&str>,

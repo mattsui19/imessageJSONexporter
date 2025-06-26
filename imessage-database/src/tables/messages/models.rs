@@ -48,7 +48,7 @@ pub enum Service<'a> {
 }
 
 impl<'a> Service<'a> {
-    /// Creates a [`Service`] enum variant based on the provided service name string
+    /// Creates a [`Service`] enum variant based on the provided service name string.
     #[must_use]
     pub fn from(service: Option<&'a str>) -> Self {
         if let Some(service_name) = service {
@@ -108,7 +108,7 @@ pub struct TextAttributes {
 }
 
 impl TextAttributes {
-    /// Creates a new [`TextAttributes`] with the specified start index, end index, and text effect.
+    /// Creates a new [`TextAttributes`] with the specified start index, end index, and text effects.
     #[must_use]
     pub fn new(start: usize, end: usize, effects: Vec<TextEffect>) -> Self {
         Self {
@@ -135,9 +135,9 @@ pub struct AttachmentMeta {
 }
 
 impl AttachmentMeta {
-    /// Given a slice of parsed [`typedstream`](crate::util::typedstream) data, populate the attachment's metadata fields.
+    /// Populates the attachment metadata fields from a typedstream property iterator.
     #[must_use]
-    pub fn from_components<'a>(
+    pub(crate) fn from_components<'a>(
         first_key: &str,
         components: &'a mut PropertyIterator<'a, 'a>,
     ) -> Self {
@@ -190,9 +190,9 @@ pub enum GroupAction<'a> {
 }
 
 impl<'a> GroupAction<'a> {
-    /// Creates a new `EventType` based on the provided `item_type` and `group_action_type`
+    /// Creates a new `GroupAction` event type based on the provided message's item and group action data.
     #[must_use]
-    pub fn from_message(message: &'a Message) -> Option<Self> {
+    pub(crate) fn from_message(message: &'a Message) -> Option<Self> {
         match (
             message.item_type,
             message.group_action_type,
