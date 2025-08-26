@@ -61,6 +61,7 @@ pub struct TXT<'a> {
     pb: ExportProgress,
 }
 
+// MARK: Exporter
 impl<'a> Exporter<'a> for TXT<'a> {
     fn new(config: &'a Config) -> Result<Self, RuntimeError> {
         let mut orphaned = config.options.export_path.clone();
@@ -159,6 +160,7 @@ impl<'a> Exporter<'a> for TXT<'a> {
     }
 }
 
+// MARK: Writer
 impl<'a> Writer<'a> for TXT<'a> {
     fn format_message(&self, message: &Message, indent_size: usize) -> Result<String, TableError> {
         let indent = String::from_iter((0..indent_size).map(|_| " "));
@@ -259,13 +261,13 @@ impl<'a> Writer<'a> for TXT<'a> {
                             } else {
                                 match self.format_attachment(attachment, message, metadata) {
                                     Ok(result) => {
-                                        attachment_index += 1;
                                         self.add_line(&mut formatted_message, &result, &indent);
                                     }
                                     Err(result) => {
                                         self.add_line(&mut formatted_message, result, &indent);
                                     }
                                 }
+                                attachment_index += 1;
                             }
                         }
                         // Attachment does not exist in attachments table
@@ -755,6 +757,7 @@ impl<'a> Writer<'a> for TXT<'a> {
     }
 }
 
+// MARK: Balloon
 impl<'a> BalloonFormatter<&'a str> for TXT<'a> {
     fn format_url(&self, msg: &Message, balloon: &URLMessage, indent: &str) -> String {
         let mut out_s = String::new();
@@ -1096,6 +1099,7 @@ impl<'a> BalloonFormatter<&'a str> for TXT<'a> {
     }
 }
 
+// MARK: Impl
 impl TXT<'_> {
     fn get_time(&self, message: &Message) -> String {
         let mut date = format(&message.date(&self.config.offset));
@@ -1122,6 +1126,7 @@ impl TXT<'_> {
     }
 }
 
+// MARK: Tests
 #[cfg(test)]
 mod tests {
     use std::env::current_dir;

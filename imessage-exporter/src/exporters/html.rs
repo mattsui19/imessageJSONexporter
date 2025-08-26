@@ -56,6 +56,7 @@ use imessage_database::{
     },
 };
 
+// MARK: HTML
 const HEADER: &str = "<html>\n<head>\n<meta charset=\"UTF-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">";
 const FOOTER: &str = "</body></html>";
 const STYLE: &str = include_str!("resources/style.css");
@@ -82,6 +83,7 @@ pub struct HTML<'a> {
     pb: ExportProgress,
 }
 
+// MARK: Exporter
 impl<'a> Exporter<'a> for HTML<'a> {
     fn new(config: &'a Config) -> Result<Self, RuntimeError> {
         let mut orphaned = config.options.export_path.clone();
@@ -200,6 +202,7 @@ impl<'a> Exporter<'a> for HTML<'a> {
     }
 }
 
+// MARK: Writer
 impl<'a> Writer<'a> for HTML<'a> {
     fn format_message(&self, message: &Message, indent_size: usize) -> Result<String, TableError> {
         // Data we want to write to a file
@@ -294,7 +297,6 @@ impl<'a> Writer<'a> for HTML<'a> {
         }
 
         // Useful message metadata
-        let message_parts = &message.components;
         let mut attachments = Attachment::from_message(self.config.db(), message)?;
         let mut replies = message.get_replies(self.config.db())?;
 
@@ -333,7 +335,7 @@ impl<'a> Writer<'a> for HTML<'a> {
         }
 
         // Generate the message body from it's components
-        for (idx, message_part) in message_parts.iter().enumerate() {
+        for (idx, message_part) in message.components.iter().enumerate() {
             // Write the part div start
             self.add_line(
                 &mut formatted_message,
@@ -405,7 +407,6 @@ impl<'a> Writer<'a> for HTML<'a> {
                             } else {
                                 match self.format_attachment(attachment, message, metadata) {
                                     Ok(result) => {
-                                        attachment_index += 1;
                                         self.add_line(
                                             &mut formatted_message,
                                             &result,
@@ -415,13 +416,14 @@ impl<'a> Writer<'a> for HTML<'a> {
                                     }
                                     Err(result) => {
                                         self.add_line(
-                                        &mut formatted_message,
-                                        result,
-                                        "<span class=\"attachment_error\">Unable to locate attachment: ",
-                                        "</span>",
-                                    );
+                                            &mut formatted_message,
+                                            result,
+                                            "<span class=\"attachment_error\">Unable to locate attachment: ",
+                                            "</span>",
+                                        );
                                     }
                                 }
+                                attachment_index += 1;
                             }
                         }
                         // Attachment does not exist in attachments table
@@ -1061,6 +1063,7 @@ impl<'a> Writer<'a> for HTML<'a> {
     }
 }
 
+// MARK: Balloons
 impl<'a> BalloonFormatter<&'a Message> for HTML<'a> {
     fn format_url(&self, msg: &Message, balloon: &URLMessage, _: &Message) -> String {
         let mut out_s = String::new();
@@ -1556,6 +1559,7 @@ impl<'a> BalloonFormatter<&'a Message> for HTML<'a> {
     }
 }
 
+// MARK: Text Effects
 impl<'a> TextEffectFormatter<'a> for HTML<'a> {
     fn format_effect(&'a self, text: &'a str, effect: &'a TextEffect) -> Cow<'a, str> {
         match effect {
@@ -1609,6 +1613,7 @@ impl<'a> TextEffectFormatter<'a> for HTML<'a> {
     }
 }
 
+// MARK: Impl
 impl HTML<'_> {
     fn get_time(&self, message: &Message) -> (String, String) {
         let date = format(&message.date(&self.config.offset));
@@ -1789,6 +1794,7 @@ impl HTML<'_> {
     }
 }
 
+// MARK: Tests
 #[cfg(test)]
 mod tests {
     use std::{env::current_dir, path::PathBuf};
