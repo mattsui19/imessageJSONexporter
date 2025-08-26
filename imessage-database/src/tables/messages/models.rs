@@ -148,10 +148,10 @@ impl AttachmentMeta {
         }
 
         while let Some(mut key) = components.next() {
-            if let Some(key_name) = as_nsstring(&mut key) {
-                if let Some(mut value) = components.next() {
-                    meta.set_from_key_value(key_name, &mut value);
-                }
+            if let Some(key_name) = as_nsstring(&mut key)
+                && let Some(mut value) = components.next()
+            {
+                meta.set_from_key_value(key_name, &mut value);
             }
         }
 

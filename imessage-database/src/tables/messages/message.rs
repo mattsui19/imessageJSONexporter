@@ -233,7 +233,7 @@ impl Table for Message {
 
     /// Convert data from the messages table to native Rust data structures, falling back to
     /// more compatible queries to ensure compatibility with older database schemas
-    fn get(db: &Connection) -> Result<CachedStatement, TableError> {
+    fn get(db: &'_ Connection) -> Result<CachedStatement<'_>, TableError> {
         Ok(db
             .prepare_cached(&ios_16_newer_query(None))
             .or_else(|_| db.prepare_cached(&ios_14_15_query(None)))
@@ -383,14 +383,14 @@ impl Cacheable for Message {
             // Iterate over the messages and update the map
             for message in messages {
                 let message = Self::extract(message)?;
-                if message.is_tapback() {
-                    if let Some((idx, tapback_target_guid)) = message.clean_associated_guid() {
-                        map.entry(tapback_target_guid.to_string())
-                            .or_insert_with(HashMap::new)
-                            .entry(idx)
-                            .or_insert_with(Vec::new)
-                            .push(message);
-                    }
+                if message.is_tapback()
+                    && let Some((idx, tapback_target_guid)) = message.clean_associated_guid()
+                {
+                    map.entry(tapback_target_guid.to_string())
+                        .or_insert_with(HashMap::new)
+                        .entry(idx)
+                        .or_insert_with(Vec::new)
+                        .push(message);
                 }
             }
         }
@@ -553,10 +553,10 @@ impl Message {
         db: &'a Connection,
     ) -> Result<&'a str, MessageError> {
         // If the text is missing, try and query for it
-        if self.text.is_none() {
-            if let Some(body) = self.attributed_body(db) {
-                self.text = Some(streamtyped::parse(body)?);
-            }
+        if self.text.is_none()
+            && let Some(body) = self.attributed_body(db)
+        {
+            self.text = Some(streamtyped::parse(body)?);
         }
 
         // Fallback component parser as well
@@ -680,10 +680,10 @@ impl Message {
     /// `true` if the specified message component was [edited](crate::message_types::edited::EditStatus::Edited), else `false`
     #[must_use]
     pub fn is_part_edited(&self, index: usize) -> bool {
-        if let Some(edited_parts) = &self.edited_parts {
-            if let Some(part) = edited_parts.part(index) {
-                return matches!(part.status, EditStatus::Edited);
-            }
+        if let Some(edited_parts) = &self.edited_parts
+            && let Some(part) = edited_parts.part(index)
+        {
+            return matches!(part.status, EditStatus::Edited);
         }
         false
     }
@@ -738,7 +738,7 @@ impl Message {
 
     /// Get the group action for the current message
     #[must_use]
-    pub fn group_action(&self) -> Option<GroupAction> {
+    pub fn group_action(&'_ self) -> Option<GroupAction<'_>> {
         GroupAction::from_message(self)
     }
 
@@ -980,7 +980,7 @@ impl Message {
 
     /// Get the variant of a message, see [`variants`](crate::message_types::variants) for detail.
     #[must_use]
-    pub fn variant(&self) -> Variant {
+    pub fn variant(&'_ self) -> Variant<'_> {
         // Check if a message was edited first as those have special properties
         if self.is_edited() {
             return Variant::Edited;
@@ -1108,7 +1108,7 @@ impl Message {
 
     /// Determine the type of announcement a message contains, if it contains one
     #[must_use]
-    pub fn get_announcement(&self) -> Option<Announcement> {
+    pub fn get_announcement(&'_ self) -> Option<Announcement<'_>> {
         if let Some(action) = self.group_action() {
             return Some(Announcement::GroupAction(action));
         }
@@ -1126,7 +1126,7 @@ impl Message {
 
     /// Determine the service the message was sent from, i.e. iMessage, SMS, IRC, etc.
     #[must_use]
-    pub fn service(&self) -> Service {
+    pub fn service(&'_ self) -> Service<'_> {
         Service::from(self.service.as_deref())
     }
 
@@ -1182,7 +1182,7 @@ impl Message {
 
     /// Determine which [`Expressive`] the message was sent with
     #[must_use]
-    pub fn get_expressive(&self) -> Expressive {
+    pub fn get_expressive(&'_ self) -> Expressive<'_> {
         match &self.expressive_send_style_id {
             Some(content) => match content.as_str() {
                 "com.apple.MobileSMS.expressivesend.gentle" => {

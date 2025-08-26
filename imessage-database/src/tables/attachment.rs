@@ -120,7 +120,7 @@ impl Table for Attachment {
         })
     }
 
-    fn get(db: &Connection) -> Result<CachedStatement, TableError> {
+    fn get(db: &'_ Connection) -> Result<CachedStatement<'_>, TableError> {
         Ok(db.prepare_cached(&format!("SELECT * from {ATTACHMENT}"))?)
     }
 

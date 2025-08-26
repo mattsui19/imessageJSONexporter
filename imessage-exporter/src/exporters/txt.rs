@@ -225,12 +225,11 @@ impl<'a> Writer<'a> for TXT<'a> {
                     if let Some(text) = &message.text {
                         // Render edited message content, if applicable
                         if message.is_part_edited(idx) {
-                            if let Some(edited_parts) = &message.edited_parts {
-                                if let Some(edited) =
+                            if let Some(edited_parts) = &message.edited_parts
+                                && let Some(edited) =
                                     self.format_edited(message, edited_parts, idx, &indent)
-                                {
-                                    self.add_line(&mut formatted_message, &edited, &indent);
-                                }
+                            {
+                                self.add_line(&mut formatted_message, &edited, &indent);
                             }
                         } else {
                             let mut formatted_text = self.format_attributes(text, text_attrs);
@@ -286,12 +285,11 @@ impl<'a> Writer<'a> for TXT<'a> {
                     ),
                 },
                 BubbleComponent::Retracted => {
-                    if let Some(edited_parts) = &message.edited_parts {
-                        if let Some(edited) =
+                    if let Some(edited_parts) = &message.edited_parts
+                        && let Some(edited) =
                             self.format_edited(message, edited_parts, idx, &indent)
-                        {
-                            self.add_line(&mut formatted_message, &edited, &indent);
-                        }
+                    {
+                        self.add_line(&mut formatted_message, &edited, &indent);
                     }
                 }
             }
@@ -306,27 +304,27 @@ impl<'a> Writer<'a> for TXT<'a> {
             }
 
             // Handle Tapbacks
-            if let Some(tapbacks_map) = self.config.tapbacks.get(&message.guid) {
-                if let Some(tapbacks) = tapbacks_map.get(&idx) {
-                    let mut formatted_tapbacks = String::new();
-                    tapbacks
-                        .iter()
-                        .try_for_each(|tapbacks| -> Result<(), TableError> {
-                            let formatted = self.format_tapback(tapbacks)?;
-                            if !formatted.is_empty() {
-                                self.add_line(
-                                    &mut formatted_tapbacks,
-                                    &self.format_tapback(tapbacks)?,
-                                    &indent,
-                                );
-                            }
-                            Ok(())
-                        })?;
+            if let Some(tapbacks_map) = self.config.tapbacks.get(&message.guid)
+                && let Some(tapbacks) = tapbacks_map.get(&idx)
+            {
+                let mut formatted_tapbacks = String::new();
+                tapbacks
+                    .iter()
+                    .try_for_each(|tapbacks| -> Result<(), TableError> {
+                        let formatted = self.format_tapback(tapbacks)?;
+                        if !formatted.is_empty() {
+                            self.add_line(
+                                &mut formatted_tapbacks,
+                                &self.format_tapback(tapbacks)?,
+                                &indent,
+                            );
+                        }
+                        Ok(())
+                    })?;
 
-                    if !formatted_tapbacks.is_empty() {
-                        self.add_line(&mut formatted_message, "Tapbacks:", &indent);
-                        self.add_line(&mut formatted_message, &formatted_tapbacks, &indent);
-                    }
+                if !formatted_tapbacks.is_empty() {
+                    self.add_line(&mut formatted_message, "Tapbacks:", &indent);
+                    self.add_line(&mut formatted_message, &formatted_tapbacks, &indent);
                 }
             }
 
@@ -462,22 +460,22 @@ impl<'a> Writer<'a> for TXT<'a> {
             let mut app_bubble = String::new();
 
             // Handwritten messages use a different payload type, so check that first
-            if message.is_handwriting() {
-                if let Some(payload) = message.raw_payload_data(self.config.db()) {
-                    return match HandwrittenMessage::from_payload(&payload) {
-                        Ok(bubble) => Ok(self.format_handwriting(message, &bubble, indent)),
-                        Err(why) => Err(PlistParseError::HandwritingError(why)),
-                    };
-                }
+            if message.is_handwriting()
+                && let Some(payload) = message.raw_payload_data(self.config.db())
+            {
+                return match HandwrittenMessage::from_payload(&payload) {
+                    Ok(bubble) => Ok(self.format_handwriting(message, &bubble, indent)),
+                    Err(why) => Err(PlistParseError::HandwritingError(why)),
+                };
             }
 
-            if message.is_digital_touch() {
-                if let Some(payload) = message.raw_payload_data(self.config.db()) {
-                    return match digital_touch::from_payload(&payload) {
-                        Some(bubble) => Ok(self.format_digital_touch(message, &bubble, indent)),
-                        None => Err(PlistParseError::DigitalTouchError),
-                    };
-                }
+            if message.is_digital_touch()
+                && let Some(payload) = message.raw_payload_data(self.config.db())
+            {
+                return match digital_touch::from_payload(&payload) {
+                    Some(bubble) => Ok(self.format_digital_touch(message, &bubble, indent)),
+                    None => Err(PlistParseError::DigitalTouchError),
+                };
             }
 
             if let Some(payload) = message.payload_data(self.config.db()) {
@@ -519,10 +517,10 @@ impl<'a> Writer<'a> for TXT<'a> {
                 app_bubble.push_str(&res);
             } else {
                 // Sometimes, URL messages are missing their payloads
-                if message.is_url() {
-                    if let Some(text) = &message.text {
-                        return Ok(text.to_string());
-                    }
+                if message.is_url()
+                    && let Some(text) = &message.text
+                {
+                    return Ok(text.to_string());
                 }
                 return Err(PlistParseError::NoPayload);
             }
@@ -1104,15 +1102,15 @@ impl TXT<'_> {
     fn get_time(&self, message: &Message) -> String {
         let mut date = format(&message.date(&self.config.offset));
         let read_after = message.time_until_read(&self.config.offset);
-        if let Some(time) = read_after {
-            if !time.is_empty() {
-                let who = if message.is_from_me() {
-                    "them"
-                } else {
-                    self.config.options.custom_name.as_deref().unwrap_or("you")
-                };
-                date.push_str(&format!(" (Read by {who} after {time})"));
-            }
+        if let Some(time) = read_after
+            && !time.is_empty()
+        {
+            let who = if message.is_from_me() {
+                "them"
+            } else {
+                self.config.options.custom_name.as_deref().unwrap_or("you")
+            };
+            date.push_str(&format!(" (Read by {who} after {time})"));
         }
         date
     }

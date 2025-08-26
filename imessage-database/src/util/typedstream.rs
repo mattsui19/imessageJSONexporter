@@ -18,13 +18,13 @@ pub struct TypeLengthPair {
 pub fn as_type_length_pair<'a>(property: &'a mut Property<'a, 'a>) -> Option<TypeLengthPair> {
     if let Property::Group(group) = property {
         let mut iter = group.iter();
-        if let Some(Property::Primitive(OutputData::SignedInteger(type_index))) = iter.next() {
-            if let Some(Property::Primitive(OutputData::UnsignedInteger(length))) = iter.next() {
-                return Some(TypeLengthPair {
-                    type_index: *type_index,
-                    length: *length,
-                });
-            }
+        if let Some(Property::Primitive(OutputData::SignedInteger(type_index))) = iter.next()
+            && let Some(Property::Primitive(OutputData::UnsignedInteger(length))) = iter.next()
+        {
+            return Some(TypeLengthPair {
+                type_index: *type_index,
+                length: *length,
+            });
         }
     }
 
@@ -40,12 +40,12 @@ pub fn as_signed_integer(property: &Property<'_, '_>) -> Option<i64> {
         let val = iter.next()?;
         if let Property::Primitive(OutputData::SignedInteger(value)) = val {
             return Some(*value);
-        } else if let Property::Object { name, data, .. } = val {
-            if *name == "NSNumber" {
-                // Clone the iterator to be able to call next() on it
-                let mut data_iter = data.clone();
-                return as_signed_integer(&data_iter.next()?);
-            }
+        } else if let Property::Object { name, data, .. } = val
+            && *name == "NSNumber"
+        {
+            // Clone the iterator to be able to call next() on it
+            let mut data_iter = data.clone();
+            return as_signed_integer(&data_iter.next()?);
         }
     }
     None
@@ -60,12 +60,12 @@ pub fn as_unsigned_integer<'a>(property: &'a Property<'a, 'a>) -> Option<u64> {
         let val = iter.next()?;
         if let Property::Primitive(OutputData::UnsignedInteger(value)) = val {
             return Some(*value);
-        } else if let Property::Object { name, data, .. } = val {
-            if *name == "NSNumber" {
-                // Clone the iterator to be able to call next() on it
-                let mut data_iter = data.clone();
-                return as_unsigned_integer(&data_iter.next()?);
-            }
+        } else if let Property::Object { name, data, .. } = val
+            && *name == "NSNumber"
+        {
+            // Clone the iterator to be able to call next() on it
+            let mut data_iter = data.clone();
+            return as_unsigned_integer(&data_iter.next()?);
         }
     }
     None
@@ -80,12 +80,12 @@ pub fn as_float<'a>(property: &'a Property<'a, 'a>) -> Option<f64> {
         let val = iter.next()?;
         if let Property::Primitive(OutputData::Double(value)) = val {
             return Some(*value);
-        } else if let Property::Object { name, data, .. } = val {
-            if *name == "NSNumber" {
-                // Clone the iterator to be able to call next() on it
-                let mut data_iter = data.clone();
-                return as_float(&data_iter.next()?);
-            }
+        } else if let Property::Object { name, data, .. } = val
+            && *name == "NSNumber"
+        {
+            // Clone the iterator to be able to call next() on it
+            let mut data_iter = data.clone();
+            return as_float(&data_iter.next()?);
         }
     }
     None
@@ -96,14 +96,12 @@ pub fn as_float<'a>(property: &'a Property<'a, 'a>) -> Option<f64> {
 pub fn as_nsstring<'a>(property: &'a mut Property<'a, 'a>) -> Option<&'a str> {
     if let Property::Group(group) = property {
         let mut iter = group.iter_mut();
-        if let Some(Property::Object { name, data, .. }) = iter.next() {
-            if *name == "NSString" || *name == "NSAttributedString" || *name == "NSMutableString" {
-                if let Some(Property::Group(prim)) = data.next() {
-                    if let Some(Property::Primitive(OutputData::String(s))) = prim.first() {
-                        return Some(s);
-                    }
-                }
-            }
+        if let Some(Property::Object { name, data, .. }) = iter.next()
+            && (*name == "NSString" || *name == "NSAttributedString" || *name == "NSMutableString")
+            && let Some(Property::Group(prim)) = data.next()
+            && let Some(Property::Primitive(OutputData::String(s))) = prim.first()
+        {
+            return Some(s);
         }
     }
     None
@@ -121,10 +119,9 @@ pub fn as_ns_dictionary<'a>(
             name,
             data,
         }) = iter.next()
+            && *name == "NSDictionary"
         {
-            if *name == "NSDictionary" {
-                return Some(data);
-            }
+            return Some(data);
         }
     }
 

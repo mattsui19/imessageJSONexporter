@@ -101,12 +101,11 @@ impl AttachmentManager {
             }
 
             // Ensure the directory tree exists
-            if let Some(folder) = to.parent() {
-                if !folder.exists() {
-                    if let Err(why) = create_dir_all(folder) {
-                        eprintln!("Unable to create {folder:?}: {why}");
-                    }
-                }
+            if let Some(folder) = to.parent()
+                && !folder.exists()
+                && let Err(why) = create_dir_all(folder)
+            {
+                eprintln!("Unable to create {folder:?}: {why}");
             }
 
             // Attempt the svg render
@@ -271,10 +270,8 @@ impl AttachmentManager {
             }
 
             // Remove the temporary file used for decryption, if it exists
-            if is_temp {
-                if let Err(why) = remove_file(&from) {
-                    eprintln!("Unable to remove encrypted file {from:?}: {why}");
-                }
+            if is_temp && let Err(why) = remove_file(&from) {
+                eprintln!("Unable to remove encrypted file {from:?}: {why}");
             }
         }
 

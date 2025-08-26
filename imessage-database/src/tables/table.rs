@@ -43,7 +43,7 @@ pub trait Table: Sized {
     fn from_row(row: &Row) -> Result<Self>;
 
     /// Prepare SELECT * statement
-    fn get(db: &Connection) -> Result<CachedStatement, TableError>;
+    fn get(db: &'_ Connection) -> Result<CachedStatement<'_>, TableError>;
 
     /// Map a `rusqlite::Result<Self>` into our `TableError`
     fn extract(item: Result<Result<Self, Error>, Error>) -> Result<Self, TableError>;

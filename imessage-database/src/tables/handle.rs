@@ -31,7 +31,7 @@ impl Table for Handle {
         })
     }
 
-    fn get(db: &Connection) -> Result<CachedStatement, TableError> {
+    fn get(db: &'_ Connection) -> Result<CachedStatement<'_>, TableError> {
         Ok(db.prepare_cached(&format!("SELECT * from {HANDLE}"))?)
     }
 
@@ -174,11 +174,11 @@ impl Diagnostic for Handle {
 
             done_processing();
 
-            if let Some(dupes) = count_dupes {
-                if dupes > 0 {
-                    println!("Handle diagnostic data:");
-                    println!("    Contacts with more than one ID: {dupes}");
-                }
+            if let Some(dupes) = count_dupes
+                && dupes > 0
+            {
+                println!("Handle diagnostic data:");
+                println!("    Contacts with more than one ID: {dupes}");
             }
         }
 

@@ -349,17 +349,16 @@ impl<'a> Writer<'a> for HTML<'a> {
                     if let Some(text) = &message.text {
                         // Render edited message content, if applicable
                         if message.is_part_edited(idx) {
-                            if let Some(edited_parts) = &message.edited_parts {
-                                if let Some(edited) =
+                            if let Some(edited_parts) = &message.edited_parts
+                                && let Some(edited) =
                                     self.format_edited(message, edited_parts, idx, "")
-                                {
-                                    self.add_line(
-                                        &mut formatted_message,
-                                        &edited,
-                                        "<div class=\"edited\">",
-                                        "</div>",
-                                    );
-                                }
+                            {
+                                self.add_line(
+                                    &mut formatted_message,
+                                    &edited,
+                                    "<div class=\"edited\">",
+                                    "</div>",
+                                );
                             }
                         } else {
                             let mut formatted_text = self.format_attributes(text, text_attrs);
@@ -450,15 +449,15 @@ impl<'a> Writer<'a> for HTML<'a> {
                     ),
                 },
                 BubbleComponent::Retracted => {
-                    if let Some(edited_parts) = &message.edited_parts {
-                        if let Some(edited) = self.format_edited(message, edited_parts, idx, "") {
-                            self.add_line(
-                                &mut formatted_message,
-                                &edited,
-                                "<span class=\"unsent\">",
-                                "</span>",
-                            );
-                        }
+                    if let Some(edited_parts) = &message.edited_parts
+                        && let Some(edited) = self.format_edited(message, edited_parts, idx, "")
+                    {
+                        self.add_line(
+                            &mut formatted_message,
+                            &edited,
+                            "<span class=\"unsent\">",
+                            "</span>",
+                        );
                     }
                 }
             }
@@ -477,36 +476,36 @@ impl<'a> Writer<'a> for HTML<'a> {
             }
 
             // Handle Tapbacks
-            if let Some(tapbacks_map) = self.config.tapbacks.get(&message.guid) {
-                if let Some(tapbacks) = tapbacks_map.get(&idx) {
-                    let mut formatted_tapbacks = String::new();
+            if let Some(tapbacks_map) = self.config.tapbacks.get(&message.guid)
+                && let Some(tapbacks) = tapbacks_map.get(&idx)
+            {
+                let mut formatted_tapbacks = String::new();
 
-                    tapbacks
-                        .iter()
-                        .try_for_each(|tapback| -> Result<(), TableError> {
-                            let formatted = self.format_tapback(tapback)?;
-                            if !formatted.is_empty() {
-                                self.add_line(
-                                    &mut formatted_tapbacks,
-                                    &self.format_tapback(tapback)?,
-                                    "<div class=\"tapback\">",
-                                    "</div>",
-                                );
-                            }
-                            Ok(())
-                        })?;
+                tapbacks
+                    .iter()
+                    .try_for_each(|tapback| -> Result<(), TableError> {
+                        let formatted = self.format_tapback(tapback)?;
+                        if !formatted.is_empty() {
+                            self.add_line(
+                                &mut formatted_tapbacks,
+                                &self.format_tapback(tapback)?,
+                                "<div class=\"tapback\">",
+                                "</div>",
+                            );
+                        }
+                        Ok(())
+                    })?;
 
-                    if !formatted_tapbacks.is_empty() {
-                        self.add_line(
-                            &mut formatted_message,
-                            "<hr><p>Tapbacks:</p>",
-                            "<div class=\"tapbacks\">",
-                            "",
-                        );
-                        self.add_line(&mut formatted_message, &formatted_tapbacks, "", "");
-                    }
-                    self.add_line(&mut formatted_message, "</div>", "", "");
+                if !formatted_tapbacks.is_empty() {
+                    self.add_line(
+                        &mut formatted_message,
+                        "<hr><p>Tapbacks:</p>",
+                        "<div class=\"tapbacks\">",
+                        "",
+                    );
+                    self.add_line(&mut formatted_message, &formatted_tapbacks, "", "");
                 }
+                self.add_line(&mut formatted_message, "</div>", "", "");
             }
 
             // Handle Replies
@@ -696,22 +695,22 @@ impl<'a> Writer<'a> for HTML<'a> {
             let mut app_bubble = String::new();
 
             // Handwritten messages use a different payload type, so check that first
-            if message.is_handwriting() {
-                if let Some(payload) = message.raw_payload_data(self.config.db()) {
-                    return match HandwrittenMessage::from_payload(&payload) {
-                        Ok(bubble) => Ok(self.format_handwriting(message, &bubble, message)),
-                        Err(why) => Err(PlistParseError::HandwritingError(why)),
-                    };
-                }
+            if message.is_handwriting()
+                && let Some(payload) = message.raw_payload_data(self.config.db())
+            {
+                return match HandwrittenMessage::from_payload(&payload) {
+                    Ok(bubble) => Ok(self.format_handwriting(message, &bubble, message)),
+                    Err(why) => Err(PlistParseError::HandwritingError(why)),
+                };
             }
 
-            if message.is_digital_touch() {
-                if let Some(payload) = message.raw_payload_data(self.config.db()) {
-                    return match digital_touch::from_payload(&payload) {
-                        Some(bubble) => Ok(self.format_digital_touch(message, &bubble, message)),
-                        None => Err(PlistParseError::DigitalTouchError),
-                    };
-                }
+            if message.is_digital_touch()
+                && let Some(payload) = message.raw_payload_data(self.config.db())
+            {
+                return match digital_touch::from_payload(&payload) {
+                    Some(bubble) => Ok(self.format_digital_touch(message, &bubble, message)),
+                    None => Err(PlistParseError::DigitalTouchError),
+                };
             }
 
             if let Some(payload) = message.payload_data(self.config.db()) {
@@ -751,23 +750,23 @@ impl<'a> Writer<'a> for HTML<'a> {
                 app_bubble.push_str(&res);
             } else {
                 // Sometimes, URL messages are missing their payloads
-                if message.is_url() {
-                    if let Some(text) = &message.text {
-                        let mut out_s = String::new();
-                        out_s.push_str("<a href=\"");
-                        out_s.push_str(text);
-                        out_s.push_str("\">");
+                if message.is_url()
+                    && let Some(text) = &message.text
+                {
+                    let mut out_s = String::new();
+                    out_s.push_str("<a href=\"");
+                    out_s.push_str(text);
+                    out_s.push_str("\">");
 
-                        out_s.push_str("<div class=\"app_header\"><div class=\"name\">");
-                        out_s.push_str(text);
-                        out_s.push_str("</div></div>");
+                    out_s.push_str("<div class=\"app_header\"><div class=\"name\">");
+                    out_s.push_str(text);
+                    out_s.push_str("</div></div>");
 
-                        out_s.push_str("<div class=\"app_footer\"><div class=\"caption\">");
-                        out_s.push_str(text);
-                        out_s.push_str("</div></div></a>");
+                    out_s.push_str("<div class=\"app_footer\"><div class=\"caption\">");
+                    out_s.push_str(text);
+                    out_s.push_str("</div></div></a>");
 
-                        return Ok(out_s);
-                    }
+                    return Ok(out_s);
                 }
                 return Err(PlistParseError::NoPayload);
             }
@@ -1619,15 +1618,15 @@ impl HTML<'_> {
         let date = format(&message.date(&self.config.offset));
         let mut read_at = String::new();
         let read_after = message.time_until_read(&self.config.offset);
-        if let Some(time) = read_after {
-            if !time.is_empty() {
-                let who = if message.is_from_me() {
-                    "them"
-                } else {
-                    self.config.options.custom_name.as_deref().unwrap_or("you")
-                };
-                read_at = format!("(Read by {who} after {time})");
-            }
+        if let Some(time) = read_after
+            && !time.is_empty()
+        {
+            let who = if message.is_from_me() {
+                "them"
+            } else {
+                self.config.options.custom_name.as_deref().unwrap_or("you")
+            };
+            read_at = format!("(Read by {who} after {time})");
         }
         (date, read_at)
     }
