@@ -36,6 +36,7 @@ use rusqlite::{CachedStatement, Connection, Error, OpenFlags, Result, Row, blob:
 
 use crate::error::table::{TableConnectError, TableError};
 
+// MARK: Traits
 /// Defines behavior for SQL Table data
 pub trait Table: Sized {
     /// Deserialize a single row into Self, returning a [`rusqlite::Result`]
@@ -159,6 +160,7 @@ pub trait Diagnostic {
     fn run_diagnostic(db: &Connection) -> Result<(), TableError>;
 }
 
+// MARK: Database
 /// Get a connection to the iMessage `SQLite` database
 // # Example:
 ///
@@ -213,6 +215,7 @@ pub fn get_db_size(path: &Path) -> Result<u64, TableError> {
     Ok(metadata(path)?.len())
 }
 
+// MARK: Constants
 // Table Names
 /// Handle table name
 pub const HANDLE: &str = "handle";

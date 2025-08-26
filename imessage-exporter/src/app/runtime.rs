@@ -46,6 +46,7 @@ use imessage_database::{
 
 const MAX_LENGTH: usize = 235;
 
+// MARK: Config
 /// Stores the application state and handles application lifecycle
 pub struct Config {
     /// Map of chatroom ID to chatroom information
@@ -210,6 +211,7 @@ impl Config {
         out_s
     }
 
+    // MARK: Init
     /// Create a new instance of the application
     ///
     /// # Example:
@@ -280,6 +282,7 @@ impl Config {
         }
     }
 
+    // MARK: Filters
     /// Convert comma separated list of participant strings into table chat IDs using
     ///   1) filter `self.participant` keys based on the values (by comparing to user values)
     ///   2) get the chat IDs keys from `self.chatroom_participants` for values that contain the selected `handle_ids`
@@ -431,6 +434,7 @@ impl Config {
         Ok(())
     }
 
+    // MARK: Entry Point
     /// Start the app given the provided set of options. This will either run
     /// diagnostic tests on the database or export data to the specified file type.
     ///
@@ -515,6 +519,7 @@ impl Config {
     }
 }
 
+// MARK: Test Config
 #[cfg(test)]
 impl Config {
     pub fn fake_app(options: Options) -> Config {
@@ -607,6 +612,7 @@ impl Drop for Config {
     }
 }
 
+// MARK: Tests
 #[cfg(test)]
 mod filename_tests {
     use crate::{Config, Options, app::runtime::MAX_LENGTH};

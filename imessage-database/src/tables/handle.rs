@@ -109,8 +109,8 @@ impl Deduplicate for Handle {
     ///
     /// let db_path = default_db_path();
     /// let conn = get_connection(&db_path).unwrap();
-    /// let chatrooms = Handle::cache(&conn).unwrap();
-    /// let deduped_chatrooms = Handle::dedupe(&chatrooms);
+    /// let handles = Handle::cache(&conn).unwrap();
+    /// let deduped_handles = Handle::dedupe(&handles);
     /// ```
     fn dedupe(duplicated_data: &HashMap<i32, Self::T>) -> HashMap<i32, i32> {
         let mut deduplicated_participants: HashMap<i32, i32> = HashMap::new();
