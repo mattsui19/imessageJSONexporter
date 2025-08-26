@@ -11,6 +11,7 @@ use crate::{
     util::output::{done_processing, processing},
 };
 
+// MARK: Handle
 /// Represents a single row in the `handle` table.
 #[derive(Debug)]
 pub struct Handle {
@@ -22,6 +23,7 @@ pub struct Handle {
     pub person_centric_id: Option<String>,
 }
 
+// MARK: Table
 impl Table for Handle {
     fn from_row(row: &Row) -> Result<Handle> {
         Ok(Handle {
@@ -43,6 +45,7 @@ impl Table for Handle {
     }
 }
 
+// MARK: Cache
 impl Cacheable for Handle {
     type K = i32;
     type V = String;
@@ -90,6 +93,7 @@ impl Cacheable for Handle {
     }
 }
 
+// MARK: Dedupe
 impl Deduplicate for Handle {
     type T = String;
 
@@ -138,6 +142,7 @@ impl Deduplicate for Handle {
     }
 }
 
+// MARK: Diagnostic
 impl Diagnostic for Handle {
     /// Emit diagnostic data for the Handles table
     ///
@@ -186,6 +191,7 @@ impl Diagnostic for Handle {
     }
 }
 
+// MARK: Impl
 impl Handle {
     /// The handles table does not have a lot of information and can have many duplicate values.
     ///
@@ -247,6 +253,7 @@ impl Handle {
     }
 }
 
+// MARK: Tests
 #[cfg(test)]
 mod tests {
     use crate::tables::{handle::Handle, table::Deduplicate};

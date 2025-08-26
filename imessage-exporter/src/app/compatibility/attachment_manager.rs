@@ -31,6 +31,7 @@ use crate::app::{
     runtime::Config,
 };
 
+// MARK: Manager
 #[derive(Debug, PartialEq, Eq, Default)]
 pub struct AttachmentManager {
     pub mode: AttachmentManagerMode,
@@ -75,6 +76,7 @@ impl AttachmentManager {
         }
     }
 
+    // MARK: Handwriting
     /// Handle a handwriting message, optionally writing it to an SVG file
     pub fn handle_handwriting(
         &self,
@@ -121,6 +123,7 @@ impl AttachmentManager {
         None
     }
 
+    // MARK: Files
     /// Handle an attachment, copying and converting if requested
     ///
     /// If copied, update attachment's `copied_path` and `mime_type`
@@ -279,6 +282,7 @@ impl AttachmentManager {
     }
 }
 
+// MARK: Mode
 /// Represents different ways the app can interact with attachment data
 #[derive(Debug, PartialEq, Eq)]
 pub enum AttachmentManagerMode {

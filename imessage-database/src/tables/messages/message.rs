@@ -151,6 +151,7 @@ use crate::{
     },
 };
 
+// MARK: Columns
 /// The required columns, interpolated into the most recent schema due to performance considerations
 pub(crate) const COLS: &str = "rowid, guid, text, service, handle_id, destination_caller_id, subject, date, date_read, date_delivered, is_from_me, is_read, item_type, other_handle, share_status, share_direction, group_title, group_action_type, associated_message_guid, associated_message_type, balloon_bundle_id, expressive_send_style_id, thread_originator_guid, thread_originator_part, date_edited, associated_message_emoji";
 
@@ -226,6 +227,7 @@ pub struct Message {
     pub edited_parts: Option<EditedMessage>,
 }
 
+// MARK: Table
 impl Table for Message {
     fn from_row(row: &Row) -> Result<Message> {
         Self::from_row_idx(row).or_else(|_| Self::from_row_named(row))
@@ -248,6 +250,7 @@ impl Table for Message {
     }
 }
 
+// MARK: Diagnostic
 impl Diagnostic for Message {
     /// Emit diagnostic data for the Messages table
     ///
@@ -328,6 +331,7 @@ impl Diagnostic for Message {
     }
 }
 
+// MARK: Cache
 impl Cacheable for Message {
     type K = String;
     type V = HashMap<usize, Vec<Self>>;
@@ -399,6 +403,7 @@ impl Cacheable for Message {
     }
 }
 
+// MARK: Impl
 impl Message {
     /// Create a new [`Message`] from a [`Row`], using the fast indexed access method.
     fn from_row_idx(row: &Row) -> Result<Message> {
@@ -476,6 +481,7 @@ impl Message {
         })
     }
 
+    // MARK: Text Gen
     /// Generate the text of a message, deserializing it as [`typedstream`](crate::util::typedstream) (and falling back to [`streamtyped`]) data if necessary.
     pub fn generate_text<'a>(&'a mut self, db: &'a Connection) -> Result<&'a str, MessageError> {
         // Generate the edited message data
@@ -567,6 +573,7 @@ impl Message {
         self.text.as_deref().ok_or(MessageError::NoText)
     }
 
+    // MARK: Dates
     /// Calculates the date a message was written to the database.
     ///
     /// This field is stored as a unix timestamp with an epoch of `2001-01-01 00:00:00` in the local time zone
@@ -629,6 +636,7 @@ impl Message {
         None
     }
 
+    // MARK: Bools
     /// `true` if the message is a response to a thread, else `false`
     #[must_use]
     pub fn is_reply(&self) -> bool {
@@ -736,12 +744,6 @@ impl Message {
         }
     }
 
-    /// Get the group action for the current message
-    #[must_use]
-    pub fn group_action(&'_ self) -> Option<GroupAction<'_>> {
-        GroupAction::from_message(self)
-    }
-
     /// `true` if the message indicates a sender started sharing their location, else `false`
     #[must_use]
     pub fn started_sharing_location(&self) -> bool {
@@ -770,6 +772,12 @@ impl Message {
         self.deleted_from.is_some()
     }
 
+    /// Get the group action for the current message
+    #[must_use]
+    pub fn group_action(&'_ self) -> Option<GroupAction<'_>> {
+        GroupAction::from_message(self)
+    }
+
     /// Get the index of the part of a message a reply is pointing to
     fn get_reply_index(&self) -> usize {
         if let Some(parts) = &self.thread_originator_part {
@@ -781,6 +789,7 @@ impl Message {
         0
     }
 
+    // MARK: SQL
     /// Generate the SQL `WHERE` clause described by a [`QueryContext`].
     ///
     /// If `include_recoverable` is `true`, the filter includes messages from the recently deleted messages
@@ -978,6 +987,7 @@ impl Message {
         Ok(out_h)
     }
 
+    // MARK: Variant
     /// Get the variant of a message, see [`variants`](crate::message_types::variants) for detail.
     #[must_use]
     pub fn variant(&'_ self) -> Variant<'_> {
@@ -1130,6 +1140,7 @@ impl Message {
         Service::from(self.service.as_deref())
     }
 
+    // MARK: BLOBs
     /// Get a message's plist from the [`MESSAGE_PAYLOAD`] BLOB column
     ///
     /// Calling this hits the database, so it is expensive and should
@@ -1180,6 +1191,7 @@ impl Message {
         Some(body)
     }
 
+    // MARK: Expressive
     /// Determine which [`Expressive`] the message was sent with
     #[must_use]
     pub fn get_expressive(&'_ self) -> Expressive<'_> {
@@ -1260,6 +1272,7 @@ impl Message {
     }
 }
 
+// MARK: Fixture
 #[cfg(test)]
 impl Message {
     #[must_use]

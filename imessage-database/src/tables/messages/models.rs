@@ -12,6 +12,7 @@ use crate::{
     util::typedstream::{as_float, as_nsstring},
 };
 
+// MARK: BubbleComponent
 /// Defines the parts of a message bubble, i.e. the content that can exist in a single message.
 ///
 /// # Component Types
@@ -29,6 +30,7 @@ pub enum BubbleComponent {
     Retracted,
 }
 
+// MARK: Service
 /// Defines different types of [services](https://support.apple.com/en-us/104972) we can receive messages from.
 #[derive(Debug)]
 pub enum Service<'a> {
@@ -77,6 +79,7 @@ impl Display for Service<'_> {
     }
 }
 
+// MARK: TextAttributes
 /// Defines ranges of text and associated attributes parsed from [`typedstream`](crate::util::typedstream) `attributedBody` data.
 ///
 /// Ranges specify locations where attributes are applied to specific portions of a [`Message`]'s [`text`](crate::tables::messages::Message::text). For example, given message text with a [`Mention`](TextEffect::Mention) like:
@@ -119,6 +122,7 @@ impl TextAttributes {
     }
 }
 
+// MARK: AttachmentMeta
 /// Representation of attachment metadata used for rendering message body in a conversation feed.
 #[derive(Debug, PartialEq, Default, Clone)]
 pub struct AttachmentMeta {
@@ -172,6 +176,7 @@ impl AttachmentMeta {
     }
 }
 
+// MARK: GroupAction
 /// Represents different types of group message actions that can occur in a chat system
 #[derive(Debug)]
 pub enum GroupAction<'a> {

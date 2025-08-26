@@ -16,6 +16,7 @@ use crate::{
     util::plist::{get_bool_from_dict, get_owned_string_from_dict},
 };
 
+// MARK: Chat Props
 /// Chat properties are stored as a `plist` in the database
 /// This represents the metadata for a chatroom
 #[derive(Debug, PartialEq, Eq)]
@@ -43,6 +44,7 @@ impl Properties {
     }
 }
 
+// MARK: Chat Struct
 /// Represents a single row in the `chat` table.
 #[derive(Debug)]
 pub struct Chat {
@@ -56,6 +58,7 @@ pub struct Chat {
     pub display_name: Option<String>,
 }
 
+// MARK: Table
 impl Table for Chat {
     fn from_row(row: &Row) -> Result<Chat> {
         Ok(Chat {
@@ -78,6 +81,7 @@ impl Table for Chat {
     }
 }
 
+// MARK: Cache
 impl Cacheable for Chat {
     type K = i32;
     type V = Chat;
@@ -155,6 +159,7 @@ impl Chat {
     }
 }
 
+// MARK: Tests
 #[cfg(test)]
 mod test_properties {
     use plist::Value;

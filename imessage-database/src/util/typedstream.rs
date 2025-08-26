@@ -13,6 +13,7 @@ pub struct TypeLengthPair {
     pub length: u64,
 }
 
+// MARK: Type Length
 /// Converts a `Property` to a range pair used to denote a type index and a length
 #[inline(always)]
 pub fn as_type_length_pair<'a>(property: &'a mut Property<'a, 'a>) -> Option<TypeLengthPair> {
@@ -31,6 +32,7 @@ pub fn as_type_length_pair<'a>(property: &'a mut Property<'a, 'a>) -> Option<Typ
     None
 }
 
+// MARK: i64
 /// Converts a `Property` to an `Option<i64>` if it is a signed integer or similar structure.
 #[must_use]
 #[inline(always)]
@@ -51,6 +53,7 @@ pub fn as_signed_integer(property: &Property<'_, '_>) -> Option<i64> {
     None
 }
 
+// MARK: u64
 /// Converts a `Property` to an `Option<u64>` if it is an unsigned integer or similar structure.
 #[must_use]
 #[inline(always)]
@@ -71,6 +74,7 @@ pub fn as_unsigned_integer<'a>(property: &'a Property<'a, 'a>) -> Option<u64> {
     None
 }
 
+// MARK: f64
 /// Converts a `Property` to an `Option<f64>` if it is an unsigned integer or similar structure.
 #[must_use]
 #[inline(always)]
@@ -91,6 +95,7 @@ pub fn as_float<'a>(property: &'a Property<'a, 'a>) -> Option<f64> {
     None
 }
 
+// MARK: String
 /// Converts a `Property` to an `Option<&str>` if it is a `NSString` or similar structure.
 #[inline(always)]
 pub fn as_nsstring<'a>(property: &'a mut Property<'a, 'a>) -> Option<&'a str> {
@@ -107,6 +112,7 @@ pub fn as_nsstring<'a>(property: &'a mut Property<'a, 'a>) -> Option<&'a str> {
     None
 }
 
+// MARK: Dict
 /// Converts a `Property` to Vec<Property> if it is a `NSDictionary`
 #[inline(always)]
 pub fn as_ns_dictionary<'a>(
@@ -128,6 +134,7 @@ pub fn as_ns_dictionary<'a>(
     None
 }
 
+// MARK: NSURL
 /// Given a mutable reference to a resolved `Property`,\
 /// walks 2 levels of nested groups under an NSURL→NSString and returns the inner &str.
 #[inline(always)]

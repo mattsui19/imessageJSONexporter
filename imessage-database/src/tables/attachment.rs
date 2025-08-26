@@ -30,10 +30,12 @@ use crate::{
     },
 };
 
+// MARK: Constants
 /// The default root directory for iMessage attachment data
 pub const DEFAULT_ATTACHMENT_ROOT: &str = "~/Library/Messages/Attachments";
 const COLS: &str = "a.rowid, a.filename, a.uti, a.mime_type, a.transfer_name, a.total_bytes, a.is_sticker, a.hide_attachment, a.emoji_image_short_description";
 
+// MARK: MediaType
 /// Represents the [MIME type](https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_Types) of a message's attachment data
 ///
 /// The interior `str` contains the subtype, i.e. `x-m4a` for `audio/x-m4a`
@@ -104,6 +106,7 @@ pub struct Attachment {
     pub copied_path: Option<PathBuf>,
 }
 
+// MARK: Table
 impl Table for Attachment {
     fn from_row(row: &Row) -> Result<Attachment> {
         Ok(Attachment {
@@ -132,6 +135,7 @@ impl Table for Attachment {
     }
 }
 
+// MARK: Impl
 impl Attachment {
     /// Gets a Vector of attachments associated with a single message
     ///
@@ -521,6 +525,7 @@ impl Attachment {
     }
 }
 
+// MARK: Tests
 #[cfg(test)]
 mod tests {
     use crate::{

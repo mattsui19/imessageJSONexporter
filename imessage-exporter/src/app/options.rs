@@ -21,6 +21,7 @@ use crate::app::{
     export_type::ExportType,
 };
 
+// MARK: Constants
 /// Default export directory name
 pub const DEFAULT_OUTPUT_DIR: &str = "imessage_export";
 
@@ -51,6 +52,7 @@ pub const ABOUT: &str = concat!(
     "to find problems with the iMessage database."
 );
 
+// MARK: Options
 #[derive(Debug, PartialEq, Eq)]
 pub struct Options {
     /// Path to database file
@@ -83,6 +85,7 @@ pub struct Options {
     pub cleartext_password: Option<String>,
 }
 
+// MARK: Validation
 impl Options {
     pub fn from_args(args: &ArgMatches) -> Result<Self, RuntimeError> {
         let user_path: Option<&String> = args.get_one(OPTION_DB_PATH);
@@ -301,6 +304,7 @@ fn validate_path(
     Ok(resolved_path)
 }
 
+// MARK: CLI
 /// Build the command line argument parser
 fn get_command() -> Command {
     Command::new("iMessage Exporter")
