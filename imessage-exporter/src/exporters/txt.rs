@@ -14,7 +14,7 @@ use crate::{
         compatibility::attachment_manager::AttachmentManagerMode, error::RuntimeError,
         progress::ExportProgress, runtime::Config,
     },
-    exporters::exporter::{ATTACHMENT_NO_FILENAME, BalloonFormatter, Exporter, Writer},
+    exporters::exporter::{ATTACHMENT_NO_FILENAME, BalloonFormatter, Exporter, MessageFormatter},
 };
 
 use imessage_database::{
@@ -159,10 +159,15 @@ impl<'a> Exporter<'a> for TXT<'a> {
             None => Ok(&mut self.orphaned),
         }
     }
+
+    fn write_to_file(file: &mut BufWriter<File>, text: &str) -> Result<(), RuntimeError> {
+        file.write_all(text.as_bytes())
+            .map_err(RuntimeError::DiskError)
+    }
 }
 
 // MARK: Writer
-impl<'a> Writer<'a> for TXT<'a> {
+impl<'a> MessageFormatter<'a> for TXT<'a> {
     fn format_message(&self, message: &Message, indent_size: usize) -> Result<String, TableError> {
         let indent = String::from_iter((0..indent_size).map(|_| " "));
         // Data we want to write to a file
@@ -751,11 +756,6 @@ impl<'a> Writer<'a> for TXT<'a> {
         }
         formatted_text
     }
-
-    fn write_to_file(file: &mut BufWriter<File>, text: &str) -> Result<(), RuntimeError> {
-        file.write_all(text.as_bytes())
-            .map_err(RuntimeError::DiskError)
-    }
 }
 
 // MARK: Balloon
@@ -1135,7 +1135,7 @@ mod tests {
     use crate::{
         Config, Exporter, Options, TXT,
         app::{compatibility::attachment_manager::AttachmentManagerMode, export_type::ExportType},
-        exporters::exporter::Writer,
+        exporters::exporter::MessageFormatter,
     };
     use imessage_database::{
         message_types::text_effects::TextEffect,
@@ -2471,7 +2471,8 @@ mod text_effect_tests {
     };
 
     use crate::{
-        Config, Exporter, Options, TXT, app::export_type::ExportType, exporters::exporter::Writer,
+        Config, Exporter, Options, TXT, app::export_type::ExportType,
+        exporters::exporter::MessageFormatter,
     };
 
     #[test]
@@ -2620,7 +2621,7 @@ mod edited_tests {
         tables::messages::models::{AttachmentMeta, BubbleComponent, TextAttributes},
     };
 
-    use crate::{Config, Exporter, Options, TXT, exporters::exporter::Writer};
+    use crate::{Config, Exporter, Options, TXT, exporters::exporter::MessageFormatter};
 
     #[test]
     fn can_format_txt_conversion_final_unsent() {

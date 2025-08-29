@@ -19,7 +19,7 @@ use crate::{
         progress::ExportProgress, runtime::Config, sanitizers::sanitize_html,
     },
     exporters::exporter::{
-        ATTACHMENT_NO_FILENAME, BalloonFormatter, Exporter, TextEffectFormatter, Writer,
+        ATTACHMENT_NO_FILENAME, BalloonFormatter, Exporter, MessageFormatter, TextEffectFormatter,
     },
 };
 
@@ -201,10 +201,15 @@ impl<'a> Exporter<'a> for HTML<'a> {
             None => Ok(&mut self.orphaned),
         }
     }
+
+    fn write_to_file(file: &mut BufWriter<File>, text: &str) -> Result<(), RuntimeError> {
+        file.write_all(text.as_bytes())
+            .map_err(RuntimeError::DiskError)
+    }
 }
 
 // MARK: Writer
-impl<'a> Writer<'a> for HTML<'a> {
+impl<'a> MessageFormatter<'a> for HTML<'a> {
     fn format_message(&self, message: &Message, indent_size: usize) -> Result<String, TableError> {
         // Data we want to write to a file
         let mut formatted_message = String::new();
@@ -1061,11 +1066,6 @@ impl<'a> Writer<'a> for HTML<'a> {
         }
         result
     }
-
-    fn write_to_file(file: &mut BufWriter<File>, text: &str) -> Result<(), RuntimeError> {
-        file.write_all(text.as_bytes())
-            .map_err(RuntimeError::DiskError)
-    }
 }
 
 // MARK: Balloons
@@ -1807,7 +1807,7 @@ mod tests {
     use crate::{
         Config, Exporter, HTML, Options,
         app::{compatibility::attachment_manager::AttachmentManagerMode, export_type::ExportType},
-        exporters::exporter::Writer,
+        exporters::exporter::MessageFormatter,
     };
     use imessage_database::{
         message_types::text_effects::TextEffect,
@@ -3262,7 +3262,7 @@ mod text_effect_tests {
 
     use crate::{
         Config, Exporter, HTML, Options,
-        exporters::exporter::{TextEffectFormatter, Writer},
+        exporters::exporter::{MessageFormatter, TextEffectFormatter},
     };
 
     #[test]
@@ -3730,7 +3730,7 @@ mod text_effect_tests {
 mod edited_tests {
     use std::{env::current_dir, fs::File, io::Read};
 
-    use crate::{Config, Exporter, HTML, Options, exporters::exporter::Writer};
+    use crate::{Config, Exporter, HTML, Options, exporters::exporter::MessageFormatter};
     use imessage_database::{
         message_types::{
             edited::{EditStatus, EditedEvent, EditedMessage, EditedMessagePart},

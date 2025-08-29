@@ -41,11 +41,13 @@ pub trait Exporter<'a> {
         &mut self,
         message: &Message,
     ) -> Result<&mut BufWriter<File>, RuntimeError>;
+    /// Write formatted text to a file
+    fn write_to_file(file: &mut BufWriter<File>, text: &str) -> Result<(), RuntimeError>;
 }
 
-// MARK: Writer
+// MARK: Message
 /// Defines behavior for formatting message instances to the desired output format
-pub(super) trait Writer<'a> {
+pub(super) trait MessageFormatter<'a> {
     /// Format a message, including its tapbacks and replies
     fn format_message(&self, msg: &Message, indent: usize) -> Result<String, TableError>;
     /// Format an attachment, possibly by reading the disk
@@ -84,7 +86,6 @@ pub(super) trait Writer<'a> {
     ) -> Option<String>;
     /// Format all [`TextAttributes`]s applied to a given set of text
     fn format_attributes(&'a self, text: &'a str, attributes: &'a [TextAttributes]) -> String;
-    fn write_to_file(file: &mut BufWriter<File>, text: &str) -> Result<(), RuntimeError>;
 }
 
 // MARK: Balloon
