@@ -283,9 +283,9 @@ dependencies = [
 
 [[package]]
 name = "crabstep"
-version = "0.3.1"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "83481ca8a133f3e2ab6451e68ce2a08307fa0b2bddc747209b23418eded4bfd5"
+checksum = "fafbe57c349843caca2aa70b4a98bf688123845ac080c324f407f9ecb71873c1"
 
 [[package]]
 name = "crc"
