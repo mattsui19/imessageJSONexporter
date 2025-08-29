@@ -115,7 +115,7 @@
  ```
 */
 
-use std::{collections::HashMap, io::Read};
+use std::{collections::HashMap, fmt::Write, io::Read};
 
 use chrono::{DateTime, offset::Local};
 use crabstep::TypedStreamDeserializer;
@@ -799,11 +799,11 @@ impl Message {
         context: &QueryContext,
         include_recoverable: bool,
     ) -> String {
-        let mut filters = String::new();
+        let mut filters = String::with_capacity(128);
 
         // Start date filter
         if let Some(start) = context.start {
-            filters.push_str(&format!(" m.date >= {start}"));
+            let _ = write!(filters, " m.date >= {start}");
         }
 
         // End date filter
@@ -811,7 +811,7 @@ impl Message {
             if !filters.is_empty() {
                 filters.push_str(" AND ");
             }
-            filters.push_str(&format!(" m.date <= {end}"));
+            let _ = write!(filters, " m.date <= {end}");
         }
 
         // Chat ID filter, optionally including recoverable messages
@@ -828,9 +828,9 @@ impl Message {
                 .join(", ");
 
             if include_recoverable {
-                filters.push_str(&format!(" (c.chat_id IN ({ids}) OR d.chat_id IN ({ids}))"));
+                let _ = write!(filters, " (c.chat_id IN ({ids}) OR d.chat_id IN ({ids}))");
             } else {
-                filters.push_str(&format!(" c.chat_id IN ({ids})"));
+                let _ = write!(filters, " c.chat_id IN ({ids})");
             }
         }
 

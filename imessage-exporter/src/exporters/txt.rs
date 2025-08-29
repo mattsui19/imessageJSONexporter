@@ -3,6 +3,7 @@ use std::{
         HashMap,
         hash_map::Entry::{Occupied, Vacant},
     },
+    fmt::Write as FmtWrite,
     fs::File,
     io::{BufWriter, Write},
     path::PathBuf,
@@ -420,7 +421,7 @@ impl<'a> Writer<'a> for TXT<'a> {
                         StickerSource::Genmoji => {
                             // Add sticker prompt
                             if let Some(prompt) = &sticker.emoji_description {
-                                out_s = format!("{out_s} (Genmoji prompt: {prompt})");
+                                let _ = write!(out_s, " (Genmoji prompt: {prompt})");
                             }
                         }
                         StickerSource::Memoji => out_s.push_str(" (App: Memoji)"),
@@ -439,7 +440,7 @@ impl<'a> Writer<'a> for TXT<'a> {
                             let app_name = sticker
                                 .get_sticker_source_application_name(self.config.db())
                                 .unwrap_or(bundle_id);
-                            out_s.push_str(&format!(" (App: {app_name})"));
+                            let _ = write!(out_s, " (App: {app_name})");
                         }
                     }
                 }
@@ -507,9 +508,11 @@ impl<'a> Writer<'a> for TXT<'a> {
                             CustomBalloon::Slideshow => self.format_slideshow(&bubble, indent),
                             CustomBalloon::CheckIn => self.format_check_in(&bubble, indent),
                             CustomBalloon::FindMy => self.format_find_my(&bubble, indent),
-                            CustomBalloon::Handwriting => unreachable!(),
-                            CustomBalloon::DigitalTouch => unreachable!(),
-                            CustomBalloon::URL => unreachable!(),
+                            CustomBalloon::Handwriting
+                            | CustomBalloon::DigitalTouch
+                            | CustomBalloon::URL => {
+                                unreachable!()
+                            }
                         },
                         Err(why) => return Err(why),
                     }
@@ -1110,7 +1113,7 @@ impl TXT<'_> {
             } else {
                 self.config.options.custom_name.as_deref().unwrap_or("you")
             };
-            date.push_str(&format!(" (Read by {who} after {time})"));
+            let _ = write!(date, " (Read by {who} after {time})");
         }
         date
     }

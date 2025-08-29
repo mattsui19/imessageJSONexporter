@@ -7,6 +7,7 @@ use rusqlite::{CachedStatement, Connection, Error, Result, Row};
 use sha1::{Digest, Sha1};
 
 use std::{
+    fmt::Write,
     fs::File,
     io::Read,
     path::{Path, PathBuf},
@@ -303,16 +304,21 @@ impl Attachment {
 
             statement.push_str(" WHERE ");
             if let Some(start) = context.start {
-                statement.push_str(&format!(
+                let _ = write!(
+                    statement,
                     "    a.created_date >= {}",
                     start / TIMESTAMP_FACTOR
-                ));
+                );
             }
             if let Some(end) = context.end {
                 if context.start.is_some() {
                     statement.push_str(" AND ");
                 }
-                statement.push_str(&format!("    a.created_date <= {}", end / TIMESTAMP_FACTOR));
+                let _ = write!(
+                    statement,
+                    "    a.created_date <= {}",
+                    end / TIMESTAMP_FACTOR
+                );
             }
 
             db.prepare(&statement)?

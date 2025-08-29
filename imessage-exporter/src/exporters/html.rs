@@ -8,6 +8,7 @@ use std::{
         HashMap,
         hash_map::Entry::{Occupied, Vacant},
     },
+    fmt::Write as FmtWrite,
     fs::File,
     io::{BufWriter, Write},
 };
@@ -648,9 +649,10 @@ impl<'a> Writer<'a> for HTML<'a> {
                         StickerSource::Genmoji => {
                             // Add sticker prompt
                             if let Some(prompt) = &sticker.emoji_description {
-                                sticker_embed.push_str(&format!(
+                                let _ = write!(
+                                    sticker_embed,
                                     "\n<div class=\"genmoji_prompt\">Genmoji prompt: {prompt}</div>"
-                                ));
+                                );
                             }
                         }
                         StickerSource::Memoji => sticker_embed
@@ -662,9 +664,10 @@ impl<'a> Writer<'a> for HTML<'a> {
                                 &self.config.options.db_path,
                                 self.config.options.attachment_root.as_deref(),
                             ) {
-                                sticker_embed.push_str(&format!(
+                                let _ = write!(
+                                    sticker_embed,
                                     "\n<div class=\"sticker_effect\">Sent with {sticker_effect} effect</div>"
-                                ));
+                                );
                             }
                         }
                         StickerSource::App(bundle_id) => {
@@ -672,9 +675,10 @@ impl<'a> Writer<'a> for HTML<'a> {
                             let app_name = sticker
                                 .get_sticker_source_application_name(self.config.db())
                                 .unwrap_or(bundle_id);
-                            sticker_embed.push_str(&format!(
+                            let _ = write!(
+                                sticker_embed,
                                 "\n<div class=\"sticker_name\">App: {app_name}</div>"
-                            ));
+                            );
                         }
                     }
                 }
@@ -980,14 +984,16 @@ impl<'a> Writer<'a> for HTML<'a> {
                         msg.date_edited(&self.config.offset),
                     ) {
                         Some(diff) => {
-                            out_s.push_str(&format!(
+                            let _ = write!(
+                                out_s,
                                 "<span class=\"unsent\">{who} unsent this message part {diff} after sending!</span>"
-                            ));
+                            );
                         }
                         None => {
-                            out_s.push_str(&format!(
+                            let _ = write!(
+                                out_s,
                                 "<span class=\"unsent\">{who} unsent this message part!</span>"
-                            ));
+                            );
                         }
                     }
                 }
