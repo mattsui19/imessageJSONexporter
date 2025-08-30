@@ -46,6 +46,7 @@ use imessage_database::{
 
 const MAX_LENGTH: usize = 235;
 
+// MARK: Config
 /// Stores the application state and handles application lifecycle
 pub struct Config {
     /// Map of chatroom ID to chatroom information
@@ -96,10 +97,10 @@ impl Config {
 
     /// Get the attachment path for a specific chat ID
     pub fn conversation_attachment_path(&self, chat_id: Option<i32>) -> String {
-        if let Some(chat_id) = chat_id {
-            if let Some(real_id) = self.real_chatrooms.get(&chat_id) {
-                return real_id.to_string();
-            }
+        if let Some(chat_id) = chat_id
+            && let Some(real_id) = self.real_chatrooms.get(&chat_id)
+        {
+            return real_id.to_string();
         }
         String::from(ORPHANED)
     }
@@ -210,6 +211,7 @@ impl Config {
         out_s
     }
 
+    // MARK: Init
     /// Create a new instance of the application
     ///
     /// # Example:
@@ -280,6 +282,7 @@ impl Config {
         }
     }
 
+    // MARK: Filters
     /// Convert comma separated list of participant strings into table chat IDs using
     ///   1) filter `self.participant` keys based on the values (by comparing to user values)
     ///   2) get the chat IDs keys from `self.chatroom_participants` for values that contain the selected `handle_ids`
@@ -431,6 +434,7 @@ impl Config {
         Ok(())
     }
 
+    // MARK: Entry Point
     /// Start the app given the provided set of options. This will either run
     /// diagnostic tests on the database or export data to the specified file type.
     ///
@@ -452,12 +456,12 @@ impl Config {
             self.run_diagnostic()?;
         } else if let Some(export_type) = &self.options.export_type {
             // Ensure that if we want to filter on things, we have stuff to filter for
-            if let Some(filters) = &self.options.conversation_filter {
-                if !self.options.query_context.has_filters() {
-                    return Err(RuntimeError::InvalidOptions(format!(
-                        "Selected filter `{filters}` does not match any participants!"
-                    )));
-                }
+            if let Some(filters) = &self.options.conversation_filter
+                && !self.options.query_context.has_filters()
+            {
+                return Err(RuntimeError::InvalidOptions(format!(
+                    "Selected filter `{filters}` does not match any participants!"
+                )));
             }
 
             // Ensure the path we want to export to exists
@@ -515,6 +519,7 @@ impl Config {
     }
 }
 
+// MARK: Test Config
 #[cfg(test)]
 impl Config {
     pub fn fake_app(options: Options) -> Config {
@@ -590,23 +595,24 @@ impl Drop for Config {
     fn drop(&mut self) {
         if let Some(backup) = &self.backup {
             // Remove the temporary `sms.db` file if it was created
-            if backup.manifest_db.is_temporary {
-                if let Some(conn) = self.db.take() {
-                    let path = conn.path().unwrap().to_string();
-                    conn.close().ok();
+            if backup.manifest_db.is_temporary
+                && let Some(conn) = self.db.take()
+            {
+                let path = conn.path().unwrap().to_string();
+                conn.close().ok();
 
-                    // Remove the file, ignoring errors if any
-                    if let Err(e) = remove_file(&path) {
-                        eprintln!(
-                            "warning: failed to remove temporary messages database at {path}: {e}"
-                        );
-                    }
+                // Remove the file, ignoring errors if any
+                if let Err(e) = remove_file(&path) {
+                    eprintln!(
+                        "warning: failed to remove temporary messages database at {path}: {e}"
+                    );
                 }
             }
         }
     }
 }
 
+// MARK: Tests
 #[cfg(test)]
 mod filename_tests {
     use crate::{Config, Options, app::runtime::MAX_LENGTH};

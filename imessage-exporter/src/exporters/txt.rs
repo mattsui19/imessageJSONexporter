@@ -3,6 +3,7 @@ use std::{
         HashMap,
         hash_map::Entry::{Occupied, Vacant},
     },
+    fmt::Write as FmtWrite,
     fs::File,
     io::{BufWriter, Write},
     path::PathBuf,
@@ -13,7 +14,7 @@ use crate::{
         compatibility::attachment_manager::AttachmentManagerMode, error::RuntimeError,
         progress::ExportProgress, runtime::Config,
     },
-    exporters::exporter::{ATTACHMENT_NO_FILENAME, BalloonFormatter, Exporter, Writer},
+    exporters::exporter::{ATTACHMENT_NO_FILENAME, BalloonFormatter, Exporter, MessageFormatter},
 };
 
 use imessage_database::{
@@ -61,6 +62,7 @@ pub struct TXT<'a> {
     pb: ExportProgress,
 }
 
+// MARK: Exporter
 impl<'a> Exporter<'a> for TXT<'a> {
     fn new(config: &'a Config) -> Result<Self, RuntimeError> {
         let mut orphaned = config.options.export_path.clone();
@@ -157,9 +159,15 @@ impl<'a> Exporter<'a> for TXT<'a> {
             None => Ok(&mut self.orphaned),
         }
     }
+
+    fn write_to_file(file: &mut BufWriter<File>, text: &str) -> Result<(), RuntimeError> {
+        file.write_all(text.as_bytes())
+            .map_err(RuntimeError::DiskError)
+    }
 }
 
-impl<'a> Writer<'a> for TXT<'a> {
+// MARK: Writer
+impl<'a> MessageFormatter<'a> for TXT<'a> {
     fn format_message(&self, message: &Message, indent_size: usize) -> Result<String, TableError> {
         let indent = String::from_iter((0..indent_size).map(|_| " "));
         // Data we want to write to a file
@@ -223,12 +231,11 @@ impl<'a> Writer<'a> for TXT<'a> {
                     if let Some(text) = &message.text {
                         // Render edited message content, if applicable
                         if message.is_part_edited(idx) {
-                            if let Some(edited_parts) = &message.edited_parts {
-                                if let Some(edited) =
+                            if let Some(edited_parts) = &message.edited_parts
+                                && let Some(edited) =
                                     self.format_edited(message, edited_parts, idx, &indent)
-                                {
-                                    self.add_line(&mut formatted_message, &edited, &indent);
-                                }
+                            {
+                                self.add_line(&mut formatted_message, &edited, &indent);
                             }
                         } else {
                             let mut formatted_text = self.format_attributes(text, text_attrs);
@@ -259,13 +266,13 @@ impl<'a> Writer<'a> for TXT<'a> {
                             } else {
                                 match self.format_attachment(attachment, message, metadata) {
                                     Ok(result) => {
-                                        attachment_index += 1;
                                         self.add_line(&mut formatted_message, &result, &indent);
                                     }
                                     Err(result) => {
                                         self.add_line(&mut formatted_message, result, &indent);
                                     }
                                 }
+                                attachment_index += 1;
                             }
                         }
                         // Attachment does not exist in attachments table
@@ -284,12 +291,11 @@ impl<'a> Writer<'a> for TXT<'a> {
                     ),
                 },
                 BubbleComponent::Retracted => {
-                    if let Some(edited_parts) = &message.edited_parts {
-                        if let Some(edited) =
+                    if let Some(edited_parts) = &message.edited_parts
+                        && let Some(edited) =
                             self.format_edited(message, edited_parts, idx, &indent)
-                        {
-                            self.add_line(&mut formatted_message, &edited, &indent);
-                        }
+                    {
+                        self.add_line(&mut formatted_message, &edited, &indent);
                     }
                 }
             }
@@ -304,27 +310,27 @@ impl<'a> Writer<'a> for TXT<'a> {
             }
 
             // Handle Tapbacks
-            if let Some(tapbacks_map) = self.config.tapbacks.get(&message.guid) {
-                if let Some(tapbacks) = tapbacks_map.get(&idx) {
-                    let mut formatted_tapbacks = String::new();
-                    tapbacks
-                        .iter()
-                        .try_for_each(|tapbacks| -> Result<(), TableError> {
-                            let formatted = self.format_tapback(tapbacks)?;
-                            if !formatted.is_empty() {
-                                self.add_line(
-                                    &mut formatted_tapbacks,
-                                    &self.format_tapback(tapbacks)?,
-                                    &indent,
-                                );
-                            }
-                            Ok(())
-                        })?;
+            if let Some(tapbacks_map) = self.config.tapbacks.get(&message.guid)
+                && let Some(tapbacks) = tapbacks_map.get(&idx)
+            {
+                let mut formatted_tapbacks = String::new();
+                tapbacks
+                    .iter()
+                    .try_for_each(|tapbacks| -> Result<(), TableError> {
+                        let formatted = self.format_tapback(tapbacks)?;
+                        if !formatted.is_empty() {
+                            self.add_line(
+                                &mut formatted_tapbacks,
+                                &self.format_tapback(tapbacks)?,
+                                &indent,
+                            );
+                        }
+                        Ok(())
+                    })?;
 
-                    if !formatted_tapbacks.is_empty() {
-                        self.add_line(&mut formatted_message, "Tapbacks:", &indent);
-                        self.add_line(&mut formatted_message, &formatted_tapbacks, &indent);
-                    }
+                if !formatted_tapbacks.is_empty() {
+                    self.add_line(&mut formatted_message, "Tapbacks:", &indent);
+                    self.add_line(&mut formatted_message, &formatted_tapbacks, &indent);
                 }
             }
 
@@ -420,7 +426,7 @@ impl<'a> Writer<'a> for TXT<'a> {
                         StickerSource::Genmoji => {
                             // Add sticker prompt
                             if let Some(prompt) = &sticker.emoji_description {
-                                out_s = format!("{out_s} (Genmoji prompt: {prompt})");
+                                let _ = write!(out_s, " (Genmoji prompt: {prompt})");
                             }
                         }
                         StickerSource::Memoji => out_s.push_str(" (App: Memoji)"),
@@ -439,7 +445,7 @@ impl<'a> Writer<'a> for TXT<'a> {
                             let app_name = sticker
                                 .get_sticker_source_application_name(self.config.db())
                                 .unwrap_or(bundle_id);
-                            out_s.push_str(&format!(" (App: {app_name})"));
+                            let _ = write!(out_s, " (App: {app_name})");
                         }
                     }
                 }
@@ -460,22 +466,22 @@ impl<'a> Writer<'a> for TXT<'a> {
             let mut app_bubble = String::new();
 
             // Handwritten messages use a different payload type, so check that first
-            if message.is_handwriting() {
-                if let Some(payload) = message.raw_payload_data(self.config.db()) {
-                    return match HandwrittenMessage::from_payload(&payload) {
-                        Ok(bubble) => Ok(self.format_handwriting(message, &bubble, indent)),
-                        Err(why) => Err(PlistParseError::HandwritingError(why)),
-                    };
-                }
+            if message.is_handwriting()
+                && let Some(payload) = message.raw_payload_data(self.config.db())
+            {
+                return match HandwrittenMessage::from_payload(&payload) {
+                    Ok(bubble) => Ok(self.format_handwriting(message, &bubble, indent)),
+                    Err(why) => Err(PlistParseError::HandwritingError(why)),
+                };
             }
 
-            if message.is_digital_touch() {
-                if let Some(payload) = message.raw_payload_data(self.config.db()) {
-                    return match digital_touch::from_payload(&payload) {
-                        Some(bubble) => Ok(self.format_digital_touch(message, &bubble, indent)),
-                        None => Err(PlistParseError::DigitalTouchError),
-                    };
-                }
+            if message.is_digital_touch()
+                && let Some(payload) = message.raw_payload_data(self.config.db())
+            {
+                return match digital_touch::from_payload(&payload) {
+                    Some(bubble) => Ok(self.format_digital_touch(message, &bubble, indent)),
+                    None => Err(PlistParseError::DigitalTouchError),
+                };
             }
 
             if let Some(payload) = message.payload_data(self.config.db()) {
@@ -507,9 +513,11 @@ impl<'a> Writer<'a> for TXT<'a> {
                             CustomBalloon::Slideshow => self.format_slideshow(&bubble, indent),
                             CustomBalloon::CheckIn => self.format_check_in(&bubble, indent),
                             CustomBalloon::FindMy => self.format_find_my(&bubble, indent),
-                            CustomBalloon::Handwriting => unreachable!(),
-                            CustomBalloon::DigitalTouch => unreachable!(),
-                            CustomBalloon::URL => unreachable!(),
+                            CustomBalloon::Handwriting
+                            | CustomBalloon::DigitalTouch
+                            | CustomBalloon::URL => {
+                                unreachable!()
+                            }
                         },
                         Err(why) => return Err(why),
                     }
@@ -517,10 +525,10 @@ impl<'a> Writer<'a> for TXT<'a> {
                 app_bubble.push_str(&res);
             } else {
                 // Sometimes, URL messages are missing their payloads
-                if message.is_url() {
-                    if let Some(text) = &message.text {
-                        return Ok(text.to_string());
-                    }
+                if message.is_url()
+                    && let Some(text) = &message.text
+                {
+                    return Ok(text.to_string());
                 }
                 return Err(PlistParseError::NoPayload);
             }
@@ -748,13 +756,9 @@ impl<'a> Writer<'a> for TXT<'a> {
         }
         formatted_text
     }
-
-    fn write_to_file(file: &mut BufWriter<File>, text: &str) -> Result<(), RuntimeError> {
-        file.write_all(text.as_bytes())
-            .map_err(RuntimeError::DiskError)
-    }
 }
 
+// MARK: Balloon
 impl<'a> BalloonFormatter<&'a str> for TXT<'a> {
     fn format_url(&self, msg: &Message, balloon: &URLMessage, indent: &str) -> String {
         let mut out_s = String::new();
@@ -1096,19 +1100,20 @@ impl<'a> BalloonFormatter<&'a str> for TXT<'a> {
     }
 }
 
+// MARK: Impl
 impl TXT<'_> {
     fn get_time(&self, message: &Message) -> String {
         let mut date = format(&message.date(&self.config.offset));
         let read_after = message.time_until_read(&self.config.offset);
-        if let Some(time) = read_after {
-            if !time.is_empty() {
-                let who = if message.is_from_me() {
-                    "them"
-                } else {
-                    self.config.options.custom_name.as_deref().unwrap_or("you")
-                };
-                date.push_str(&format!(" (Read by {who} after {time})"));
-            }
+        if let Some(time) = read_after
+            && !time.is_empty()
+        {
+            let who = if message.is_from_me() {
+                "them"
+            } else {
+                self.config.options.custom_name.as_deref().unwrap_or("you")
+            };
+            let _ = write!(date, " (Read by {who} after {time})");
         }
         date
     }
@@ -1122,6 +1127,7 @@ impl TXT<'_> {
     }
 }
 
+// MARK: Tests
 #[cfg(test)]
 mod tests {
     use std::env::current_dir;
@@ -1129,7 +1135,7 @@ mod tests {
     use crate::{
         Config, Exporter, Options, TXT,
         app::{compatibility::attachment_manager::AttachmentManagerMode, export_type::ExportType},
-        exporters::exporter::Writer,
+        exporters::exporter::MessageFormatter,
     };
     use imessage_database::{
         message_types::text_effects::TextEffect,
@@ -2465,7 +2471,8 @@ mod text_effect_tests {
     };
 
     use crate::{
-        Config, Exporter, Options, TXT, app::export_type::ExportType, exporters::exporter::Writer,
+        Config, Exporter, Options, TXT, app::export_type::ExportType,
+        exporters::exporter::MessageFormatter,
     };
 
     #[test]
@@ -2614,7 +2621,7 @@ mod edited_tests {
         tables::messages::models::{AttachmentMeta, BubbleComponent, TextAttributes},
     };
 
-    use crate::{Config, Exporter, Options, TXT, exporters::exporter::Writer};
+    use crate::{Config, Exporter, Options, TXT, exporters::exporter::MessageFormatter};
 
     #[test]
     fn can_format_txt_conversion_final_unsent() {

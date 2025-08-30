@@ -115,7 +115,7 @@
  ```
 */
 
-use std::{collections::HashMap, io::Read};
+use std::{collections::HashMap, fmt::Write, io::Read};
 
 use chrono::{DateTime, offset::Local};
 use crabstep::TypedStreamDeserializer;
@@ -151,6 +151,7 @@ use crate::{
     },
 };
 
+// MARK: Columns
 /// The required columns, interpolated into the most recent schema due to performance considerations
 pub(crate) const COLS: &str = "rowid, guid, text, service, handle_id, destination_caller_id, subject, date, date_read, date_delivered, is_from_me, is_read, item_type, other_handle, share_status, share_direction, group_title, group_action_type, associated_message_guid, associated_message_type, balloon_bundle_id, expressive_send_style_id, thread_originator_guid, thread_originator_part, date_edited, associated_message_emoji";
 
@@ -226,6 +227,7 @@ pub struct Message {
     pub edited_parts: Option<EditedMessage>,
 }
 
+// MARK: Table
 impl Table for Message {
     fn from_row(row: &Row) -> Result<Message> {
         Self::from_row_idx(row).or_else(|_| Self::from_row_named(row))
@@ -233,7 +235,7 @@ impl Table for Message {
 
     /// Convert data from the messages table to native Rust data structures, falling back to
     /// more compatible queries to ensure compatibility with older database schemas
-    fn get(db: &Connection) -> Result<CachedStatement, TableError> {
+    fn get(db: &'_ Connection) -> Result<CachedStatement<'_>, TableError> {
         Ok(db
             .prepare_cached(&ios_16_newer_query(None))
             .or_else(|_| db.prepare_cached(&ios_14_15_query(None)))
@@ -248,6 +250,7 @@ impl Table for Message {
     }
 }
 
+// MARK: Diagnostic
 impl Diagnostic for Message {
     /// Emit diagnostic data for the Messages table
     ///
@@ -328,6 +331,7 @@ impl Diagnostic for Message {
     }
 }
 
+// MARK: Cache
 impl Cacheable for Message {
     type K = String;
     type V = HashMap<usize, Vec<Self>>;
@@ -383,14 +387,14 @@ impl Cacheable for Message {
             // Iterate over the messages and update the map
             for message in messages {
                 let message = Self::extract(message)?;
-                if message.is_tapback() {
-                    if let Some((idx, tapback_target_guid)) = message.clean_associated_guid() {
-                        map.entry(tapback_target_guid.to_string())
-                            .or_insert_with(HashMap::new)
-                            .entry(idx)
-                            .or_insert_with(Vec::new)
-                            .push(message);
-                    }
+                if message.is_tapback()
+                    && let Some((idx, tapback_target_guid)) = message.clean_associated_guid()
+                {
+                    map.entry(tapback_target_guid.to_string())
+                        .or_insert_with(HashMap::new)
+                        .entry(idx)
+                        .or_insert_with(Vec::new)
+                        .push(message);
                 }
             }
         }
@@ -399,6 +403,7 @@ impl Cacheable for Message {
     }
 }
 
+// MARK: Impl
 impl Message {
     /// Create a new [`Message`] from a [`Row`], using the fast indexed access method.
     fn from_row_idx(row: &Row) -> Result<Message> {
@@ -476,6 +481,7 @@ impl Message {
         })
     }
 
+    // MARK: Text Gen
     /// Generate the text of a message, deserializing it as [`typedstream`](crate::util::typedstream) (and falling back to [`streamtyped`]) data if necessary.
     pub fn generate_text<'a>(&'a mut self, db: &'a Connection) -> Result<&'a str, MessageError> {
         // Generate the edited message data
@@ -553,10 +559,10 @@ impl Message {
         db: &'a Connection,
     ) -> Result<&'a str, MessageError> {
         // If the text is missing, try and query for it
-        if self.text.is_none() {
-            if let Some(body) = self.attributed_body(db) {
-                self.text = Some(streamtyped::parse(body)?);
-            }
+        if self.text.is_none()
+            && let Some(body) = self.attributed_body(db)
+        {
+            self.text = Some(streamtyped::parse(body)?);
         }
 
         // Fallback component parser as well
@@ -567,6 +573,7 @@ impl Message {
         self.text.as_deref().ok_or(MessageError::NoText)
     }
 
+    // MARK: Dates
     /// Calculates the date a message was written to the database.
     ///
     /// This field is stored as a unix timestamp with an epoch of `2001-01-01 00:00:00` in the local time zone
@@ -629,6 +636,7 @@ impl Message {
         None
     }
 
+    // MARK: Bools
     /// `true` if the message is a response to a thread, else `false`
     #[must_use]
     pub fn is_reply(&self) -> bool {
@@ -680,10 +688,10 @@ impl Message {
     /// `true` if the specified message component was [edited](crate::message_types::edited::EditStatus::Edited), else `false`
     #[must_use]
     pub fn is_part_edited(&self, index: usize) -> bool {
-        if let Some(edited_parts) = &self.edited_parts {
-            if let Some(part) = edited_parts.part(index) {
-                return matches!(part.status, EditStatus::Edited);
-            }
+        if let Some(edited_parts) = &self.edited_parts
+            && let Some(part) = edited_parts.part(index)
+        {
+            return matches!(part.status, EditStatus::Edited);
         }
         false
     }
@@ -736,12 +744,6 @@ impl Message {
         }
     }
 
-    /// Get the group action for the current message
-    #[must_use]
-    pub fn group_action(&self) -> Option<GroupAction> {
-        GroupAction::from_message(self)
-    }
-
     /// `true` if the message indicates a sender started sharing their location, else `false`
     #[must_use]
     pub fn started_sharing_location(&self) -> bool {
@@ -770,6 +772,12 @@ impl Message {
         self.deleted_from.is_some()
     }
 
+    /// Get the group action for the current message
+    #[must_use]
+    pub fn group_action(&'_ self) -> Option<GroupAction<'_>> {
+        GroupAction::from_message(self)
+    }
+
     /// Get the index of the part of a message a reply is pointing to
     fn get_reply_index(&self) -> usize {
         if let Some(parts) = &self.thread_originator_part {
@@ -781,6 +789,7 @@ impl Message {
         0
     }
 
+    // MARK: SQL
     /// Generate the SQL `WHERE` clause described by a [`QueryContext`].
     ///
     /// If `include_recoverable` is `true`, the filter includes messages from the recently deleted messages
@@ -790,11 +799,11 @@ impl Message {
         context: &QueryContext,
         include_recoverable: bool,
     ) -> String {
-        let mut filters = String::new();
+        let mut filters = String::with_capacity(128);
 
         // Start date filter
         if let Some(start) = context.start {
-            filters.push_str(&format!(" m.date >= {start}"));
+            let _ = write!(filters, " m.date >= {start}");
         }
 
         // End date filter
@@ -802,7 +811,7 @@ impl Message {
             if !filters.is_empty() {
                 filters.push_str(" AND ");
             }
-            filters.push_str(&format!(" m.date <= {end}"));
+            let _ = write!(filters, " m.date <= {end}");
         }
 
         // Chat ID filter, optionally including recoverable messages
@@ -819,9 +828,9 @@ impl Message {
                 .join(", ");
 
             if include_recoverable {
-                filters.push_str(&format!(" (c.chat_id IN ({ids}) OR d.chat_id IN ({ids}))"));
+                let _ = write!(filters, " (c.chat_id IN ({ids}) OR d.chat_id IN ({ids}))");
             } else {
-                filters.push_str(&format!(" c.chat_id IN ({ids})"));
+                let _ = write!(filters, " c.chat_id IN ({ids})");
             }
         }
 
@@ -978,9 +987,10 @@ impl Message {
         Ok(out_h)
     }
 
+    // MARK: Variant
     /// Get the variant of a message, see [`variants`](crate::message_types::variants) for detail.
     #[must_use]
-    pub fn variant(&self) -> Variant {
+    pub fn variant(&'_ self) -> Variant<'_> {
         // Check if a message was edited first as those have special properties
         if self.is_edited() {
             return Variant::Edited;
@@ -1108,7 +1118,7 @@ impl Message {
 
     /// Determine the type of announcement a message contains, if it contains one
     #[must_use]
-    pub fn get_announcement(&self) -> Option<Announcement> {
+    pub fn get_announcement(&'_ self) -> Option<Announcement<'_>> {
         if let Some(action) = self.group_action() {
             return Some(Announcement::GroupAction(action));
         }
@@ -1126,10 +1136,11 @@ impl Message {
 
     /// Determine the service the message was sent from, i.e. iMessage, SMS, IRC, etc.
     #[must_use]
-    pub fn service(&self) -> Service {
+    pub fn service(&'_ self) -> Service<'_> {
         Service::from(self.service.as_deref())
     }
 
+    // MARK: BLOBs
     /// Get a message's plist from the [`MESSAGE_PAYLOAD`] BLOB column
     ///
     /// Calling this hits the database, so it is expensive and should
@@ -1180,9 +1191,10 @@ impl Message {
         Some(body)
     }
 
+    // MARK: Expressive
     /// Determine which [`Expressive`] the message was sent with
     #[must_use]
-    pub fn get_expressive(&self) -> Expressive {
+    pub fn get_expressive(&'_ self) -> Expressive<'_> {
         match &self.expressive_send_style_id {
             Some(content) => match content.as_str() {
                 "com.apple.MobileSMS.expressivesend.gentle" => {
@@ -1260,6 +1272,7 @@ impl Message {
     }
 }
 
+// MARK: Fixture
 #[cfg(test)]
 impl Message {
     #[must_use]

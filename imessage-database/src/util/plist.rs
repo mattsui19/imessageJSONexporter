@@ -102,13 +102,13 @@ fn follow_uid<'a>(
             let mut dictionary = Dictionary::new();
             // Handle where type is a Dictionary that points to another single value
             if let Some(relative) = dict.get("NS.relative") {
-                if let Some(idx) = relative.as_uid() {
-                    if let Some(p) = &parent {
-                        dictionary.insert(
-                            (*p).to_string(),
-                            follow_uid(objects, idx.get() as usize, Some(p), None)?,
-                        );
-                    }
+                if let Some(idx) = relative.as_uid()
+                    && let Some(p) = &parent
+                {
+                    dictionary.insert(
+                        (*p).to_string(),
+                        follow_uid(objects, idx.get() as usize, Some(p), None)?,
+                    );
                 }
             }
             // Handle the NSDictionary and NSMutableDictionary types

@@ -8,6 +8,7 @@ use std::{
         HashMap,
         hash_map::Entry::{Occupied, Vacant},
     },
+    fmt::Write as FmtWrite,
     fs::File,
     io::{BufWriter, Write},
 };
@@ -18,7 +19,7 @@ use crate::{
         progress::ExportProgress, runtime::Config, sanitizers::sanitize_html,
     },
     exporters::exporter::{
-        ATTACHMENT_NO_FILENAME, BalloonFormatter, Exporter, TextEffectFormatter, Writer,
+        ATTACHMENT_NO_FILENAME, BalloonFormatter, Exporter, MessageFormatter, TextEffectFormatter,
     },
 };
 
@@ -56,6 +57,7 @@ use imessage_database::{
     },
 };
 
+// MARK: HTML
 const HEADER: &str = "<html>\n<head>\n<meta charset=\"UTF-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">";
 const FOOTER: &str = "</body></html>";
 const STYLE: &str = include_str!("resources/style.css");
@@ -82,6 +84,7 @@ pub struct HTML<'a> {
     pb: ExportProgress,
 }
 
+// MARK: Exporter
 impl<'a> Exporter<'a> for HTML<'a> {
     fn new(config: &'a Config) -> Result<Self, RuntimeError> {
         let mut orphaned = config.options.export_path.clone();
@@ -198,9 +201,15 @@ impl<'a> Exporter<'a> for HTML<'a> {
             None => Ok(&mut self.orphaned),
         }
     }
+
+    fn write_to_file(file: &mut BufWriter<File>, text: &str) -> Result<(), RuntimeError> {
+        file.write_all(text.as_bytes())
+            .map_err(RuntimeError::DiskError)
+    }
 }
 
-impl<'a> Writer<'a> for HTML<'a> {
+// MARK: Writer
+impl<'a> MessageFormatter<'a> for HTML<'a> {
     fn format_message(&self, message: &Message, indent_size: usize) -> Result<String, TableError> {
         // Data we want to write to a file
         let mut formatted_message = String::new();
@@ -294,7 +303,6 @@ impl<'a> Writer<'a> for HTML<'a> {
         }
 
         // Useful message metadata
-        let message_parts = &message.components;
         let mut attachments = Attachment::from_message(self.config.db(), message)?;
         let mut replies = message.get_replies(self.config.db())?;
 
@@ -333,7 +341,7 @@ impl<'a> Writer<'a> for HTML<'a> {
         }
 
         // Generate the message body from it's components
-        for (idx, message_part) in message_parts.iter().enumerate() {
+        for (idx, message_part) in message.components.iter().enumerate() {
             // Write the part div start
             self.add_line(
                 &mut formatted_message,
@@ -347,17 +355,16 @@ impl<'a> Writer<'a> for HTML<'a> {
                     if let Some(text) = &message.text {
                         // Render edited message content, if applicable
                         if message.is_part_edited(idx) {
-                            if let Some(edited_parts) = &message.edited_parts {
-                                if let Some(edited) =
+                            if let Some(edited_parts) = &message.edited_parts
+                                && let Some(edited) =
                                     self.format_edited(message, edited_parts, idx, "")
-                                {
-                                    self.add_line(
-                                        &mut formatted_message,
-                                        &edited,
-                                        "<div class=\"edited\">",
-                                        "</div>",
-                                    );
-                                }
+                            {
+                                self.add_line(
+                                    &mut formatted_message,
+                                    &edited,
+                                    "<div class=\"edited\">",
+                                    "</div>",
+                                );
                             }
                         } else {
                             let mut formatted_text = self.format_attributes(text, text_attrs);
@@ -405,7 +412,6 @@ impl<'a> Writer<'a> for HTML<'a> {
                             } else {
                                 match self.format_attachment(attachment, message, metadata) {
                                     Ok(result) => {
-                                        attachment_index += 1;
                                         self.add_line(
                                             &mut formatted_message,
                                             &result,
@@ -415,13 +421,14 @@ impl<'a> Writer<'a> for HTML<'a> {
                                     }
                                     Err(result) => {
                                         self.add_line(
-                                        &mut formatted_message,
-                                        result,
-                                        "<span class=\"attachment_error\">Unable to locate attachment: ",
-                                        "</span>",
-                                    );
+                                            &mut formatted_message,
+                                            result,
+                                            "<span class=\"attachment_error\">Unable to locate attachment: ",
+                                            "</span>",
+                                        );
                                     }
                                 }
+                                attachment_index += 1;
                             }
                         }
                         // Attachment does not exist in attachments table
@@ -448,15 +455,15 @@ impl<'a> Writer<'a> for HTML<'a> {
                     ),
                 },
                 BubbleComponent::Retracted => {
-                    if let Some(edited_parts) = &message.edited_parts {
-                        if let Some(edited) = self.format_edited(message, edited_parts, idx, "") {
-                            self.add_line(
-                                &mut formatted_message,
-                                &edited,
-                                "<span class=\"unsent\">",
-                                "</span>",
-                            );
-                        }
+                    if let Some(edited_parts) = &message.edited_parts
+                        && let Some(edited) = self.format_edited(message, edited_parts, idx, "")
+                    {
+                        self.add_line(
+                            &mut formatted_message,
+                            &edited,
+                            "<span class=\"unsent\">",
+                            "</span>",
+                        );
                     }
                 }
             }
@@ -475,36 +482,36 @@ impl<'a> Writer<'a> for HTML<'a> {
             }
 
             // Handle Tapbacks
-            if let Some(tapbacks_map) = self.config.tapbacks.get(&message.guid) {
-                if let Some(tapbacks) = tapbacks_map.get(&idx) {
-                    let mut formatted_tapbacks = String::new();
+            if let Some(tapbacks_map) = self.config.tapbacks.get(&message.guid)
+                && let Some(tapbacks) = tapbacks_map.get(&idx)
+            {
+                let mut formatted_tapbacks = String::new();
 
-                    tapbacks
-                        .iter()
-                        .try_for_each(|tapback| -> Result<(), TableError> {
-                            let formatted = self.format_tapback(tapback)?;
-                            if !formatted.is_empty() {
-                                self.add_line(
-                                    &mut formatted_tapbacks,
-                                    &self.format_tapback(tapback)?,
-                                    "<div class=\"tapback\">",
-                                    "</div>",
-                                );
-                            }
-                            Ok(())
-                        })?;
+                tapbacks
+                    .iter()
+                    .try_for_each(|tapback| -> Result<(), TableError> {
+                        let formatted = self.format_tapback(tapback)?;
+                        if !formatted.is_empty() {
+                            self.add_line(
+                                &mut formatted_tapbacks,
+                                &self.format_tapback(tapback)?,
+                                "<div class=\"tapback\">",
+                                "</div>",
+                            );
+                        }
+                        Ok(())
+                    })?;
 
-                    if !formatted_tapbacks.is_empty() {
-                        self.add_line(
-                            &mut formatted_message,
-                            "<hr><p>Tapbacks:</p>",
-                            "<div class=\"tapbacks\">",
-                            "",
-                        );
-                        self.add_line(&mut formatted_message, &formatted_tapbacks, "", "");
-                    }
-                    self.add_line(&mut formatted_message, "</div>", "", "");
+                if !formatted_tapbacks.is_empty() {
+                    self.add_line(
+                        &mut formatted_message,
+                        "<hr><p>Tapbacks:</p>",
+                        "<div class=\"tapbacks\">",
+                        "",
+                    );
+                    self.add_line(&mut formatted_message, &formatted_tapbacks, "", "");
                 }
+                self.add_line(&mut formatted_message, "</div>", "", "");
             }
 
             // Handle Replies
@@ -647,9 +654,10 @@ impl<'a> Writer<'a> for HTML<'a> {
                         StickerSource::Genmoji => {
                             // Add sticker prompt
                             if let Some(prompt) = &sticker.emoji_description {
-                                sticker_embed.push_str(&format!(
+                                let _ = write!(
+                                    sticker_embed,
                                     "\n<div class=\"genmoji_prompt\">Genmoji prompt: {prompt}</div>"
-                                ));
+                                );
                             }
                         }
                         StickerSource::Memoji => sticker_embed
@@ -661,9 +669,10 @@ impl<'a> Writer<'a> for HTML<'a> {
                                 &self.config.options.db_path,
                                 self.config.options.attachment_root.as_deref(),
                             ) {
-                                sticker_embed.push_str(&format!(
+                                let _ = write!(
+                                    sticker_embed,
                                     "\n<div class=\"sticker_effect\">Sent with {sticker_effect} effect</div>"
-                                ));
+                                );
                             }
                         }
                         StickerSource::App(bundle_id) => {
@@ -671,9 +680,10 @@ impl<'a> Writer<'a> for HTML<'a> {
                             let app_name = sticker
                                 .get_sticker_source_application_name(self.config.db())
                                 .unwrap_or(bundle_id);
-                            sticker_embed.push_str(&format!(
+                            let _ = write!(
+                                sticker_embed,
                                 "\n<div class=\"sticker_name\">App: {app_name}</div>"
-                            ));
+                            );
                         }
                     }
                 }
@@ -694,22 +704,22 @@ impl<'a> Writer<'a> for HTML<'a> {
             let mut app_bubble = String::new();
 
             // Handwritten messages use a different payload type, so check that first
-            if message.is_handwriting() {
-                if let Some(payload) = message.raw_payload_data(self.config.db()) {
-                    return match HandwrittenMessage::from_payload(&payload) {
-                        Ok(bubble) => Ok(self.format_handwriting(message, &bubble, message)),
-                        Err(why) => Err(PlistParseError::HandwritingError(why)),
-                    };
-                }
+            if message.is_handwriting()
+                && let Some(payload) = message.raw_payload_data(self.config.db())
+            {
+                return match HandwrittenMessage::from_payload(&payload) {
+                    Ok(bubble) => Ok(self.format_handwriting(message, &bubble, message)),
+                    Err(why) => Err(PlistParseError::HandwritingError(why)),
+                };
             }
 
-            if message.is_digital_touch() {
-                if let Some(payload) = message.raw_payload_data(self.config.db()) {
-                    return match digital_touch::from_payload(&payload) {
-                        Some(bubble) => Ok(self.format_digital_touch(message, &bubble, message)),
-                        None => Err(PlistParseError::DigitalTouchError),
-                    };
-                }
+            if message.is_digital_touch()
+                && let Some(payload) = message.raw_payload_data(self.config.db())
+            {
+                return match digital_touch::from_payload(&payload) {
+                    Some(bubble) => Ok(self.format_digital_touch(message, &bubble, message)),
+                    None => Err(PlistParseError::DigitalTouchError),
+                };
             }
 
             if let Some(payload) = message.payload_data(self.config.db()) {
@@ -749,23 +759,23 @@ impl<'a> Writer<'a> for HTML<'a> {
                 app_bubble.push_str(&res);
             } else {
                 // Sometimes, URL messages are missing their payloads
-                if message.is_url() {
-                    if let Some(text) = &message.text {
-                        let mut out_s = String::new();
-                        out_s.push_str("<a href=\"");
-                        out_s.push_str(text);
-                        out_s.push_str("\">");
+                if message.is_url()
+                    && let Some(text) = &message.text
+                {
+                    let mut out_s = String::new();
+                    out_s.push_str("<a href=\"");
+                    out_s.push_str(text);
+                    out_s.push_str("\">");
 
-                        out_s.push_str("<div class=\"app_header\"><div class=\"name\">");
-                        out_s.push_str(text);
-                        out_s.push_str("</div></div>");
+                    out_s.push_str("<div class=\"app_header\"><div class=\"name\">");
+                    out_s.push_str(text);
+                    out_s.push_str("</div></div>");
 
-                        out_s.push_str("<div class=\"app_footer\"><div class=\"caption\">");
-                        out_s.push_str(text);
-                        out_s.push_str("</div></div></a>");
+                    out_s.push_str("<div class=\"app_footer\"><div class=\"caption\">");
+                    out_s.push_str(text);
+                    out_s.push_str("</div></div></a>");
 
-                        return Ok(out_s);
-                    }
+                    return Ok(out_s);
                 }
                 return Err(PlistParseError::NoPayload);
             }
@@ -979,14 +989,16 @@ impl<'a> Writer<'a> for HTML<'a> {
                         msg.date_edited(&self.config.offset),
                     ) {
                         Some(diff) => {
-                            out_s.push_str(&format!(
+                            let _ = write!(
+                                out_s,
                                 "<span class=\"unsent\">{who} unsent this message part {diff} after sending!</span>"
-                            ));
+                            );
                         }
                         None => {
-                            out_s.push_str(&format!(
+                            let _ = write!(
+                                out_s,
                                 "<span class=\"unsent\">{who} unsent this message part!</span>"
-                            ));
+                            );
                         }
                     }
                 }
@@ -1054,13 +1066,9 @@ impl<'a> Writer<'a> for HTML<'a> {
         }
         result
     }
-
-    fn write_to_file(file: &mut BufWriter<File>, text: &str) -> Result<(), RuntimeError> {
-        file.write_all(text.as_bytes())
-            .map_err(RuntimeError::DiskError)
-    }
 }
 
+// MARK: Balloons
 impl<'a> BalloonFormatter<&'a Message> for HTML<'a> {
     fn format_url(&self, msg: &Message, balloon: &URLMessage, _: &Message) -> String {
         let mut out_s = String::new();
@@ -1556,6 +1564,7 @@ impl<'a> BalloonFormatter<&'a Message> for HTML<'a> {
     }
 }
 
+// MARK: Text Effects
 impl<'a> TextEffectFormatter<'a> for HTML<'a> {
     fn format_effect(&'a self, text: &'a str, effect: &'a TextEffect) -> Cow<'a, str> {
         match effect {
@@ -1609,20 +1618,21 @@ impl<'a> TextEffectFormatter<'a> for HTML<'a> {
     }
 }
 
+// MARK: Impl
 impl HTML<'_> {
     fn get_time(&self, message: &Message) -> (String, String) {
         let date = format(&message.date(&self.config.offset));
         let mut read_at = String::new();
         let read_after = message.time_until_read(&self.config.offset);
-        if let Some(time) = read_after {
-            if !time.is_empty() {
-                let who = if message.is_from_me() {
-                    "them"
-                } else {
-                    self.config.options.custom_name.as_deref().unwrap_or("you")
-                };
-                read_at = format!("(Read by {who} after {time})");
-            }
+        if let Some(time) = read_after
+            && !time.is_empty()
+        {
+            let who = if message.is_from_me() {
+                "them"
+            } else {
+                self.config.options.custom_name.as_deref().unwrap_or("you")
+            };
+            read_at = format!("(Read by {who} after {time})");
         }
         (date, read_at)
     }
@@ -1789,6 +1799,7 @@ impl HTML<'_> {
     }
 }
 
+// MARK: Tests
 #[cfg(test)]
 mod tests {
     use std::{env::current_dir, path::PathBuf};
@@ -1796,7 +1807,7 @@ mod tests {
     use crate::{
         Config, Exporter, HTML, Options,
         app::{compatibility::attachment_manager::AttachmentManagerMode, export_type::ExportType},
-        exporters::exporter::Writer,
+        exporters::exporter::MessageFormatter,
     };
     use imessage_database::{
         message_types::text_effects::TextEffect,
@@ -3251,7 +3262,7 @@ mod text_effect_tests {
 
     use crate::{
         Config, Exporter, HTML, Options,
-        exporters::exporter::{TextEffectFormatter, Writer},
+        exporters::exporter::{MessageFormatter, TextEffectFormatter},
     };
 
     #[test]
@@ -3719,7 +3730,7 @@ mod text_effect_tests {
 mod edited_tests {
     use std::{env::current_dir, fs::File, io::Read};
 
-    use crate::{Config, Exporter, HTML, Options, exporters::exporter::Writer};
+    use crate::{Config, Exporter, HTML, Options, exporters::exporter::MessageFormatter};
     use imessage_database::{
         message_types::{
             edited::{EditStatus, EditedEvent, EditedMessage, EditedMessagePart},
