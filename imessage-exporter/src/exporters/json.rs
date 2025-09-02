@@ -17,7 +17,7 @@ use imessage_database::{
     message_types::edited::EditedMessage,
     tables::{
         attachment::Attachment,
-        messages::{Message, models::AttachmentMeta, TextAttributes},
+        messages::{Message, models::AttachmentMeta, models::TextAttributes},
         table::{ORPHANED, Table},
     },
     util::{

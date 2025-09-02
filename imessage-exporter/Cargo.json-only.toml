@@ -1,0 +1,20 @@
+[package]
+name = "imessage-json-exporter"
+version = "0.1.0"
+edition = "2021"
+authors = ["JSON-only build"]
+description = "Minimal iMessage JSON exporter"
+
+[dependencies]
+clap = { version = "4.5.46", features = ["cargo"] }
+filetime = "0.2.26"
+fdlimit = "0.3.0"
+fs2 = "0.4.3"
+imessage-database = { path = "../imessage-database" }
+indicatif = "0.18.0"
+rusqlite = { version = "0.37.0", features = ["blob", "bundled"] }
+serde_json = "1.0"
+
+[[bin]]
+name = "imessage-json-exporter"
+path = "src/main.json-only.rs"
