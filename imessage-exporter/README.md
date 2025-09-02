@@ -1,3 +1,7 @@
+cargo build
+mkdir -p test_export
+./target/debug/imessage-exporter --format json --export-path ./test_export --conversation-filter +1xxxxxx
+
 # Binary Documentation
 
 The `imessage-exporter` binary exports iMessage data to `txt` or `html` formats. It can also run diagnostics to find problems with the iMessage database.
